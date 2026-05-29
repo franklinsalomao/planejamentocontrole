@@ -1045,12 +1045,7 @@ function renderHeader() {
     el.innerHTML = `
     <span class="sync-badge" id="sync-badge" onclick="openSbModal()">⚫ Modo local</span>
     <button class="btn btn-out" onclick="openApiKeyModal()" title="Configurar API Key Anthropic">🔑 API</button>
-    <button class="btn btn-out" style="background:rgba(255,255,255,.13)" onclick="openSbModal()" title="Equipe">☁️ Equipe</button>
-    <button class="btn btn-out" style="background:rgba(46,125,50,.12);color:#2e7d32;border-color:#a5d6a7" onclick="document.getElementById('mats-import-inp') && document.getElementById('mats-import-inp').click()">📥 Importar</button>
-    <button class="btn btn-cyan" style="font-weight:700;letter-spacing:.3px;box-shadow:0 0 0 2.5px rgba(0,168,232,.45),0 2px 8px rgba(0,168,232,.3)" onclick="matsExportPDF()">📄 Exportar PDF</button>
-    <button class="btn btn-out" style="font-weight:700;letter-spacing:.3px;border-color:#4a7fd4;color:#0B3D91" onclick="matsExportIsoPDF()" title="Exportar PDF agrupado por Isométrico">📋 Por Isométrico</button>
-    <button class="btn btn-out" onclick="sincronizarPlanilha()" style="background:rgba(46,125,50,.15);color:#2e7d32;border-color:#a5d6a7" title="Sincronizar com planilha">🔄 Planilha</button>
-    <button class="btn btn-amber" onclick="openMatsBulkModal()">⚡ Lote</button>`;
+    <button class="btn btn-out" style="background:rgba(255,255,255,.13)" onclick="openSbModal()" title="Equipe">☁️ Equipe</button>`;
   } else if (currentSubTab === 'suportes') {
     el.innerHTML = `
     <span class="sync-badge" id="sync-badge" onclick="openSbModal()">⚫ Modo local</span>
