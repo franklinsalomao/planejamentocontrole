@@ -720,19 +720,25 @@ function _sbUpdateBadge() {
 
 /* ── CLOUD STORAGE com Supabase + fallback ── */
 async function storageGet(key) {
+  // 1. Supabase (equipe)
   if (_sb) {
     try {
       const { data, error } = await _sb.from('hydrostec_kv').select('value').eq('key', key).maybeSingle();
       if (!error && data) return data.value;
     } catch(e) { console.warn('[Supabase] get error:', key, e); }
   }
+  // 2. localStorage — fonte primária confiável (persiste entre sessões)
+  const local = LS.getItem(key);
+  if (local) return local;
+  // 3. window.storage (Claude artifact) — fallback
   if (window.storage) {
-    try { const r = await window.storage.get(key, true); return r ? r.value : null; } catch(e) { return null; }
+    try { const r = await window.storage.get(key, false); return r ? r.value : null; } catch(e) { return null; }
   }
-  return LS.getItem(key);
+  return null;
 }
 
 async function storageSet(key, value) {
+  // 1. Supabase (equipe)
   if (_sb) {
     try {
       _sbIgnoreNextReload = true;
@@ -740,16 +746,17 @@ async function storageSet(key, value) {
       _sbLastSync = new Date();
       _sbUpdateBadge();
       setTimeout(() => { _sbIgnoreNextReload = false; }, 800);
-      return;
     } catch(e) {
       _sbIgnoreNextReload = false;
       console.warn('[Supabase] set error:', key, e);
     }
   }
-  if (window.storage) {
-    try { await window.storage.set(key, value, true); return; } catch(e) {}
-  }
+  // 2. localStorage — SEMPRE salva localmente (fonte primária)
   try { LS.setItem(key, value); } catch(e) { console.warn('storage quota:', key, e); }
+  // 3. window.storage (Claude artifact) — salva também se disponível
+  if (window.storage) {
+    try { await window.storage.set(key, value, false); } catch(e) {}
+  }
 }
 
 /* ── PESOS ── */
