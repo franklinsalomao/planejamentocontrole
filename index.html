@@ -25,12 +25,12 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;color:var(--ht);font-size:12p
 .ie-panel-sm{position:absolute;left:0;top:26px;min-width:180px;background:#fff;border:1px solid var(--hbr);border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,.18);padding:10px;z-index:500;display:none}
 .ie-panel-sm.open{display:block}
 
-.hdr{display:flex;align-items:center;justify-content:space-between;background:var(--hb);color:#fff;padding:10px 16px;border-radius:12px 12px 0 0}
-.hdr-brand{display:flex;align-items:center;gap:9px}
-.hdr-logo{width:34px;height:34px;background:var(--hc);border-radius:6px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;color:#fff}
-.hdr-name{font-size:14px;font-weight:600}
-.hdr-sub{font-size:10px;opacity:.75;margin-top:1px}
-.hdr-acts{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.hdr{display:flex;align-items:center;justify-content:space-between;background:linear-gradient(100deg,#071d4a 0%,#0B3D91 55%,#0e4fbb 100%);color:#fff;padding:13px 20px;border-radius:12px 12px 0 0;border-bottom:2.5px solid var(--hc);box-shadow:0 4px 18px rgba(0,0,0,.22)}
+.hdr-brand{display:flex;align-items:center;gap:12px}
+.hdr-logo{width:42px;height:42px;background:linear-gradient(135deg,#00A8E8 0%,#0077b6 100%);border-radius:9px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:15px;color:#fff;box-shadow:0 2px 10px rgba(0,168,232,.5);letter-spacing:-0.5px}
+.hdr-name{font-size:15px;font-weight:700;letter-spacing:.2px}
+.hdr-sub{font-size:10px;opacity:.7;margin-top:2px;letter-spacing:.3px}
+.hdr-acts{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
 
 .btn{border:none;border-radius:6px;padding:6px 12px;font-size:11px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
 .btn-cyan{background:var(--hc);color:#fff}.btn-cyan:hover{background:#0092cc}
@@ -47,29 +47,34 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;color:var(--ht);font-size:12p
 .tab-badge{background:rgba(255,255,255,.2);color:#fff;font-size:9px;padding:1px 5px;border-radius:8px;margin-left:2px}
 .nav-tab.active .tab-badge{background:var(--hc)}
 
-.proj-bar{background:var(--hbl);border:0.5px solid var(--hbr);border-top:none;padding:9px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px}
-.proj-search{padding:5px 9px;border:0.5px solid var(--hbr);border-radius:6px;font-size:11.5px;background:#fff;outline:none;width:210px}
-.proj-search:focus{border-color:var(--hbm)}
-.proj-grid{padding:12px 16px;border:0.5px solid var(--hbr);border-top:none;display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;background:#fff;border-radius:0 0 12px 12px;min-height:100px;align-items:start}
-.proj-card{border:0.5px solid var(--hbr);border-radius:9px;padding:12px 13px;transition:all .15s;background:#fff}
-.proj-card:hover{border-color:var(--hbm);background:var(--hbl)}
-.proj-card.active-proj{border-color:var(--hc);border-width:1.5px;background:#e0f6ff}
-.pc-name{font-size:12px;font-weight:600;color:var(--hb);margin-bottom:2px}
-.pc-code{font-size:9.5px;color:var(--hmu);font-family:monospace;margin-bottom:6px}
-.pc-stats{display:flex;gap:6px;flex-wrap:wrap}
-.proj-stat{font-size:9px;background:var(--hbl);color:var(--hb);padding:1px 6px;border-radius:6px}
-.pc-acts{display:flex;gap:5px;margin-top:8px}
-.proj-del-btn{background:none;border:0.5px solid #e0c8c8;border-radius:4px;color:var(--hd);cursor:pointer;padding:2px 7px;font-size:10px}
+.proj-bar{background:linear-gradient(90deg,#f0f4fb 0%,#e8f0fb 100%);border:0.5px solid var(--hbr);border-top:none;padding:12px 20px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.proj-search{padding:7px 12px;border:1px solid var(--hbr);border-radius:8px;font-size:12px;background:#fff;outline:none;width:260px;box-shadow:0 1px 4px rgba(0,0,0,.06);transition:.15s}
+.proj-search:focus{border-color:var(--hbm);box-shadow:0 0 0 3px rgba(26,95,209,.12)}
+.proj-grid{padding:20px;border:0.5px solid var(--hbr);border-top:none;display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;background:#f8fafd;border-radius:0 0 12px 12px;min-height:120px;align-items:start}
+.proj-card{border:1px solid #d0d8e8;border-radius:12px;padding:0;transition:all .2s;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.06);overflow:hidden;cursor:default}
+.proj-card:hover{border-color:var(--hbm);box-shadow:0 6px 20px rgba(11,61,145,.13);transform:translateY(-2px)}
+.proj-card.active-proj{border-color:var(--hc);border-width:2px;box-shadow:0 6px 24px rgba(0,168,232,.18)}
+.pc-card-top{background:linear-gradient(110deg,#071d4a 0%,#0B3D91 100%);padding:14px 16px 12px;position:relative;overflow:hidden}
+.pc-card-top::after{content:'';position:absolute;right:-20px;top:-20px;width:80px;height:80px;background:rgba(0,168,232,.15);border-radius:50%}
+.pc-name{font-size:13px;font-weight:700;color:#fff;margin-bottom:3px;line-height:1.3}
+.pc-code{font-size:9.5px;color:rgba(255,255,255,.65);font-family:monospace;letter-spacing:.3px}
+.pc-card-body{padding:12px 16px 14px}
+.pc-stats{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.proj-stat{font-size:9.5px;background:var(--hbl);color:var(--hb);padding:3px 8px;border-radius:20px;font-weight:600;border:1px solid rgba(11,61,145,.1)}
+.proj-stat-fab{background:#e6f5ed;color:#1a8c4e;border-color:rgba(26,140,78,.15)}
+.proj-stat-mon{background:#fff3e0;color:#c07000;border-color:rgba(192,112,0,.15)}
+.pc-acts{display:flex;gap:5px;margin-top:4px;align-items:center}
+.proj-del-btn{background:none;border:1px solid #e0c8c8;border-radius:6px;color:var(--hd);cursor:pointer;padding:4px 8px;font-size:10px;transition:.15s}
 .proj-del-btn:hover{background:#fdecea}
-.proj-open-btn{background:var(--hb);border:none;border-radius:4px;color:#fff;cursor:pointer;padding:2px 9px;font-size:10px;font-weight:500}
-.proj-open-btn:hover{background:var(--hbm)}
-.btn-edit-sm{background:none;border:0.5px solid var(--hbr);border-radius:4px;color:var(--hb);cursor:pointer;padding:2px 6px;font-size:10px}
-.btn-edit-sm:hover{background:var(--hbl)}
-.proj-new-card{border:1.5px dashed var(--hbr);border-radius:9px;padding:12px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;min-height:80px;transition:all .15s}
-.proj-new-card:hover{border-color:var(--hbm);background:var(--hbl)}
-.pnc-icon{font-size:20px;color:var(--hmu)}
-.pnc-lbl{font-size:11px;color:var(--hmu);font-weight:500}
-.no-proj{grid-column:1/-1;text-align:center;padding:22px;color:var(--hmu);font-size:11.5px}
+.proj-open-btn{background:linear-gradient(90deg,#0B3D91,#1a5fd1);border:none;border-radius:6px;color:#fff;cursor:pointer;padding:5px 14px;font-size:11px;font-weight:600;cursor:pointer;margin-left:auto;box-shadow:0 2px 8px rgba(11,61,145,.3);transition:.15s}
+.proj-open-btn:hover{background:linear-gradient(90deg,#1a5fd1,#0B3D91);box-shadow:0 4px 12px rgba(11,61,145,.4)}
+.btn-edit-sm{background:rgba(255,255,255,.9);border:1px solid var(--hbr);border-radius:6px;color:var(--hb);cursor:pointer;padding:4px 8px;font-size:10px;transition:.15s}
+.btn-edit-sm:hover{background:var(--hbl);border-color:var(--hbm)}
+.proj-new-card{border:2px dashed #c0cfe8;border-radius:12px;padding:28px 16px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;min-height:120px;transition:all .2s;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.04)}
+.proj-new-card:hover{border-color:var(--hbm);background:var(--hbl);box-shadow:0 4px 16px rgba(11,61,145,.1);transform:translateY(-2px)}
+.pnc-icon{font-size:28px;color:var(--hbm)}
+.pnc-lbl{font-size:12px;color:var(--hbm);font-weight:600;letter-spacing:.2px}
+.no-proj{grid-column:1/-1;text-align:center;padding:40px;color:var(--hmu);font-size:12px}
 
 .breadcrumb{background:#f8fafd;border:0.5px solid var(--hbr);border-top:none;padding:6px 16px;display:flex;align-items:center;gap:6px;font-size:11px;color:var(--hmu)}
 .bc-link{color:var(--hbm);cursor:pointer}.bc-link:hover{text-decoration:underline}
@@ -1073,10 +1078,11 @@ function renderProjects() {
   const list = projects.filter(p => !search || p.name.toLowerCase().includes(search) || (p.code || '').toLowerCase().includes(search));
   document.getElementById('view-projects').innerHTML = `
     <div class="proj-bar">
-      <div style="display:flex;align-items:center;gap:7px">🔍
-        <input class="proj-search" id="proj-search-inp" placeholder="Buscar projeto..." value="${search}" oninput="renderProjects()">
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="font-size:13px">🔍</span>
+        <input class="proj-search" id="proj-search-inp" placeholder="Buscar projeto por nome ou código..." value="${search}" oninput="renderProjects()">
       </div>
-      <span style="font-size:10px;color:var(--hmu)">${projects.length} projeto${projects.length !== 1 ? 's' : ''}</span>
+      <span style="font-size:11px;color:var(--hmu);font-weight:500;background:#fff;padding:4px 12px;border-radius:20px;border:1px solid var(--hbr)">${projects.length} projeto${projects.length !== 1 ? 's' : ''}</span>
     </div>
     <div class="proj-grid">
       ${!list.length ? `<div class="no-proj">${projects.length ? 'Nenhum resultado.' : 'Nenhum projeto. Clique em Novo Projeto.'}</div>` : ''}
@@ -1086,38 +1092,43 @@ function renderProjects() {
         const am = n ? Math.round(pi.reduce((s, e) => s + monPct(e), 0) / n) : 0;
         const isOpen = currentProjId === p.id;
         return `<div class="proj-card ${isOpen ? 'active-proj' : ''}" style="${isOpen ? 'grid-column:1/-1;' : ''}">
-          <!-- Cabeçalho do card -->
-          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
-            <div style="flex:1;min-width:0">
-              <div class="pc-name">${p.name}</div>
-              <div class="pc-code">${p.code || '—'}${p.plant ? ' · ' + p.plant : ''}</div>
-              <div class="pc-stats">
-                <span class="proj-stat">📄 ${n} folha${n !== 1 ? 's' : ''}</span>
-                <span class="proj-stat">Fab ${af}%</span>
-                <span class="proj-stat">Mon ${am}%</span>
+          <div class="pc-card-top">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+              <div style="flex:1;min-width:0">
+                <div class="pc-name">${p.name}</div>
+                <div class="pc-code">${p.code || '—'}${p.plant ? ' · ' + p.plant : ''}</div>
               </div>
-              ${p.desc ? `<div style="font-size:9.5px;color:var(--hmu);margin-top:4px">${p.desc}</div>` : ''}
+              <div style="display:flex;gap:4px;flex-shrink:0">
+                <button class="btn-edit-sm" style="background:rgba(255,255,255,.15);border-color:rgba(255,255,255,.25);color:#fff" onclick="reqAuth('edit-proj','${p.id}')">✏️</button>
+                <button class="btn-edit-sm" style="background:rgba(255,255,255,.15);border-color:rgba(255,255,255,.25);color:#fff" title="Zerar dados" onclick="reqAuth('clear-proj','${p.id}')">🧹</button>
+                <button class="proj-del-btn" style="background:rgba(255,255,255,.12);border-color:rgba(255,100,100,.4);color:#ffaaaa" onclick="reqAuth('del-proj','${p.id}')">🗑️</button>
+              </div>
             </div>
-            <div style="display:flex;align-items:center;gap:5px;flex-shrink:0">
-              <button class="btn-edit-sm" onclick="reqAuth('edit-proj','${p.id}')">✏️</button>
-              <button class="btn-edit-sm" style="color:#c0392b;border-color:#e0c8c8" title="Zerar todos os dados do projeto" onclick="reqAuth('clear-proj','${p.id}')">🧹</button>
-              <button class="proj-del-btn" onclick="reqAuth('del-proj','${p.id}')">🗑️</button>
+          </div>
+          <div class="pc-card-body">
+            <div class="pc-stats">
+              <span class="proj-stat">📄 ${n} folha${n !== 1 ? 's' : ''}</span>
+              <span class="proj-stat proj-stat-fab">⚙️ Fab ${af}%</span>
+              <span class="proj-stat proj-stat-mon">🔧 Mon ${am}%</span>
+            </div>
+            ${p.desc ? `<div style="font-size:9.5px;color:var(--hmu);margin-bottom:8px;line-height:1.4">${p.desc}</div>` : ''}
+            <div class="pc-acts">
               <button onclick="${isOpen ? "currentProjId=null;renderProjects()" : `goView('isos','${p.id}')`}"
-                style="background:${isOpen ? 'var(--hbm)' : 'var(--hc)'};color:#fff;border:none;border-radius:6px;padding:5px 12px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap">
-                ${isOpen ? '✕ Fechar' : 'Abrir →'}
+                class="proj-open-btn">
+                ${isOpen ? '✕ Fechar' : 'Abrir Projeto →'}
               </button>
             </div>
           </div>
-
-          <!-- Conteúdo expandido dentro do card -->
           ${isOpen ? `
-          <div style="margin-top:12px;border-top:1px solid var(--hbr);padding-top:12px">
+          <div style="border-top:2px solid var(--hc);padding:16px 20px;background:#f8fafd">
             <div id="view-isos" style="display:block"></div>
           </div>` : ''}
         </div>`;
       }).join('')}
       <div class="proj-new-card" onclick="reqAuth('add-proj')">
-        <div class="pnc-icon">📁</div><div class="pnc-lbl">+ Novo Projeto</div>
+        <div class="pnc-icon">＋</div>
+        <div class="pnc-lbl">Novo Projeto</div>
+        <div style="font-size:9px;color:var(--hmu);margin-top:2px">Clique para criar</div>
       </div>
     </div>`;
 
