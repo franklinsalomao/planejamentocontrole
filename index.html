@@ -4283,6 +4283,11 @@ function matsInjectBulkModal() {
 
 
 /* ── MATERIAIS SUB-TAB (Caldeiraria) ── */
+var _matsRenderDebounce = null;
+function matsDebounceRender() {
+  if (_matsRenderDebounce) clearTimeout(_matsRenderDebounce);
+  _matsRenderDebounce = setTimeout(function(){ _matsRenderTable(); }, 400);
+}
 function _matsRenderTable() {
   const items = matsGetFiltered();
   const allSelected = items.length > 0 && items.every(m => matsSelected.has(m.id));
@@ -4291,7 +4296,7 @@ function _matsRenderTable() {
 
   const cols = [
     {col:'iso',lbl:'Isométrico'},{col:'spec',lbl:'Spec'},{col:'codigo',lbl:'Código'},
-    {col:'diam',lbl:'Diâm.'},{col:'quant',lbl:'Qtde'},{col:'qtdeRetirado',lbl:'Qtde Retirado'},{col:'descricao',lbl:'Descrição'},
+    {col:'diam',lbl:'Diâm.'},{col:'quant',lbl:'Qtde'},{col:'qtdeRetirado',lbl:'Qtde Retirado'},{col:'saldo',lbl:'Saldo'},{col:'descricao',lbl:'Descrição'},
     {col:'tipo',lbl:'Tipo'},{col:'classificacao',lbl:'Classificação'},{col:'status',lbl:'Status'},
     {col:'dataRetirada',lbl:'Data Retirada'}
   ];
@@ -4315,6 +4320,7 @@ function _matsRenderTable() {
         <td style="text-align:center;font-size:10px">${m.diam||'—'}</td>
         <td style="font-size:10px">${m.quant||'—'}</td>
         <td><input type="number" min="0" step="any" class="mats-date-inp" style="width:72px;text-align:center" value="${m.qtdeRetirado||''}" placeholder="0" onchange="matsUpdateItem('${m.id}','qtdeRetirado',this.value)"></td>
+        <td style="text-align:center;font-size:10px;font-weight:600">${(()=>{const q=parseFloat(String(m.quant||'0').replace(',','.'));const r=parseFloat(String(m.qtdeRetirado||'0').replace(',','.'));const s=q-r;if(!Number.isFinite(s))return'—';const sc=s<0?'color:var(--hd)':s===0?'color:var(--hmu)':'color:var(--hs)';const sv=Number.isInteger(s)?s:s.toFixed(2).replace('.',',');return'<span style="'+sc+'">'+sv+'</span>';})()}</td>
         <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10px" title="${m.descricao}">${m.descricao}${m.classePressao?' <span style="font-size:9px;color:#c67200;font-weight:600">['+m.classePressao+']</span>':''}</td>
         <td><span style="background:#f0f4fb;color:var(--hb);border-radius:4px;padding:1px 5px;font-size:9px;font-weight:600">${m.tipo||'—'}</span></td>
         <td><select class="mats-status-sel" style="width:98px" onchange="matsUpdateItem('${m.id}','classificacao',this.value);_matsRenderTable()"><option value="fabricacao" ${m.classificacao==='fabricacao'?'selected':''}>Fabricação</option><option value="montagem" ${m.classificacao==='montagem'?'selected':''}>Montagem</option></select></td>
@@ -4392,7 +4398,7 @@ function _matsHTML() {
     + '</div>'
     + '</div>'
     + '<div class="mats-filter-bar">'
-    + '<input style="min-width:180px" placeholder="Buscar ISO / descrição / código..." value="'+matsFilterTxt+'" oninput="matsFilterTxt=this.value;_matsRenderTable()">'
+    + '<input style="min-width:180px" placeholder="Buscar ISO / descrição / código..." value="'+matsFilterTxt+'" oninput="matsFilterTxt=this.value;matsDebounceRender()">'
     + '<select onchange="matsFilterClass=this.value;_matsRenderTable()">'
     + '<option value=""'+(matsFilterClass===''?' selected':'')+'>Todas classif.</option>'
     + '<option value="fabricacao"'+(matsFilterClass==='fabricacao'?' selected':'')+'>Fabricação</option>'
