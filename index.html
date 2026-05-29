@@ -4208,7 +4208,7 @@ function renderMatsTable() {
   const allSelected = items.length > 0 && items.every(m => matsSelected.has(m.id));
   const selBar = document.getElementById('mats-sel-bar');
   if (selBar) { selBar.classList.toggle('show', matsSelected.size > 0); document.getElementById('mats-sel-count').textContent = matsSelected.size; }
-  const cols = [{col:'iso',lbl:'Isométrico'},{col:'spec',lbl:'Spec'},{col:'codigo',lbl:'Código'},{col:'diam',lbl:'Diâm.'},{col:'quant',lbl:'Qtde'},{col:'descricao',lbl:'Descrição'},{col:'tipo',lbl:'Tipo'},{col:'classificacao',lbl:'Classificação'},{col:'status',lbl:'Status'},{col:'dataRetirada',lbl:'Data Retirada'}];
+  const cols = [{col:'iso',lbl:'Isométrico'},{col:'spec',lbl:'Spec'},{col:'codigo',lbl:'Código'},{col:'diam',lbl:'Diâm.'},{col:'quant',lbl:'Qtde'},{col:'qtdeRetirado',lbl:'Qtde Retirado'},{col:'saldo',lbl:'Saldo'},{col:'descricao',lbl:'Descrição'},{col:'tipo',lbl:'Tipo'},{col:'classificacao',lbl:'Classificação'},{col:'status',lbl:'Status'},{col:'dataRetirada',lbl:'Data Retirada'}];
   const wrap = document.getElementById('mats-tbl-wrap');
   if (!wrap) return;
   wrap.innerHTML = `<table class="mats-tbl">
@@ -4229,6 +4229,8 @@ function renderMatsTable() {
         <td class="td-cod-edit" data-mid="${m.id}" style="font-family:monospace;font-size:9.5px" onclick="matsEditCod(this)" title="Editar código (senha)">${m.codigo||'—'}</td>
         <td style="text-align:center">${m.diam||'—'}</td>
         <td>${m.quant||'—'}</td>
+        <td><input type="number" min="0" step="any" class="mats-date-inp" style="width:72px;text-align:center" value="${m.qtdeRetirado||''}" placeholder="0" onchange="matsUpdateItem('${m.id}','qtdeRetirado',this.value);matsUpdateSaldoCell('${m.id}',this.value)"></td>
+        <td id="saldo-${m.id}" style="text-align:center;font-size:10px;font-weight:600">${(()=>{const q=parseFloat(String(m.quant||'0').replace(',','.'));const r=parseFloat(String(m.qtdeRetirado||'0').replace(',','.'));const s=q-r;if(!Number.isFinite(s))return'—';const sc=s<0?'color:var(--hd)':s===0?'color:var(--hmu)':'color:var(--hs)';const sv=Number.isInteger(s)?s:s.toFixed(2).replace('.',',');return'<span style="'+sc+'">'+sv+'</span>';})()}</td>
         <td style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${m.descricao}${m.classePressao?' ['+m.classePressao+']':''}">${m.descricao}${m.classePressao?' <span style="font-size:9px;color:#c67200;font-weight:600">['+m.classePressao+']</span>':''}</td>
         <td><span style="background:#f0f4fb;color:var(--hb);border-radius:4px;padding:2px 6px;font-size:9px;font-weight:600">${m.tipo||'—'}</span></td>
         <td><select class="mats-status-sel" style="width:100px" onchange="matsUpdateItem('${m.id}','classificacao',this.value)"><option value="fabricacao" ${m.classificacao==='fabricacao'?'selected':''}>Fabricação</option><option value="montagem" ${m.classificacao==='montagem'?'selected':''}>Montagem</option></select></td>
@@ -4319,8 +4321,8 @@ function _matsRenderTable() {
         <td class="td-cod-edit" data-mid="${m.id}" style="font-family:monospace;font-size:9.5px" onclick="matsEditCod(this)" title="Editar código (senha)">${m.codigo||'—'}</td>
         <td style="text-align:center;font-size:10px">${m.diam||'—'}</td>
         <td style="font-size:10px">${m.quant||'—'}</td>
-        <td><input type="number" min="0" step="any" class="mats-date-inp" style="width:72px;text-align:center" value="${m.qtdeRetirado||''}" placeholder="0" onchange="matsUpdateItem('${m.id}','qtdeRetirado',this.value)"></td>
-        <td style="text-align:center;font-size:10px;font-weight:600">${(()=>{const q=parseFloat(String(m.quant||'0').replace(',','.'));const r=parseFloat(String(m.qtdeRetirado||'0').replace(',','.'));const s=q-r;if(!Number.isFinite(s))return'—';const sc=s<0?'color:var(--hd)':s===0?'color:var(--hmu)':'color:var(--hs)';const sv=Number.isInteger(s)?s:s.toFixed(2).replace('.',',');return'<span style="'+sc+'">'+sv+'</span>';})()}</td>
+        <td><input type="number" min="0" step="any" class="mats-date-inp" style="width:72px;text-align:center" value="${m.qtdeRetirado||''}" placeholder="0" onchange="matsUpdateItem('${m.id}','qtdeRetirado',this.value);matsUpdateSaldoCell('${m.id}',this.value)"></td>
+        <td id="saldo-${m.id}" style="text-align:center;font-size:10px;font-weight:600">${(()=>{const q=parseFloat(String(m.quant||'0').replace(',','.'));const r=parseFloat(String(m.qtdeRetirado||'0').replace(',','.'));const s=q-r;if(!Number.isFinite(s))return'—';const sc=s<0?'color:var(--hd)':s===0?'color:var(--hmu)':'color:var(--hs)';const sv=Number.isInteger(s)?s:s.toFixed(2).replace('.',',');return'<span style="'+sc+'">'+sv+'</span>';})()}</td>
         <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10px" title="${m.descricao}">${m.descricao}${m.classePressao?' <span style="font-size:9px;color:#c67200;font-weight:600">['+m.classePressao+']</span>':''}</td>
         <td><span style="background:#f0f4fb;color:var(--hb);border-radius:4px;padding:1px 5px;font-size:9px;font-weight:600">${m.tipo||'—'}</span></td>
         <td><select class="mats-status-sel" style="width:98px" onchange="matsUpdateItem('${m.id}','classificacao',this.value);_matsRenderTable()"><option value="fabricacao" ${m.classificacao==='fabricacao'?'selected':''}>Fabricação</option><option value="montagem" ${m.classificacao==='montagem'?'selected':''}>Montagem</option></select></td>
@@ -4469,6 +4471,19 @@ function matsToggleRow(id, checked) {
   matsUpdateSelInfo();
 }
 
+function matsUpdateSaldoCell(id, newRetirado) {
+  var m = matsCtrl.find(function(x){ return x.id === id; });
+  if (!m) return;
+  var q = parseFloat(String(m.quant || '0').replace(',', '.'));
+  var r = parseFloat(String(newRetirado || '0').replace(',', '.'));
+  var s = q - r;
+  var cell = document.getElementById('saldo-' + id);
+  if (!cell) return;
+  if (!Number.isFinite(s)) { cell.innerHTML = '—'; return; }
+  var sc = s < 0 ? 'color:var(--hd)' : s === 0 ? 'color:var(--hmu)' : 'color:var(--hs)';
+  var sv = Number.isInteger(s) ? s : s.toFixed(2).replace('.', ',');
+  cell.innerHTML = '<span style="' + sc + '">' + sv + '</span>';
+}
 function matsUpdateSelInfo() {
   var selBar = document.getElementById('mats-sel-bar');
   if (selBar) {
