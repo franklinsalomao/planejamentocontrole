@@ -4282,10 +4282,10 @@ function _saldo(q, r) {
   var qn = parseFloat(String(q || '0').replace(',', '.'));
   var rn = parseFloat(String(r || '0').replace(',', '.'));
   var s  = qn - rn;
-  if (!Number.isFinite(s)) return '—';
+  if (!Number.isFinite(s)) return '-';
   var col = s < 0 ? 'var(--hd)' : s === 0 ? 'var(--hmu)' : 'var(--hs)';
   var sv  = Number.isInteger(s) ? String(s) : s.toFixed(2).replace('.', ',');
-  return '<span style=\'color:' + col + '\;font-weight:600\'>' + sv + '<\/span>';
+  return '<span style="color:' + col + ';font-weight:600">' + sv + '</span>';
 }
 var _matsRenderDebounce = null;
 function matsDebounceRender() {
