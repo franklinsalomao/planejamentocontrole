@@ -4423,6 +4423,7 @@ function _matsHTML() {
     + '</div>'
     + '<div id="mats-sel-bar" class="mats-sel-bar'+(matsSelected.size?' show':'')+'">'
     + '<span style="font-size:11px;font-weight:600;color:var(--hb)">📋 <span id="mats-sel-count">'+matsSelected.size+'</span> selecionado(s) — aplicar status:</span>'
+    + '<span id="mats-sel-qtotal" style="background:#0B3D91;color:#fff;border-radius:6px;padding:2px 10px;font-size:10.5px;font-weight:700;display:'+(matsSelected.size?'inline-flex':'none')+';align-items:center"></span>'
     + '<label style="font-size:10px;color:var(--hmu)">Status: <select id="mats-bulk-status-inline" style="font-size:10px;padding:2px 6px;border-radius:4px;border:1px solid var(--hbr);background:var(--hg);color:var(--ht);margin-left:3px"><option value="">—</option><option value="estoque">✔ Estoque</option><option value="pendente">⏳ Pendente</option><option value="em_compra">🛒 Em Compra</option></select></label>'
     + '<label style="font-size:10px;color:var(--hmu)">Classif.: <select id="mats-bulk-classif-inline" style="font-size:10px;padding:2px 6px;border-radius:4px;border:1px solid var(--hbr);background:var(--hg);color:var(--ht);margin-left:3px"><option value="">—</option><option value="fabricacao">Fabricação</option><option value="montagem">Montagem</option></select></label>'
     + '<button onclick="applyMatsBulkInline()" style="font-size:10px;padding:4px 12px;border-radius:5px;border:none;background:var(--hb);color:#fff;cursor:pointer;font-weight:600">✅ Aplicar</button>'
@@ -4445,6 +4446,7 @@ function matsToggleAll(checked) {
   if (checked) filtered.forEach(function(m){ matsSelected.add(m.id); });
   else matsSelected.clear();
   _matsRenderTable();
+  matsUpdateSelInfo();
 }
 
 function matsToggleRow(id, checked) {
@@ -4458,6 +4460,29 @@ function matsToggleRow(id, checked) {
     var sc = document.getElementById('mats-sel-count');
     if (sc) sc.textContent = matsSelected.size;
   }
+  matsUpdateSelInfo();
+}
+
+function matsUpdateSelInfo() {
+  var selBar = document.getElementById('mats-sel-bar');
+  if (!selBar) return;
+  selBar.classList.toggle('show', matsSelected.size > 0);
+  var sc = document.getElementById('mats-sel-count');
+  if (sc) sc.textContent = matsSelected.size;
+
+  // Soma de quant dos selecionados
+  var sumEl = document.getElementById('mats-sel-qtotal');
+  if (!sumEl) return;
+  if (matsSelected.size === 0) { sumEl.style.display = 'none'; return; }
+  var total = 0;
+  matsCtrl.forEach(function(m) {
+    if (matsSelected.has(m.id)) {
+      total += parseFloat(String(m.quant || '0').replace(',', '.')) || 0;
+    }
+  });
+  var fmt = Number.isInteger(total) ? total : total.toFixed(2).replace('.', ',');
+  sumEl.textContent = '📦 Qtde total: ' + fmt;
+  sumEl.style.display = 'inline-flex';
 }
 
 
