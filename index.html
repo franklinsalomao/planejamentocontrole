@@ -4397,6 +4397,12 @@ function _matsHTML() {
     +   '</div>'
     + '</div>'
     + '</div>'
+    + '<div id="mats-kpi-sel" class="mats-kpi" style="border-left:3px solid #0B3D91;background:linear-gradient(135deg,#e8f0fb 0%,#d0e4ff 100%);min-width:140px;display:'+(matsSelected.size?'flex':'none')+';flex-direction:column">'
+    +   '<div class="mats-kpi-label" style="color:#0B3D91">☑️ Selecionados</div>'
+    +   '<div class="mats-kpi-val" id="mats-kpi-sel-count" style="color:#0B3D91">'+matsSelected.size+'</div>'
+    +   '<div class="mats-kpi-sub" id="mats-kpi-sel-qtotal" style="color:#1a5fd1;font-weight:600">Qtde: —</div>'
+    + '</div>'
+    + '</div>'
     + '<div class="mats-filter-bar">'
     + '<input style="min-width:180px" placeholder="Buscar ISO / descrição / código..." value="'+matsFilterTxt+'" oninput="matsFilterTxt=this.value;matsDebounceRender()">'
     + '<select onchange="matsFilterClass=this.value;_matsRenderTable()">'
@@ -4423,7 +4429,7 @@ function _matsHTML() {
     + '</div>'
     + '<div id="mats-sel-bar" class="mats-sel-bar'+(matsSelected.size?' show':'')+'">'
     + '<span style="font-size:11px;font-weight:600;color:var(--hb)">📋 <span id="mats-sel-count">'+matsSelected.size+'</span> selecionado(s) — aplicar status:</span>'
-    + '<span id="mats-sel-qtotal" style="background:#0B3D91;color:#fff;border-radius:6px;padding:2px 10px;font-size:10.5px;font-weight:700;display:'+(matsSelected.size?'inline-flex':'none')+';align-items:center"></span>'
+
     + '<label style="font-size:10px;color:var(--hmu)">Status: <select id="mats-bulk-status-inline" style="font-size:10px;padding:2px 6px;border-radius:4px;border:1px solid var(--hbr);background:var(--hg);color:var(--ht);margin-left:3px"><option value="">—</option><option value="estoque">✔ Estoque</option><option value="pendente">⏳ Pendente</option><option value="em_compra">🛒 Em Compra</option></select></label>'
     + '<label style="font-size:10px;color:var(--hmu)">Classif.: <select id="mats-bulk-classif-inline" style="font-size:10px;padding:2px 6px;border-radius:4px;border:1px solid var(--hbr);background:var(--hg);color:var(--ht);margin-left:3px"><option value="">—</option><option value="fabricacao">Fabricação</option><option value="montagem">Montagem</option></select></label>'
     + '<button onclick="applyMatsBulkInline()" style="font-size:10px;padding:4px 12px;border-radius:5px;border:none;background:var(--hb);color:#fff;cursor:pointer;font-weight:600">✅ Aplicar</button>'
@@ -4465,15 +4471,13 @@ function matsToggleRow(id, checked) {
 
 function matsUpdateSelInfo() {
   var selBar = document.getElementById('mats-sel-bar');
-  if (!selBar) return;
-  selBar.classList.toggle('show', matsSelected.size > 0);
-  var sc = document.getElementById('mats-sel-count');
-  if (sc) sc.textContent = matsSelected.size;
+  if (selBar) {
+    selBar.classList.toggle('show', matsSelected.size > 0);
+    var sc = document.getElementById('mats-sel-count');
+    if (sc) sc.textContent = matsSelected.size;
+  }
 
-  // Soma de quant dos selecionados
-  var sumEl = document.getElementById('mats-sel-qtotal');
-  if (!sumEl) return;
-  if (matsSelected.size === 0) { sumEl.style.display = 'none'; return; }
+  // Calcula soma de quant dos selecionados
   var total = 0;
   matsCtrl.forEach(function(m) {
     if (matsSelected.has(m.id)) {
@@ -4481,8 +4485,16 @@ function matsUpdateSelInfo() {
     }
   });
   var fmt = Number.isInteger(total) ? total : total.toFixed(2).replace('.', ',');
-  sumEl.textContent = '📦 Qtde total: ' + fmt;
-  sumEl.style.display = 'inline-flex';
+
+  // Atualiza KPI card ao lado do WCB
+  var kpiCard = document.getElementById('mats-kpi-sel');
+  if (kpiCard) {
+    kpiCard.style.display = matsSelected.size > 0 ? 'flex' : 'none';
+    var kpiCount = document.getElementById('mats-kpi-sel-count');
+    if (kpiCount) kpiCount.textContent = matsSelected.size;
+    var kpiQtd = document.getElementById('mats-kpi-sel-qtotal');
+    if (kpiQtd) kpiQtd.textContent = 'Qtde: ' + fmt;
+  }
 }
 
 
