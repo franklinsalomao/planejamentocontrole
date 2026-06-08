@@ -259,6 +259,9 @@ tbody td{padding:5px 7px;vertical-align:middle}
 .st-em_compra{background:#fdecea;color:#c0392b;border-radius:4px;padding:2px 7px;font-size:9px;font-weight:600;display:inline-block;white-space:nowrap}
 .mats-status-sel{border:0.5px solid var(--hbr);border-radius:4px;font-size:10px;padding:2px 5px;color:var(--ht);background:var(--hg);cursor:pointer;height:22px}
 .mats-date-inp{border:0.5px solid var(--hbr);border-radius:4px;font-size:10px;padding:2px 5px;color:var(--ht);background:var(--hg);width:110px;height:22px}
+.mats-add-lbl{display:block;font-size:10px;font-weight:600;color:var(--hmu);margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px}
+.mats-add-inp{width:100%;padding:7px 10px;border:1px solid var(--hbr);border-radius:7px;font-size:12px;background:#fff;color:var(--ht);outline:none;box-sizing:border-box;transition:.15s}
+.mats-add-inp:focus{border-color:var(--hbm);box-shadow:0 0 0 3px rgba(26,95,209,.1)}
 .mats-iso-cell{vertical-align:top!important;background:#eef3ff;border-right:2px solid #4a7fd4!important;padding:6px 8px!important;font-size:8.5px!important;font-weight:700!important;color:#0B3D91!important;word-break:break-all;line-height:1.5}
 .mats-iso-cell .iso-cnt{display:block;font-size:8px;font-weight:400;color:#5a6a85;margin-top:2px}
 .mats-iso-sep td{border-top:2px solid #c4d0e8!important}
@@ -4443,6 +4446,7 @@ function _matsHTML() {
     + '<button onclick="matsExportPDF()" style="height:30px;padding:0 14px;font-size:11px;font-weight:700;letter-spacing:.3px;color:#fff;background:linear-gradient(135deg,#0B3D91 0%,#00A8E8 100%);border:none;border-radius:7px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;box-shadow:0 2px 8px rgba(0,120,200,.4),0 0 0 2px rgba(0,168,232,.3);transition:all .15s" onmouseover="this.style.boxShadow=\'0 4px 14px rgba(0,120,200,.55),0 0 0 3px rgba(0,168,232,.4)\'" onmouseout="this.style.boxShadow=\'0 2px 8px rgba(0,120,200,.4),0 0 0 2px rgba(0,168,232,.3)\'">📄 <span>Exportar PDF</span></button>'
     + '<button onclick="matsExportIsoPDF()" style="height:30px;padding:0 14px;font-size:11px;font-weight:700;letter-spacing:.3px;color:#0B3D91;background:#f0f4fb;border:1.5px solid #4a7fd4;border-radius:7px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;margin-left:4px">📋 <span>Por ISO</span></button>'
     + '<button class="btn btn-cyan" style="height:26px;font-size:10px" onclick="openMatsBulkModal()">⚡ Lote</button>'
+    + '<button onclick="openMatsAddModal()" style="height:30px;padding:0 14px;font-size:11px;font-weight:700;color:#fff;background:linear-gradient(135deg,#1a8c4e 0%,#27ae60 100%);border:none;border-radius:7px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;box-shadow:0 2px 8px rgba(26,140,78,.35)">➕ Novo Material</button>'
     + '</div>'
     + '<div id="mats-sel-bar" class="mats-sel-bar'+(matsSelected.size?' show':'')+'">'
     + '<span style="font-size:11px;font-weight:600;color:var(--hb)">📋 <span id="mats-sel-count">'+matsSelected.size+'</span> selecionado(s) — aplicar status:</span>'
@@ -4453,10 +4457,91 @@ function _matsHTML() {
     + '<button onclick="matsSelected.clear();_matsRenderTable()" style="font-size:10px;padding:4px 10px;border-radius:5px;border:1px solid var(--hbr);background:var(--hg);color:var(--hmu);cursor:pointer">✕ Cancelar</button>'
     + '</div>'
     + '<div id="mats-tbl-wrap" class="mats-tbl-wrap"></div>'
-    + '<input type="file" id="mats-import-inp" accept=".xlsx,.xls" style="display:none" onchange="if(this.files[0]){matsImportXLSX(this.files[0]);this.value=\'\'}">';
+    + '<input type="file" id="mats-import-inp" accept=".xlsx,.xls" style="display:none" onchange="if(this.files[0]){matsImportXLSX(this.files[0]);this.value=\'\'}">'
+    + '<div id="mats-add-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center">'
+    + '  <div style="background:#fff;border-radius:14px;padding:28px 28px 22px;width:520px;max-width:95vw;max-height:90vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,.25)">'
+    + '    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">'
+    + '      <div style="font-size:15px;font-weight:700;color:var(--hb)">➕ Cadastrar Material</div>'
+    + '      <button onclick="closeMatsAddModal()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--hmu)">✕</button>'
+    + '    </div>'
+    + '    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'
+    + '      <div style="grid-column:1/-1"><label class="mats-add-lbl">Descrição *</label><input id="ma-desc" class="mats-add-inp" placeholder="Ex: Válvula Gaveta DN50"></div>'
+    + '      <div><label class="mats-add-lbl">Isométrico</label><input id="ma-iso" class="mats-add-inp" placeholder="Ex: ISO-001"></div>'
+    + '      <div><label class="mats-add-lbl">Spec</label><input id="ma-spec" class="mats-add-inp" placeholder="Ex: A1B"></div>'
+    + '      <div><label class="mats-add-lbl">Diâmetro</label><input id="ma-diam" class="mats-add-inp" placeholder="Ex: 2 pol"></div>'
+    + '      <div><label class="mats-add-lbl">Qtde *</label><input id="ma-quant" class="mats-add-inp" type="number" min="0" step="any" placeholder="0"></div>'
+    + '      <div><label class="mats-add-lbl">Qtde Retirado</label><input id="ma-retirado" class="mats-add-inp" type="number" min="0" step="any" placeholder="0"></div>'
+    + '      <div><label class="mats-add-lbl">Tipo</label><input id="ma-tipo" class="mats-add-inp" placeholder="Ex: Conexão, Válvula"></div>'
+    + '      <div><label class="mats-add-lbl">Classe de Pressão</label><input id="ma-classe" class="mats-add-inp" placeholder="Ex: 150#"></div>'
+    + '      <div><label class="mats-add-lbl">Classificação</label>'
+    + '        <select id="ma-classif" class="mats-add-inp"><option value="fabricacao">Fabricação</option><option value="montagem">Montagem</option></select>'
+    + '      </div>'
+    + '      <div><label class="mats-add-lbl">Status</label>'
+    + '        <select id="ma-status" class="mats-add-inp"><option value="estoque">Estoque</option><option value="pendente">Pendente</option><option value="em_compra">Em Compra</option></select>'
+    + '      </div>'
+    + '      <div><label class="mats-add-lbl">Data Retirada</label><input id="ma-dataret" class="mats-add-inp" type="date"></div>'
+    + '      <div><label class="mats-add-lbl">Código</label><input id="ma-codigo" class="mats-add-inp" placeholder="Código interno"></div>'
+    + '    </div>'
+    + '    <div style="margin-top:20px;display:flex;gap:10px;justify-content:flex-end">'
+    + '      <button onclick="closeMatsAddModal()" style="padding:8px 18px;border-radius:7px;border:1px solid var(--hbr);background:var(--hg);color:var(--ht);cursor:pointer;font-size:12px">Cancelar</button>'
+    + '      <button onclick="submitMatsAddModal()" style="padding:8px 22px;border-radius:7px;border:none;background:linear-gradient(135deg,#1a8c4e,#27ae60);color:#fff;cursor:pointer;font-size:12px;font-weight:700">✅ Cadastrar</button>'
+    + '    </div>'
+    + '  </div>'
+    + '</div>';
 }
 
 
+
+function openMatsAddModal() {
+  var modal = document.getElementById('mats-add-modal');
+  if (!modal) { _matsRenderHTML(); modal = document.getElementById('mats-add-modal'); }
+  modal.setAttribute('data-pid', currentProjId || '');
+  ['ma-desc','ma-iso','ma-spec','ma-diam','ma-quant','ma-retirado','ma-tipo','ma-classe','ma-dataret','ma-codigo'].forEach(function(id){
+    var el = document.getElementById(id); if (el) el.value = '';
+  });
+  var cls = document.getElementById('ma-classif'); if (cls) cls.value = 'fabricacao';
+  var st  = document.getElementById('ma-status');  if (st)  st.value  = 'estoque';
+  modal.style.display = 'flex';
+  setTimeout(function(){ var d = document.getElementById('ma-desc'); if(d) d.focus(); }, 80);
+}
+
+function closeMatsAddModal() {
+  var modal = document.getElementById('mats-add-modal');
+  if (modal) modal.style.display = 'none';
+}
+
+function submitMatsAddModal() {
+  var desc  = (document.getElementById('ma-desc')  || {}).value || '';
+  var quant = (document.getElementById('ma-quant') || {}).value || '0';
+  if (!desc.trim()) { alert('Descrição é obrigatória.'); return; }
+  var pid = (document.getElementById('mats-add-modal') || {}).getAttribute('data-pid') || null;
+  var item = {
+    id:           'mc_' + Date.now() + '_' + Math.random().toString(36).slice(2,6),
+    projId:       pid || null,
+    iso:          (document.getElementById('ma-iso')      || {}).value || '',
+    spec:         (document.getElementById('ma-spec')     || {}).value || '',
+    diam:         (document.getElementById('ma-diam')     || {}).value || '',
+    quant:        quant,
+    qtdeRetirado: (document.getElementById('ma-retirado') || {}).value || '0',
+    descricao:    desc.trim(),
+    tipo:         (document.getElementById('ma-tipo')     || {}).value || '',
+    classePressao:(document.getElementById('ma-classe')   || {}).value || '',
+    classificacao:(document.getElementById('ma-classif')  || {}).value || 'fabricacao',
+    status:       (document.getElementById('ma-status')   || {}).value || 'estoque',
+    dataRetirada: (document.getElementById('ma-dataret')  || {}).value || '',
+    codigo:       (document.getElementById('ma-codigo')   || {}).value || '',
+    _manual: true
+  };
+  matsCtrl.push(item);
+  matsCtrlSave();
+  closeMatsAddModal();
+  _matsRenderTable();
+}
+
+document.addEventListener('click', function(e) {
+  var modal = document.getElementById('mats-add-modal');
+  if (modal && e.target === modal) closeMatsAddModal();
+});
 function matsQuickUpdate(id, field, value) {
   var idx = matsCtrl.findIndex(function(m){ return m.id === id; });
   if (idx < 0) return;
