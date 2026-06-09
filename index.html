@@ -2144,7 +2144,7 @@ function progMiniFab(obj, id) {
   const iso = isos.find(x => x.id === id);
   const ds = iso && iso.fab_start ? `<br>Início: <span>${fmtDate(iso.fab_start)}</span>` : '';
   const de = iso && iso.fab_end ? ` &nbsp;Término: <span>${fmtDate(iso.fab_end)}</span>` : '';
-  return `<div class="prog-mini">
+  return `<div class="prog-mini" onclick="reqAuthIE(event,'fab','${id}')" style="cursor:pointer" title="Clique para editar fabricação">
     <div class="pm-row"><span class="pm-lbl">Pré</span><div class="pm-bar"><div class="pm-bar-in pi-pre" style="width:${obj.pre}%"></div></div><span class="pm-pct">${obj.pre}%</span></div>
     <div class="pm-row"><span class="pm-lbl">Sol</span><div class="pm-bar"><div class="pm-bar-in pi-sol" style="width:${obj.sol}%"></div></div><span class="pm-pct">${obj.sol}%</span></div>
     <div class="pm-row"><span class="pm-lbl">END</span><div class="pm-bar"><div class="pm-bar-in pi-end" style="width:${obj.end}%"></div></div><span class="pm-pct">${obj.end}%</span></div>
@@ -2158,7 +2158,7 @@ function progMiniMon(obj, id) {
   const iso = isos.find(x => x.id === id);
   const ds = iso && iso.mon_start ? `<br>Início: <span>${fmtDate(iso.mon_start)}</span>` : '';
   const de = iso && iso.mon_end ? ` &nbsp;Término: <span>${fmtDate(iso.mon_end)}</span>` : '';
-  return `<div class="prog-mini">
+  return `<div class="prog-mini" onclick="reqAuthIE(event,'mon','${id}')" style="cursor:pointer" title="Clique para editar montagem">
     <div class="pm-row"><span class="pm-lbl">Pré</span><div class="pm-bar"><div class="pm-bar-in pi-pre" style="width:${obj.pre}%"></div></div><span class="pm-pct">${obj.pre}%</span></div>
     <div class="pm-row"><span class="pm-lbl">Sol</span><div class="pm-bar"><div class="pm-bar-in pi-sol" style="width:${obj.sol}%"></div></div><span class="pm-pct">${obj.sol}%</span></div>
     <div class="pm-row"><span class="pm-lbl">END</span><div class="pm-bar"><div class="pm-bar-in pi-end" style="width:${obj.end}%"></div></div><span class="pm-pct">${obj.end}%</span></div>
