@@ -634,6 +634,7 @@ let currentDisc = 'caldeiraria', currentSubTab = 'isometricos';
 let _supSearch = '', _supArea = '', _supFab = '', _supPint = '', _supMon = '', _supSold = '';
 // Unlock de status de suporte por sessão (reseta ao recarregar a página)
 let supUnlocked = false;
+let _ieSessionUnlocked = false; // sessão de avanço: não pede senha novamente
 let matUnlocked = false;  // Sessão de edição de status/retirada de materiais
 let _pendingMatAction = null;
 let _pendingToggleId = null, _pendingToggleField = null, _pendingToggleVal = null, _pendingBulk = false;
@@ -2255,6 +2256,7 @@ function renderRows(list) {
 /* ── INLINE EDIT ── */
 function reqAuthIE(ev, t, id) {
   ev.stopPropagation();
+  if (_ieSessionUnlocked) { openIEDirect(t, id); return; }
   pendingAction = 'edit-status';
   pendingId = id;
   pendingIEType = t;
@@ -2264,6 +2266,18 @@ function reqAuthIE(ev, t, id) {
   document.getElementById('pwd-err').style.display = 'none';
   document.getElementById('pwd-modal').classList.add('open');
   setTimeout(() => document.getElementById('pwd-inp').focus(), 100);
+}
+
+function _refreshIsoRow(id) {
+  // Preserva scroll e re-renderiza
+  const tbl = document.getElementById('iso-table-wrap') || document.querySelector('.iso-wrap');
+  const scrollTop = tbl ? tbl.scrollTop : 0;
+  const scrollLeft = tbl ? tbl.scrollLeft : 0;
+  renderIsoView();
+  requestAnimationFrame(function() {
+    const tbl2 = document.getElementById('iso-table-wrap') || document.querySelector('.iso-wrap');
+    if (tbl2) { tbl2.scrollTop = scrollTop; tbl2.scrollLeft = scrollLeft; }
+  });
 }
 function openIEDirect(t, id) {
   document.querySelectorAll('.ie-panel.open,.ie-panel-sm.open').forEach(p => { if (p.id !== `ie-${t}-${id}`) p.classList.remove('open'); });
@@ -2290,7 +2304,10 @@ async function saveIE(t, id) {
     e.mon_start = document.getElementById(`ie-mstart-${id}`).value;
     e.mon_end = document.getElementById(`ie-mend-${id}`).value;
   }
-  closeIE(t,id); await saveAll(); renderIsoView();
+  closeIE(t,id);
+  await saveAll();
+  // Atualiza apenas as células afetadas sem re-renderizar a tabela toda
+  _refreshIsoRow(id);
 }
 document.addEventListener('click', () => { document.querySelectorAll('.ie-panel.open,.ie-panel-sm.open').forEach(p => p.classList.remove('open')); });
 async function togglePaint(id) { const e = isos.find(x => x.id === id); if (!e) return; e.paint = e.paint === 'Pintado' ? 'Não Pintado' : 'Pintado'; await saveAll(); renderIsoView(); }
@@ -2359,7 +2376,7 @@ async function checkPwd() {
       }
     }
     else if (pendingAction === 'del-selected') deleteSelected();
-    else if (pendingAction === 'edit-status') openIEDirect(pendingIEType, pendingId);
+    else if (pendingAction === 'edit-status') { _ieSessionUnlocked = true; openIEDirect(pendingIEType, pendingId); }
     else if (pendingAction === 'unlock-mat') {
       matUnlocked = true;
       if (_pendingMatAction) { const fn = _pendingMatAction; _pendingMatAction = null; fn(); }
