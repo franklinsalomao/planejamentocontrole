@@ -3866,6 +3866,7 @@ let matsFilterTxt = '';
 let matsFilterClass = '';
 let matsFilterStatus = '';
 let matsFilterTipo = '';
+let matsFilterFab = ''; // 'fab100' | 'fabpend' | ''
 
 async function matsCtrlLoad() {
   try {
@@ -4091,6 +4092,8 @@ function matsGetFiltered() {
   if (matsFilterClass) items = items.filter(m => m.classificacao === matsFilterClass);
   if (matsFilterStatus) items = items.filter(m => m.status === matsFilterStatus);
   if (matsFilterTipo) items = items.filter(m => m.tipo === matsFilterTipo);
+  if (matsFilterFab === 'fab100')  items = items.filter(m => m.classificacao === 'fabricacao' && m.status === 'estoque');
+  if (matsFilterFab === 'fabpend') items = items.filter(m => m.classificacao === 'fabricacao' && m.status !== 'estoque');
   // sort
   items.sort((a, b) => {
     let av = a[matsSortCol] || '', bv = b[matsSortCol] || '';
@@ -4440,7 +4443,21 @@ function _matsHTML() {
     + '<option value="">Todos tipos</option>'
     + tipos.map(function(t){ return '<option value="'+t+'"'+(matsFilterTipo===t?' selected':'')+'>'+t+'</option>'; }).join('')
     + '</select>'
-    + '<button class="btn-clr" onclick="matsFilterTxt=\'\';matsFilterClass=\'\';matsFilterStatus=\'\';matsFilterTipo=\'\';renderIsoView()">✕ Limpar</button>'
+    + '<button class="btn-clr" onclick="matsFilterTxt=\'\';matsFilterClass=\'\';matsFilterStatus=\'\';matsFilterTipo=\'\';matsFilterFab=\'\';renderIsoView()">✕ Limpar</button>'
+    + '<div style="display:flex;gap:6px;align-items:center;margin-left:6px">'
+    + '  <button onclick="matsFilterFab=(matsFilterFab===\'fab100\'?\'\':\'fab100\');_matsRenderTable()" '
+    +     'style="height:28px;padding:0 12px;font-size:10.5px;font-weight:700;border-radius:6px;border:1.5px solid '+(matsFilterFab==='fab100'?'#1a8c4e':'#a5d6a7')+';'
+    +     'background:'+(matsFilterFab==='fab100'?'#1a8c4e':'rgba(46,125,50,.08)')+';'
+    +     'color:'+(matsFilterFab==='fab100'?'#fff':'#1a8c4e')+';cursor:pointer">'
+    +   '✅ 100% Fabricado'
+    + '</button>'
+    + '  <button onclick="matsFilterFab=(matsFilterFab===\'fabpend\'?\'\':\'fabpend\');_matsRenderTable()" '
+    +     'style="height:28px;padding:0 12px;font-size:10.5px;font-weight:700;border-radius:6px;border:1.5px solid '+(matsFilterFab==='fabpend'?'#c07000':'#ffe0a0')+';'
+    +     'background:'+(matsFilterFab==='fabpend'?'#c07000':'rgba(192,112,0,.08)')+';'
+    +     'color:'+(matsFilterFab==='fabpend'?'#fff':'#c07000')+';cursor:pointer">'
+    +   '⏳ Pendente Fabricação'
+    + '</button>'
+    + '</div>'
     + '<span style="margin-left:auto;font-size:10px;color:var(--hmu)">'+filtered.length+' / '+total+' itens</span>'
     + '<button class="btn btn-out" style="height:26px;font-size:10px;background:rgba(46,125,50,.12);color:#2e7d32;border-color:#a5d6a7" onclick="document.getElementById(\'mats-import-inp\').click()">📥 Importar Excel</button>'
     + '<button onclick="matsExportPDF()" style="height:30px;padding:0 14px;font-size:11px;font-weight:700;letter-spacing:.3px;color:#fff;background:linear-gradient(135deg,#0B3D91 0%,#00A8E8 100%);border:none;border-radius:7px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;box-shadow:0 2px 8px rgba(0,120,200,.4),0 0 0 2px rgba(0,168,232,.3);transition:all .15s" onmouseover="this.style.boxShadow=\'0 4px 14px rgba(0,120,200,.55),0 0 0 3px rgba(0,168,232,.4)\'" onmouseout="this.style.boxShadow=\'0 2px 8px rgba(0,120,200,.4),0 0 0 2px rgba(0,168,232,.3)\'">📄 <span>Exportar PDF</span></button>'
