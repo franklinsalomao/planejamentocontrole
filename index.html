@@ -101,6 +101,25 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;color:var(--ht);font-size:12p
 .acf-fab{background:linear-gradient(90deg,#0B3D91,#1a5fd1)}
 .acf-mon{background:linear-gradient(90deg,#00A8E8,#0077b6)}
 .area-card-pct{font-size:11px;font-weight:700;width:36px;text-align:right;flex-shrink:0}
+.dash-tot{border-radius:12px;padding:14px 16px;color:#fff;box-shadow:0 3px 12px rgba(0,0,0,.12)}
+.dash-tot-blue{background:linear-gradient(135deg,#071d4a,#0B3D91)}
+.dash-tot-cyan{background:linear-gradient(135deg,#0077b6,#00A8E8)}
+.dash-tot-green{background:linear-gradient(135deg,#1a8c4e,#27ae60)}
+.dash-tot-lbl{font-size:11px;font-weight:600;opacity:.9}
+.dash-tot-val{font-size:30px;font-weight:800;margin:4px 0;letter-spacing:-1px}
+.dash-tot-sub{font-size:10px;opacity:.8}
+.dash-tot-bar{height:7px;background:rgba(255,255,255,.25);border-radius:4px;overflow:hidden;margin-top:6px}
+.dash-card{background:#fff;border:1px solid #d0d8e8;border-radius:12px;padding:14px 16px;cursor:pointer;transition:all .2s;box-shadow:0 2px 8px rgba(0,0,0,.05)}
+.dash-card:hover{border-color:var(--hbm);box-shadow:0 6px 20px rgba(11,61,145,.15);transform:translateY(-2px)}
+.dash-card-top{display:flex;align-items:center;justify-content:space-between}
+.dash-card-name{font-size:15px;font-weight:700;color:var(--hb)}
+.dash-card-arrow{font-size:16px;color:var(--hbm);font-weight:700}
+.dash-card-cnt{font-size:10px;color:var(--hmu);margin:3px 0 12px}
+.dash-card-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}
+.dash-card-rlbl{font-size:10.5px;font-weight:600;color:var(--ht)}
+.dash-card-rpct{font-size:13px;font-weight:700}
+.dash-card-bar{height:8px;background:#e8eef7;border-radius:4px;overflow:hidden}
+.dash-card-fill{height:100%;border-radius:4px;transition:width .3s}
 .pb-fab{background:var(--hbm)}.pb-mon{background:var(--hc)}.pb-py{background:var(--hs)}
 
 .filter-bar{background:#fff;border:0.5px solid var(--hbr);border-top:none;padding:7px 16px;display:flex;gap:7px;align-items:center;flex-wrap:wrap}
@@ -1201,8 +1220,8 @@ function sincronizarPlanilha() {
 }
 
 const DISC_TABS = {
-  caldeiraria: { label:'🔧 Caldeiraria', subs:['isometricos','suportes','materiais'],
-    labels:['Controle de Isométricos','Controle de Suportes','Controle de Materiais'] },
+  caldeiraria: { label:'🔧 Caldeiraria', subs:['dashboard','isometricos','suportes','materiais'],
+    labels:['Dashboard','Controle de Isométricos','Controle de Suportes','Controle de Materiais'] },
   eletrica: { label:'⚡ Elétrica', subs:['cabos-el','sup-el','encam-el','dt-el','equip-el'],
     labels:['Controle de Cabos','Controle de Suportes','Controle de Encaminhamento','Controle DT','Controle de Equipamentos'] },
   instr: { label:'🔬 Instrumentação', subs:['cabos-ins','encam-ins','instrumentos','equip-ins','interlig'],
@@ -1999,6 +2018,89 @@ function clearSupFilters() {
   renderIsoView();
 }
 
+function dashGoToArea(area) {
+  // Vai para a aba de isométricos filtrando pela área
+  currentSubTab = 'isometricos';
+  renderIsoView();
+  // Aplica o filtro de área após render
+  setTimeout(function() {
+    var sel = document.getElementById('f-area');
+    if (sel) { sel.value = area; filterTable(); }
+  }, 60);
+}
+
+function renderDashboard(discTabs, bc) {
+  const proj = projects.find(p => p.id === currentProjId);
+  const list = currentProjId ? projIsos(currentProjId) : isos;
+  const listFabMon = list.filter(e => (e.classif||'Fabricação') !== 'Referência' && (e.classif||'Fabricação') !== 'Desmontagem');
+
+  // Totais gerais
+  const nfm = listFabMon.length;
+  const afG = nfm ? Math.round(listFabMon.reduce((s,e)=>s+fabPct(e),0)/nfm) : 0;
+  const amG = nfm ? Math.round(listFabMon.reduce((s,e)=>s+monPct(e),0)/nfm) : 0;
+
+  // Stats por área
+  const areaStats = {};
+  listFabMon.forEach(e => {
+    const a = e.area || 'Sem área';
+    if (!areaStats[a]) areaStats[a] = { fabSum:0, monSum:0, count:0, done:0 };
+    areaStats[a].fabSum += fabPct(e);
+    areaStats[a].monSum += monPct(e);
+    areaStats[a].count++;
+    if (fabPct(e) >= 100 && monPct(e) >= 100) areaStats[a].done++;
+  });
+  const areaKeys = Object.keys(areaStats).sort();
+
+  const header = `<div style="padding:16px 16px 8px">
+    <div style="font-size:16px;font-weight:700;color:var(--hb)">📊 Dashboard — Avanço por Área</div>
+    <div style="font-size:11px;color:var(--hmu);margin-top:2px">Clique em uma área para ver seus isométricos</div>
+  </div>`;
+
+  const totals = `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;padding:0 16px 14px">
+    <div class="dash-tot dash-tot-blue">
+      <div class="dash-tot-lbl">⚙️ Fabricação Geral</div>
+      <div class="dash-tot-val">${afG}%</div>
+      <div class="dash-tot-bar"><div style="width:${afG}%;height:100%;background:#fff;border-radius:4px;opacity:.85"></div></div>
+    </div>
+    <div class="dash-tot dash-tot-cyan">
+      <div class="dash-tot-lbl">🔧 Montagem Geral</div>
+      <div class="dash-tot-val">${amG}%</div>
+      <div class="dash-tot-bar"><div style="width:${amG}%;height:100%;background:#fff;border-radius:4px;opacity:.85"></div></div>
+    </div>
+    <div class="dash-tot dash-tot-green">
+      <div class="dash-tot-lbl">📐 Total de Folhas</div>
+      <div class="dash-tot-val">${list.length}</div>
+      <div class="dash-tot-sub">${areaKeys.length} área${areaKeys.length!==1?'s':''}</div>
+    </div>
+  </div>`;
+
+  const cards = areaKeys.length ? `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px;padding:0 16px 20px">
+    ${areaKeys.map(a => {
+      const st = areaStats[a];
+      const fpc = st.count ? Math.round(st.fabSum/st.count) : 0;
+      const mpc = st.count ? Math.round(st.monSum/st.count) : 0;
+      const escA = String(a).replace(/'/g, "\\'");
+      return `<div class="dash-card" onclick="dashGoToArea('${escA}')" title="Ver isométricos da Área ${a}">
+        <div class="dash-card-top">
+          <div class="dash-card-name">Área ${a}</div>
+          <div class="dash-card-arrow">→</div>
+        </div>
+        <div class="dash-card-cnt">${st.count} folha${st.count!==1?'s':''} · ${st.done} concluída${st.done!==1?'s':''}</div>
+        <div class="dash-card-row">
+          <span class="dash-card-rlbl">⚙️ Fabricação</span><span class="dash-card-rpct" style="color:#0B3D91">${fpc}%</span>
+        </div>
+        <div class="dash-card-bar"><div class="dash-card-fill acf-fab" style="width:${fpc}%"></div></div>
+        <div class="dash-card-row" style="margin-top:8px">
+          <span class="dash-card-rlbl">🔧 Montagem</span><span class="dash-card-rpct" style="color:#00A8E8">${mpc}%</span>
+        </div>
+        <div class="dash-card-bar"><div class="dash-card-fill acf-mon" style="width:${mpc}%"></div></div>
+      </div>`;
+    }).join('')}
+  </div>` : `<div class="ph-panel"><div style="font-size:32px">📭</div><strong>Nenhum isométrico cadastrado</strong></div>`;
+
+  document.getElementById('view-isos').innerHTML = bc + discTabs + header + totals + cards + '</div>';
+}
+
 function renderIsoView() {
   const _isoContainer = document.getElementById('view-isos');
   if (!_isoContainer) return; // container não existe (projeto não está aberto)
@@ -2099,6 +2201,10 @@ function renderIsoView() {
 
   if (currentDisc === 'caldeiraria' && currentSubTab === 'materiais') {
     renderMatsCaldeiraria(discTabs, bc); return;
+  }
+
+  if (currentDisc === 'caldeiraria' && currentSubTab === 'dashboard') {
+    renderDashboard(discTabs, bc); return;
   }
 
   if (currentDisc !== 'caldeiraria' || currentSubTab !== 'isometricos') {
