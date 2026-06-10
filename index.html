@@ -1220,8 +1220,8 @@ function sincronizarPlanilha() {
 }
 
 const DISC_TABS = {
-  caldeiraria: { label:'🔧 Caldeiraria', subs:['dashboard','isometricos','suportes','materiais'],
-    labels:['Dashboard','Controle de Isométricos','Controle de Suportes','Controle de Materiais'] },
+  caldeiraria: { label:'🔧 Caldeiraria', subs:['dashboard','isometricos','suportes','materiais','planejamento'],
+    labels:['Dashboard','Controle de Isométricos','Controle de Suportes','Controle de Materiais','Planejamento'] },
   eletrica: { label:'⚡ Elétrica', subs:['cabos-el','sup-el','encam-el','dt-el','equip-el'],
     labels:['Controle de Cabos','Controle de Suportes','Controle de Encaminhamento','Controle DT','Controle de Equipamentos'] },
   instr: { label:'🔬 Instrumentação', subs:['cabos-ins','encam-ins','instrumentos','equip-ins','interlig'],
@@ -2101,6 +2101,174 @@ function renderDashboard(discTabs, bc) {
   document.getElementById('view-isos').innerHTML = bc + discTabs + header + totals + cards + '</div>';
 }
 
+
+/* ════════════ PLANEJAMENTO DE FABRICAÇÃO ════════════ */
+const PROD_INDEX = {"AC|SCH 40|1/2\"": 0.85, "AC|SCH 40|3/4\"": 0.93, "AC|SCH 40|1\"": 1.0, "AC|SCH 40|1 1/4\"": 1.09, "AC|SCH 40|1 1/2\"": 1.1, "AC|SCH 40|2\"": 1.2, "AC|SCH 40|2 1/2\"": 1.43, "AC|SCH 40|3\"": 1.5, "AC|SCH 40|4\"": 1.85, "AC|SCH 40|5\"": 2.12, "AC|SCH 40|6\"": 2.47, "AC|SCH 40|8\"": 3.05, "AC|SCH 40|10\"": 6.5, "AC|SCH 40|12\"": 4.65, "AC|SCH 40|14\"": 5.5, "AC|SCH 40|16\"": 6.6, "AC|SCH 40|18\"": 7.5, "AC|SCH 40|20\"": 8.4, "AC|SCH 40|22\"": 9.14, "AC|SCH 40|24\"": 10.1, "AC|SCH 40|26\"": 12.1, "AC|SCH 40|28\"": 13.8, "AC|SCH 40|30\"": 15.0, "AC GALV.|DIN 2440|1/2\"": 0.85, "AC GALV.|DIN 2440|3/4\"": 0.93, "AC GALV.|DIN 2440|1\"": 1.0, "AC GALV.|DIN 2440|1 1/4\"": 1.09, "AC GALV.|DIN 2440|1 1/2\"": 1.1, "AC GALV.|DIN 2440|2\"": 1.2, "AC GALV.|DIN 2440|2 1/2\"": 1.43, "AC GALV.|DIN 2440|3\"": 1.5, "AC GALV.|DIN 2440|4\"": 1.85, "AC GALV.|DIN 2440|5\"": 2.12, "AC GALV.|DIN 2440|6\"": 2.4, "AC GALV.|DIN 2440|8\"": 3.05, "INOX|10S|1/2\"": 1.3, "INOX|10S|3/4\"": 1.42, "INOX|10S|1\"": 1.53, "INOX|10S|1 1/4\"": 1.67, "INOX|10S|1 1/2\"": 1.68, "INOX|10S|2\"": 1.83, "INOX|10S|2 1/2\"": 2.19, "INOX|10S|3\"": 2.29, "INOX|10S|4\"": 2.84, "INOX|10S|5\"": 3.24, "INOX|10S|6\"": 3.67, "INOX|10S|8\"": 4.66, "INOX|10S|10\"": 5.9, "INOX|10S|12\"": 7.12, "INOX|10S|14\"": 8.42, "INOX|10S|16\"": 10.09, "INOX|10S|18\"": 11.52, "INOX|10S|20\"": 12.85, "INOX|10S|22\"": 13.95, "INOX|10S|24\"": 15.45, "INOX|10S|26\"": 18.51, "INOX|10S|28\"": 21.11, "INOX|10S|30\"": 22.95, "AC|SCH 80|1/2\"": 1.15, "AC|SCH 80|3/4\"": 1.29, "AC|SCH 80|1\"": 1.36, "AC|SCH 80|1 1/4\"": 1.52, "AC|SCH 80|1 1/2\"": 1.54, "AC|SCH 80|2\"": 1.74, "AC|SCH 80|2 1/2\"": 1.99, "AC|SCH 80|3\"": 2.15, "AC|SCH 80|4\"": 2.7, "AC|SCH 80|5\"": 3.3, "AC|SCH 80|6\"": 3.8, "AC|SCH 80|8\"": 4.89, "AC|SCH 80|10\"": 6.45, "AC|SCH 80|12\"": 8.09, "AC|SCH 80|14\"": 9.79, "AC|SCH 80|16\"": 11.49, "AC|SCH 80|18\"": 12.89, "AC|SCH 80|20\"": 15.02, "AC|SCH 80|22\"": 16.74, "AC|SCH 80|24\"": 18.46, "AC|SCH 80|26\"": 22.1, "AC|SCH 80|28\"": 25.2, "AC|SCH 80|30\"": 27.4, "INOX|40S|1/2\"": 1.45, "INOX|40S|3/4\"": 1.58, "INOX|40S|1\"": 1.7, "INOX|40S|1 1/4\"": 1.85, "INOX|40S|1 1/2\"": 1.87, "INOX|40S|2\"": 2.03, "INOX|40S|2 1/2\"": 2.43, "INOX|40S|3\"": 2.55, "INOX|40S|4\"": 3.15, "INOX|40S|5\"": 3.6, "INOX|40S|6\"": 4.08, "INOX|40S|8\"": 5.18, "INOX|40S|10\"": 6.55, "INOX|40S|12\"": 7.91, "INOX|40S|14\"": 9.35, "INOX|40S|16\"": 11.22, "INOX|40S|18\"": 12.8, "INOX|40S|20\"": 14.28, "INOX|40S|22\"": 15.54, "INOX|40S|24\"": 17.17, "INOX|40S|26\"": 20.57, "INOX|40S|28\"": 23.46, "INOX|40S|30\"": 25.5, "ALU|10S|6\"": 10.0, "ALU|10S|10\"": 14.0, "ALU|10S|12\"": 15.54, "ALU|10S|20\"": 18.0};
+const PLAN_HORAS_DIA = 6.5; // horas produtivas por recurso/dia
+let _planRecursos = {}; // { isoNum: nRecursos }
+
+function _planLoadRecursos() {
+  try { var v = LS.getItem('hyd_plan_recursos'); if (v) _planRecursos = JSON.parse(v) || {}; } catch(e) { _planRecursos = {}; }
+}
+function _planSaveRecursos() {
+  try { LS.setItem('hyd_plan_recursos', JSON.stringify(_planRecursos)); } catch(e) {}
+  if (window.storage) { try { window.storage.set('hyd_plan_recursos', JSON.stringify(_planRecursos), false); } catch(e){} }
+}
+
+// Normaliza material da descrição -> AC | AC GALV. | INOX | ALU
+function _planMaterial(desc) {
+  var d = (desc || '').toUpperCase();
+  if (/GALV/.test(d)) return 'AC GALV.';
+  if (/INOX|AISI|304|316|A312|A790/.test(d)) return 'INOX';
+  if (/\bALU|ALUM/.test(d)) return 'ALU';
+  return 'AC'; // aço carbono padrão
+}
+// Normaliza SCH da descrição -> SCH 40 | SCH 80 | 10S | 40S | DIN 2440
+function _planSch(desc) {
+  var d = (desc || '').toUpperCase();
+  if (/SCH\s*80|S80|\b80\b/.test(d)) return 'SCH 80';
+  if (/SCH\s*40|S40|\b40\b/.test(d)) return 'SCH 40';
+  if (/10S/.test(d)) return '10S';
+  if (/40S/.test(d)) return '40S';
+  if (/DIN\s*2440/.test(d)) return 'DIN 2440';
+  return 'SCH 40'; // padrão
+}
+// Normaliza diâmetro -> usa polegadas como no índice
+function _planDiam(diam) {
+  var d = String(diam || '').replace(/"/g, '').trim();
+  // Pega só a primeira parte (ex "8 x 6" -> "8", "6x6" -> "6")
+  d = d.split(/x/i)[0].trim();
+  // converte decimais comuns
+  var map = { '0.5':'1/2', '0.75':'3/4', '0.875':'7/8', '0.625':'5/8' };
+  if (map[d]) d = map[d];
+  return d + '"';
+}
+// Extrai metragem de quant (ex "36,6m" -> 36.6; "0.2m" -> 0.2; "5" -> 0 se não for metro)
+function _planMetros(quant) {
+  var q = String(quant || '').toLowerCase().replace(',', '.');
+  if (q.indexOf('m') === -1) return 0; // só conta itens em metros (tubos)
+  var n = parseFloat(q.replace(/[^0-9.]/g, ''));
+  return Number.isFinite(n) ? n : 0;
+}
+
+// Calcula Hh total de fabricação de um isométrico (soma dos tubos)
+function _planHhIso(isoNum) {
+  var mats = (typeof matsCtrl !== 'undefined' ? matsCtrl : []).filter(function(m){
+    return (m.iso || '').trim() === isoNum && (m.classificacao || '') === 'fabricacao';
+  });
+  var totalHh = 0, totalM = 0, detalhes = [];
+  mats.forEach(function(m){
+    var metros = _planMetros(m.quant);
+    if (metros <= 0) return; // só tubos com metragem
+    var mat = _planMaterial(m.descricao);
+    var sch = _planSch(m.descricao);
+    var dia = _planDiam(m.diam);
+    var key = mat + '|' + sch + '|' + dia;
+    var hhm = PROD_INDEX[key];
+    if (hhm == null) {
+      // tenta material AC como fallback
+      hhm = PROD_INDEX['AC|' + sch + '|' + dia];
+    }
+    if (hhm == null) return;
+    var hh = hhm * metros;
+    totalHh += hh;
+    totalM += metros;
+    detalhes.push({ desc: m.descricao, mat: mat, sch: sch, dia: dia, metros: metros, hhm: hhm, hh: hh });
+  });
+  return { hh: totalHh, metros: totalM, detalhes: detalhes };
+}
+
+function planSetRecurso(isoNum, val) {
+  var n = parseInt(val) || 0;
+  if (n <= 0) delete _planRecursos[isoNum]; else _planRecursos[isoNum] = n;
+  _planSaveRecursos();
+  _planRefreshTotals();
+  // atualiza só a linha
+  var hhData = _planHhIso(isoNum);
+  var rec = _planRecursos[isoNum] || 1;
+  var dias = hhData.hh > 0 ? (hhData.hh / (rec * PLAN_HORAS_DIA)) : 0;
+  var cell = document.getElementById('plan-prazo-' + _planSafeId(isoNum));
+  if (cell) cell.textContent = dias > 0 ? dias.toFixed(1) + ' dias' : '—';
+}
+
+function _planSafeId(s) { return String(s).replace(/[^a-zA-Z0-9]/g, '_'); }
+
+function _planRefreshTotals() {
+  var list = currentProjId ? projIsos(currentProjId) : isos;
+  var totalHh = 0, maxDias = 0, somaDias = 0, comRecurso = 0, totalRec = 0;
+  list.forEach(function(e){
+    var hhData = _planHhIso(e.num);
+    if (hhData.hh <= 0) return;
+    totalHh += hhData.hh;
+    var rec = _planRecursos[e.num] || 1;
+    totalRec += (_planRecursos[e.num] || 0);
+    var dias = hhData.hh / (rec * PLAN_HORAS_DIA);
+    somaDias += dias;
+    if (dias > maxDias) maxDias = dias;
+    comRecurso++;
+  });
+  var elHh = document.getElementById('plan-tot-hh'); if (elHh) elHh.textContent = Math.round(totalHh) + ' Hh';
+  var elPar = document.getElementById('plan-tot-paralelo'); if (elPar) elPar.textContent = maxDias > 0 ? maxDias.toFixed(1) + ' dias' : '—';
+  var elSeq = document.getElementById('plan-tot-seq'); if (elSeq) elSeq.textContent = somaDias > 0 ? somaDias.toFixed(1) + ' dias' : '—';
+  var elRec = document.getElementById('plan-tot-rec'); if (elRec) elRec.textContent = totalRec + ' rec';
+}
+
+function renderPlanejamento(discTabs, bc) {
+  _planLoadRecursos();
+  var proj = projects.find(function(p){ return p.id === currentProjId; });
+  var list = currentProjId ? projIsos(currentProjId) : isos;
+
+  // calcula linhas
+  var rows = [];
+  list.forEach(function(e){
+    var hhData = _planHhIso(e.num);
+    if (hhData.hh <= 0) return; // só mostra isos com tubos calculáveis
+    var rec = _planRecursos[e.num] || 1;
+    var dias = hhData.hh / (rec * PLAN_HORAS_DIA);
+    rows.push({ num: e.num, hh: hhData.hh, metros: hhData.metros, rec: _planRecursos[e.num] || '', dias: dias });
+  });
+  rows.sort(function(a,b){ return b.hh - a.hh; });
+
+  var header = '<div style="padding:16px 16px 8px">'
+    + '<div style="font-size:16px;font-weight:700;color:var(--hb)">🗓️ Planejamento de Fabricação</div>'
+    + '<div style="font-size:11px;color:var(--hmu);margin-top:2px">Prazo calculado pelos índices de produtividade (Hh/m) × metragem dos tubos. Base: ' + PLAN_HORAS_DIA + ' h/dia por recurso. Insira recursos para ajustar o prazo.</div>'
+    + '</div>';
+
+  var totals = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;padding:0 16px 14px">'
+    + '<div class="dash-tot dash-tot-blue"><div class="dash-tot-lbl">⏱️ Hh Total Fabricação</div><div class="dash-tot-val" id="plan-tot-hh">—</div></div>'
+    + '<div class="dash-tot dash-tot-cyan"><div class="dash-tot-lbl">📅 Prazo (paralelo)</div><div class="dash-tot-val" id="plan-tot-paralelo">—</div><div class="dash-tot-sub">maior prazo entre isos</div></div>'
+    + '<div class="dash-tot dash-tot-green"><div class="dash-tot-lbl">📆 Prazo (sequencial)</div><div class="dash-tot-val" id="plan-tot-seq">—</div><div class="dash-tot-sub">soma de todos</div></div>'
+    + '<div class="dash-tot" style="background:linear-gradient(135deg,#5e35b1,#7e57c2)"><div class="dash-tot-lbl">👷 Recursos alocados</div><div class="dash-tot-val" id="plan-tot-rec">—</div></div>'
+    + '</div>';
+
+  var tbl;
+  if (rows.length) {
+    var trs = rows.map(function(r){
+      var sid = _planSafeId(r.num);
+      return '<tr>'
+        + '<td style="font-family:monospace;font-size:10px">' + r.num + '</td>'
+        + '<td style="text-align:center">' + r.metros.toFixed(1) + ' m</td>'
+        + '<td style="text-align:center;font-weight:600;color:var(--hb)">' + Math.round(r.hh) + ' Hh</td>'
+        + '<td style="text-align:center"><input type="number" min="0" step="1" value="' + r.rec + '" placeholder="1" onchange="planSetRecurso(\'' + r.num.replace(/'/g, "\\'") + '\',this.value)" style="width:60px;text-align:center;padding:4px 6px;border:1px solid var(--hbr);border-radius:6px;font-size:11px;background:#fff;outline:none"></td>'
+        + '<td style="text-align:center;font-weight:700;color:#1a8c4e" id="plan-prazo-' + sid + '">' + (r.dias > 0 ? r.dias.toFixed(1) + ' dias' : '—') + '</td>'
+        + '</tr>';
+    }).join('');
+    tbl = '<div class="tbl-wrap" style="margin:0 16px 16px"><table id="plan-table" style="width:100%">'
+      + '<thead><tr>'
+      + '<th>Isométrico</th>'
+      + '<th style="text-align:center">Metragem</th>'
+      + '<th style="text-align:center">Hh Fabricação</th>'
+      + '<th style="text-align:center;min-width:80px">Recursos</th>'
+      + '<th style="text-align:center;min-width:90px">Prazo</th>'
+      + '</tr></thead><tbody>' + trs + '</tbody></table></div>';
+  } else {
+    tbl = '<div class="ph-panel"><div style="font-size:32px">📭</div><strong>Nenhum tubo calculável encontrado</strong><span style="font-size:11px">Cadastre materiais (tubos com metragem) nos isométricos para calcular o prazo.</span></div>';
+  }
+
+  document.getElementById('view-isos').innerHTML = bc + discTabs + header + totals + tbl + '</div>';
+  _planRefreshTotals();
+}
+
 function renderIsoView() {
   const _isoContainer = document.getElementById('view-isos');
   if (!_isoContainer) return; // container não existe (projeto não está aberto)
@@ -2205,6 +2373,10 @@ function renderIsoView() {
 
   if (currentDisc === 'caldeiraria' && currentSubTab === 'dashboard') {
     renderDashboard(discTabs, bc); return;
+  }
+
+  if (currentDisc === 'caldeiraria' && currentSubTab === 'planejamento') {
+    renderPlanejamento(discTabs, bc); return;
   }
 
   if (currentDisc !== 'caldeiraria' || currentSubTab !== 'isometricos') {
