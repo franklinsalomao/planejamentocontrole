@@ -4742,11 +4742,6 @@ function _saldo(q, r) {
   var sv  = Number.isInteger(s) ? String(s) : s.toFixed(2).replace('.', ',');
   return '<span style="color:' + col + ';font-weight:600">' + sv + '</span>';
 }
-var _matsRenderDebounce = null;
-function matsDebounceRender() {
-  if (_matsRenderDebounce) clearTimeout(_matsRenderDebounce);
-  _matsRenderDebounce = setTimeout(function(){ _matsRenderTable(); }, 400);
-}
 function _matsRenderTable() {
   const items = matsGetFiltered();
   const allSelected = items.length > 0 && items.every(m => matsSelected.has(m.id));
@@ -4857,7 +4852,7 @@ function _matsHTML() {
     + '</div>'
     + '</div>'
     + '<div class="mats-filter-bar">'
-    + '<input style="min-width:180px" placeholder="Buscar ISO / descrição / código..." value="'+matsFilterTxt+'" oninput="matsFilterTxt=this.value;matsDebounceRender()">'
+    + '<input style="min-width:180px" placeholder="Buscar ISO / descrição / código..." value="'+matsFilterTxt+'" oninput="matsFilterTxt=this.value;_matsRenderTable()">'
     + '<select onchange="matsFilterClass=this.value;_matsRenderTable()">'
     + '<option value=""'+(matsFilterClass===''?' selected':'')+'>Todas classif.</option>'
     + '<option value="fabricacao"'+(matsFilterClass==='fabricacao'?' selected':'')+'>Fabricação</option>'
