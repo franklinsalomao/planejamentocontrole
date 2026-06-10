@@ -2282,17 +2282,56 @@ function _planRenderFinTable() {
   var vlFab  = valor * 0.30;
   var vlMon  = valor * 0.50;
   var vlBook = valor * 0.20;
+  var saldoExec = vlFab + vlMon; // saldo executável (sem book)
   var prodFab = st.prodFab || 0;
   var prodMon = st.prodMon || 0;
   var recFab  = st.recFab  || [];
   var recMon  = st.recMon  || [];
 
+  // Maior cenário de recursos para o fluxo
+  var maxRecFab  = recFab.length ? Math.max.apply(null, recFab) : 0;
+  var maxRecMon  = recMon.length ? Math.max.apply(null, recMon) : 0;
+  var custoMesFab = maxRecFab * prodFab;
+  var custoMesMon = maxRecMon * prodMon;
+  var custoMesTotal = custoMesFab + custoMesMon;
+
+  // ── Alerta de viabilidade ──
+  var alerta = '';
+  if (custoMesTotal > 0) {
+    var mesesViavel = Math.floor(saldoExec / custoMesTotal);
+    var prazoFab = custoMesFab > 0 ? Math.ceil(vlFab / custoMesFab) : 0;
+    var prazoMon = custoMesMon > 0 ? Math.ceil(vlMon / custoMesMon) : 0;
+    var prazoMaior = Math.max(prazoFab, prazoMon);
+
+    if (custoMesTotal * prazoMaior > saldoExec) {
+      var deficit = (custoMesTotal * prazoMaior) - saldoExec;
+      alerta = '<div style="background:#fdecea;border:2px solid var(--hd);border-radius:10px;padding:14px 18px;margin-bottom:16px">'
+        +'<div style="font-size:13px;font-weight:700;color:var(--hd)">⛔ ATENÇÃO — Projeção de Déficit</div>'
+        +'<div style="font-size:11px;color:var(--ht);margin-top:6px;line-height:1.6">'
+        +'Custo mensal total: <strong>R$ '+_planBRL(custoMesTotal)+'/mês</strong> (Fab R$ '+_planBRL(custoMesFab)+' + Mon R$ '+_planBRL(custoMesMon)+')<br>'
+        +'Saldo executável (Fab+Mon): <strong>R$ '+_planBRL(saldoExec)+'</strong><br>'
+        +'O saldo sustenta apenas <strong>'+mesesViavel+' '+(mesesViavel===1?'mês':'meses')+'</strong> nesse ritmo.<br>'
+        +'Prazo necessário: <strong>'+prazoMaior+' '+(prazoMaior===1?'mês':'meses')+'</strong> → Déficit projetado: <strong style="color:var(--hd)">R$ '+_planBRL(deficit)+'</strong><br>'
+        +'<span style="font-size:10px;color:var(--hmu)">💡 Reduza recursos ou aumente a produção por recurso para equilibrar.</span>'
+        +'</div></div>';
+    } else {
+      alerta = '<div style="background:#edf7ed;border:2px solid #1a8c4e;border-radius:10px;padding:14px 18px;margin-bottom:16px">'
+        +'<div style="font-size:13px;font-weight:700;color:#1a8c4e">✅ Projeção dentro do orçamento</div>'
+        +'<div style="font-size:11px;color:var(--ht);margin-top:6px;line-height:1.6">'
+        +'Custo mensal total: <strong>R$ '+_planBRL(custoMesTotal)+'/mês</strong><br>'
+        +'Saldo executável: <strong>R$ '+_planBRL(saldoExec)+'</strong> — sustenta <strong>'+mesesViavel+' '+(mesesViavel===1?'mês':'meses')+'</strong><br>'
+        +'Prazo necessário: <strong>'+prazoMaior+' '+(prazoMaior===1?'mês':'meses')+'</strong>'
+        +'</div></div>';
+    }
+  }
+
   // ── Resumo por escopo ──
-  function scopeRow(label, cor, vl, prodRec, recs) {
+  function scopeRow(label, vl, prodRec, recs) {
     if (!prodRec || !recs.length) return '';
     return recs.map(function(rec){
       var prodEq = rec * prodRec;
       var prazo  = Math.ceil(vl / prodEq);
+      var excede = prodEq * prazo > vl * 1.01; // tolerância 1%
       return '<tr style="border-bottom:1px solid #e8eef7">'
         +'<td style="padding:8px 12px;font-size:11px;color:var(--hmu)">'+label+'</td>'
         +'<td style="padding:8px 12px;text-align:right;font-size:11px;font-weight:600;color:var(--hb)">R$ '+_planBRL(vl)+'</td>'
@@ -2313,10 +2352,9 @@ function _planRenderFinTable() {
     +'<th style="padding:9px 12px;text-align:right;font-size:11px">Prod. Equipe</th>'
     +'<th style="padding:9px 12px;text-align:center;font-size:11px">Prazo</th>'
     +'</tr></thead><tbody>';
-  resumo += scopeRow('⚙️ Fabricação (30%)', '#0B3D91', vlFab, prodFab, recFab);
-  resumo += scopeRow('🔧 Montagem (50%)', '#00A8E8', vlMon, prodMon, recMon);
-  // Book na tabela sem recurso
-  resumo += '<tr style="border-bottom:1px solid #e8eef7">'
+  resumo += scopeRow('⚙️ Fabricação (30%)', vlFab, prodFab, recFab);
+  resumo += scopeRow('🔧 Montagem (50%)', vlMon, prodMon, recMon);
+  resumo += '<tr style="border-bottom:1px solid #e8eef7;background:#f8fafd">'
     +'<td style="padding:8px 12px;font-size:11px;color:var(--hmu)">📚 Book (20%)</td>'
     +'<td style="padding:8px 12px;text-align:right;font-size:11px;font-weight:600;color:var(--hb)">R$ '+_planBRL(vlBook)+'</td>'
     +'<td colspan="3" style="padding:8px 12px;text-align:center;font-size:10px;color:var(--hmu)">Medido na entrega final</td>'
@@ -2324,81 +2362,65 @@ function _planRenderFinTable() {
   resumo += '</tbody></table>';
 
   // ── Fluxo mês a mês ──
-  var maxRecFab  = recFab.length ? Math.max.apply(null, recFab) : 0;
-  var maxRecMon  = recMon.length ? Math.max.apply(null, recMon) : 0;
-  var mensalFab  = maxRecFab * prodFab;
-  var mensalMon  = maxRecMon * prodMon;
-  var mensalTotal = mensalFab + mensalMon;
-
-  if (mensalTotal <= 0) {
-    tbl.innerHTML = resumo + '<div style="color:var(--hmu);font-size:11px;padding:8px 0">Preencha produção e recursos para ver o fluxo mensal.</div>';
+  if (custoMesTotal <= 0) {
+    tbl.innerHTML = alerta + resumo + '<div style="color:var(--hmu);font-size:11px;padding:8px 0">Preencha produção e recursos para ver o fluxo mensal.</div>';
     return;
   }
 
-  var mesesFab  = mensalFab  > 0 ? Math.ceil(vlFab  / mensalFab)  : 0;
-  var mesesMon  = mensalMon  > 0 ? Math.ceil(vlMon  / mensalMon)  : 0;
+  var mesesFab  = custoMesFab > 0 ? Math.ceil(vlFab / custoMesFab) : 0;
+  var mesesMon  = custoMesMon > 0 ? Math.ceil(vlMon / custoMesMon) : 0;
   var maxMeses  = Math.max(mesesFab, mesesMon, 1);
 
-  var fluxo = '<div style="font-size:12px;font-weight:700;color:var(--hb);margin-bottom:8px">📊 Saldo do Projeto — Mês a Mês</div>'
-    +'<div style="font-size:10px;color:var(--hmu);margin-bottom:10px">Recursos considerados: Fab '+maxRecFab+' · Mon '+maxRecMon+'. Book é medido na entrega final.</div>'
+  var fluxo = '<div style="font-size:12px;font-weight:700;color:var(--hb);margin:8px 0">📊 Fluxo Financeiro — Mês a Mês</div>'
+    +'<div style="font-size:10px;color:var(--hmu);margin-bottom:10px">Fab: '+maxRecFab+' rec × R$ '+_planBRL(prodFab)+' = <b>R$ '+_planBRL(custoMesFab)+'/mês</b> · Mon: '+maxRecMon+' rec × R$ '+_planBRL(prodMon)+' = <b>R$ '+_planBRL(custoMesMon)+'/mês</b> · Total: <b>R$ '+_planBRL(custoMesTotal)+'/mês</b></div>'
     +'<table style="width:100%;border-collapse:collapse"><thead><tr style="background:linear-gradient(90deg,#071d4a,#0B3D91);color:#fff">'
-    +'<th style="padding:8px 10px;font-size:10px;text-align:center">Mês</th>'
-    +'<th style="padding:8px 10px;font-size:10px;text-align:right">Fab Mensal</th>'
-    +'<th style="padding:8px 10px;font-size:10px;text-align:right">Fab Acum.</th>'
-    +'<th style="padding:8px 10px;font-size:10px;text-align:right">Saldo Fab</th>'
-    +'<th style="padding:8px 10px;font-size:10px;text-align:right">Mon Mensal</th>'
-    +'<th style="padding:8px 10px;font-size:10px;text-align:right">Mon Acum.</th>'
-    +'<th style="padding:8px 10px;font-size:10px;text-align:right">Saldo Mon</th>'
-    +'<th style="padding:8px 10px;font-size:10px;text-align:right;font-weight:700">Total Acum.</th>'
-    +'<th style="padding:8px 10px;font-size:10px;text-align:right;font-weight:700">Saldo Projeto</th>'
-    +'<th style="padding:8px 10px;font-size:10px;text-align:center">%</th>'
+    +'<th style="padding:7px 8px;font-size:10px;text-align:center">Mês</th>'
+    +'<th style="padding:7px 8px;font-size:10px;text-align:right">Fab</th>'
+    +'<th style="padding:7px 8px;font-size:10px;text-align:right">Saldo Fab</th>'
+    +'<th style="padding:7px 8px;font-size:10px;text-align:right">Mon</th>'
+    +'<th style="padding:7px 8px;font-size:10px;text-align:right">Saldo Mon</th>'
+    +'<th style="padding:7px 8px;font-size:10px;text-align:right;font-weight:700">Gasto Mês</th>'
+    +'<th style="padding:7px 8px;font-size:10px;text-align:right;font-weight:700">Acumulado</th>'
+    +'<th style="padding:7px 8px;font-size:10px;text-align:right;font-weight:700">Saldo Projeto</th>'
     +'</tr></thead><tbody>';
 
-  var acumFab = 0, acumMon = 0;
-  var valorFabMon = vlFab + vlMon; // saldo considerando só fab+mon (book na entrega)
-  for (var mes = 1; mes <= maxMeses; mes++) {
-    var gFab = (mes <= mesesFab && mensalFab > 0) ? Math.min(mensalFab, vlFab - acumFab) : 0;
-    var gMon = (mes <= mesesMon && mensalMon > 0) ? Math.min(mensalMon, vlMon - acumMon) : 0;
-    if (gFab < 0) gFab = 0;
-    if (gMon < 0) gMon = 0;
-    acumFab += gFab;
-    acumMon += gMon;
+  var acumFab=0, acumMon=0;
+  for (var mes=1; mes<=maxMeses; mes++) {
+    var gFab = custoMesFab > 0 && acumFab < vlFab ? Math.min(custoMesFab, vlFab - acumFab) : 0;
+    var gMon = custoMesMon > 0 && acumMon < vlMon ? Math.min(custoMesMon, vlMon - acumMon) : 0;
+    acumFab += gFab; acumMon += gMon;
+    var gastoMes = gFab + gMon;
     var acumTotal = acumFab + acumMon;
     var saldoFab = vlFab - acumFab;
     var saldoMon = vlMon - acumMon;
-    var saldoProj = valor - acumTotal - vlBook; // book fica reservado
-    var pctConsumo = valorFabMon > 0 ? Math.round(acumTotal / valorFabMon * 100) : 0;
+    var saldoProj = valor - acumTotal - vlBook;
 
-    var alertFab = acumFab > vlFab;
-    var alertMon = acumMon > vlMon;
-    var alertProj = saldoProj < 0;
-    var bg = mes % 2 === 0 ? '#f8fafd' : '#fff';
-    if (alertProj) bg = '#fff0f0';
+    var afab = saldoFab < 0, amon = saldoMon < 0, aproj = saldoProj < 0;
+    var bg = aproj ? '#fff0f0' : mes%2===0 ? '#f8fafd' : '#fff';
 
     fluxo += '<tr style="background:'+bg+';border-bottom:1px solid #e8eef7">'
-      +'<td style="padding:6px 10px;text-align:center;font-size:11px;font-weight:600">'+mes+'</td>'
-      +'<td style="padding:6px 10px;text-align:right;font-size:11px">'+(gFab>0?'R$ '+_planBRL(gFab):'—')+'</td>'
-      +'<td style="padding:6px 10px;text-align:right;font-size:11px;font-weight:600">R$ '+_planBRL(acumFab)+'</td>'
-      +'<td style="padding:6px 10px;text-align:right;font-size:11px;font-weight:600;color:'+(alertFab?'var(--hd)':'#1a8c4e')+'">'+(alertFab?'⚠️ ':'')+'R$ '+_planBRL(Math.abs(saldoFab))+(alertFab?' DEFICIT':'')+'</td>'
-      +'<td style="padding:6px 10px;text-align:right;font-size:11px">'+(gMon>0?'R$ '+_planBRL(gMon):'—')+'</td>'
-      +'<td style="padding:6px 10px;text-align:right;font-size:11px;font-weight:600">R$ '+_planBRL(acumMon)+'</td>'
-      +'<td style="padding:6px 10px;text-align:right;font-size:11px;font-weight:600;color:'+(alertMon?'var(--hd)':'#1a8c4e')+'">'+(alertMon?'⚠️ ':'')+'R$ '+_planBRL(Math.abs(saldoMon))+(alertMon?' DEFICIT':'')+'</td>'
-      +'<td style="padding:6px 10px;text-align:right;font-size:11px;font-weight:700;color:var(--hb)">R$ '+_planBRL(acumTotal)+'</td>'
-      +'<td style="padding:6px 10px;text-align:right;font-size:11px;font-weight:700;color:'+(alertProj?'#fff':'#1a8c4e')+';'+(alertProj?'background:var(--hd);border-radius:4px;':'')+'">R$ '+_planBRL(Math.abs(saldoProj))+(alertProj?' ⛔':'')+'</td>'
-      +'<td style="padding:6px 10px;text-align:center;font-size:11px;font-weight:700"><div style="background:#e8eef7;border-radius:10px;height:18px;overflow:hidden;min-width:48px;position:relative"><div style="height:100%;background:'+(pctConsumo>100?'var(--hd)':pctConsumo>80?'#c07000':'#1a8c4e')+';width:'+Math.min(pctConsumo,100)+'%;border-radius:10px"></div><span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:'+(pctConsumo>50?'#fff':'var(--ht)')+'">'+pctConsumo+'%</span></div></td>'
+      +'<td style="padding:6px 8px;text-align:center;font-size:11px;font-weight:700">'+mes+'</td>'
+      +'<td style="padding:6px 8px;text-align:right;font-size:11px">'+(gFab>0?'R$ '+_planBRL(Math.round(gFab)):'—')+'</td>'
+      +'<td style="padding:6px 8px;text-align:right;font-size:11px;font-weight:600;color:'+(afab?'var(--hd)':saldoFab<1?'var(--hmu)':'#1a8c4e')+'">'+(afab?'⚠️ -':'')+'R$ '+_planBRL(Math.abs(Math.round(saldoFab)))+'</td>'
+      +'<td style="padding:6px 8px;text-align:right;font-size:11px">'+(gMon>0?'R$ '+_planBRL(Math.round(gMon)):'—')+'</td>'
+      +'<td style="padding:6px 8px;text-align:right;font-size:11px;font-weight:600;color:'+(amon?'var(--hd)':saldoMon<1?'var(--hmu)':'#1a8c4e')+'">'+(amon?'⚠️ -':'')+'R$ '+_planBRL(Math.abs(Math.round(saldoMon)))+'</td>'
+      +'<td style="padding:6px 8px;text-align:right;font-size:11px;font-weight:700">R$ '+_planBRL(Math.round(gastoMes))+'</td>'
+      +'<td style="padding:6px 8px;text-align:right;font-size:11px;font-weight:700;color:var(--hb)">R$ '+_planBRL(Math.round(acumTotal))+'</td>'
+      +'<td style="padding:6px 8px;text-align:right;font-size:12px;font-weight:700;color:'+(aproj?'#fff':saldoProj<1?'var(--hmu)':'#1a8c4e')+';'+(aproj?'background:var(--hd);border-radius:4px;padding:4px 8px':'')+'">R$ '+_planBRL(Math.abs(Math.round(saldoProj)))+(aproj?' ⛔':'')+'</td>'
       +'</tr>';
   }
-  // Linha do Book na entrega final
+  // Book na entrega
+  var saldoFinal = valor - acumFab - acumMon - vlBook;
   fluxo += '<tr style="background:#edf7ed;border-top:2px solid #a5d6a7">'
-    +'<td style="padding:8px 10px;text-align:center;font-size:11px;font-weight:700;color:#1a8c4e">Final</td>'
-    +'<td colspan="6" style="padding:8px 10px;font-size:11px;color:#1a8c4e;font-weight:600">📚 Book — Entrega de documentação</td>'
-    +'<td style="padding:8px 10px;text-align:right;font-size:11px;font-weight:700;color:#1a8c4e">R$ '+_planBRL(vlBook)+'</td>'
-    +'<td style="padding:8px 10px;text-align:right;font-size:11px;font-weight:700;color:#1a8c4e">R$ 0</td>'
-    +'<td style="padding:8px 10px;text-align:center;font-size:10px;font-weight:700;color:#1a8c4e">100%</td>'
+    +'<td style="padding:8px;text-align:center;font-size:11px;font-weight:700;color:#1a8c4e">Final</td>'
+    +'<td colspan="4" style="padding:8px;font-size:11px;color:#1a8c4e;font-weight:600">📚 Book — Entrega documentação</td>'
+    +'<td style="padding:8px;text-align:right;font-size:11px;font-weight:700;color:#1a8c4e">R$ '+_planBRL(Math.round(vlBook))+'</td>'
+    +'<td style="padding:8px;text-align:right;font-size:11px;font-weight:700;color:#1a8c4e">R$ '+_planBRL(Math.round(acumFab+acumMon+vlBook))+'</td>'
+    +'<td style="padding:8px;text-align:right;font-size:12px;font-weight:700;color:'+(saldoFinal<0?'var(--hd)':'#1a8c4e')+'">R$ '+_planBRL(Math.abs(Math.round(saldoFinal)))+(saldoFinal<0?' ⛔':'')+'</td>'
     +'</tr>';
   fluxo += '</tbody></table>';
 
-  tbl.innerHTML = resumo + fluxo;
+  tbl.innerHTML = alerta + resumo + fluxo;
 }
 
 function renderPlanejamento(discTabs, bc) {
