@@ -87,6 +87,20 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;color:var(--ht);font-size:12p
 .sum-val{font-size:16px;font-weight:600;color:var(--hb)}
 .pbar{height:4px;border-radius:2px;overflow:hidden;margin-top:5px;background:#e0e8f4}
 .pbar-inner{height:100%;border-radius:2px}
+.area-cards-wrap{background:#f0f4fb;border:0.5px solid var(--hbr);border-top:none;padding:10px 16px 12px}
+.area-cards-title{font-size:11px;font-weight:700;color:var(--hb);margin-bottom:8px;letter-spacing:.3px}
+.area-cards-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px}
+.area-card{background:#fff;border:1px solid #d0d8e8;border-radius:10px;padding:10px 12px;box-shadow:0 1px 5px rgba(0,0,0,.05)}
+.area-card-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.area-card-name{font-size:12px;font-weight:700;color:var(--hb)}
+.area-card-cnt{font-size:9px;color:var(--hmu);background:var(--hbl);padding:2px 7px;border-radius:10px}
+.area-card-row{display:flex;align-items:center;gap:7px;margin-bottom:5px}
+.area-card-lbl{font-size:9.5px;font-weight:600;color:var(--hmu);width:42px;flex-shrink:0}
+.area-card-bar{flex:1;height:7px;background:#e8eef7;border-radius:4px;overflow:hidden}
+.area-card-fill{height:100%;border-radius:4px;transition:width .3s}
+.acf-fab{background:linear-gradient(90deg,#0B3D91,#1a5fd1)}
+.acf-mon{background:linear-gradient(90deg,#00A8E8,#0077b6)}
+.area-card-pct{font-size:11px;font-weight:700;width:36px;text-align:right;flex-shrink:0}
 .pb-fab{background:var(--hbm)}.pb-mon{background:var(--hc)}.pb-py{background:var(--hs)}
 
 .filter-bar{background:#fff;border:0.5px solid var(--hbr);border-top:none;padding:7px 16px;display:flex;gap:7px;align-items:center;flex-wrap:wrap}
@@ -2012,6 +2026,40 @@ function renderIsoView() {
     <div class="sum-card"><div class="sum-lbl">Pintura</div><div class="sum-val" style="color:var(--hs)">${py}/${n}</div><div class="pbar"><div class="pbar-inner pb-py" style="width:${n ? Math.round(py / n * 100) : 0}%"></div></div></div>
   </div>`;
 
+  // ── Cards de % Fabricação / Montagem por Área ──
+  const areaStats = {};
+  listFabMon.forEach(e => {
+    const a = e.area || 'Sem área';
+    if (!areaStats[a]) areaStats[a] = { fabSum:0, monSum:0, count:0 };
+    areaStats[a].fabSum += fabPct(e);
+    areaStats[a].monSum += monPct(e);
+    areaStats[a].count++;
+  });
+  const areaKeys = Object.keys(areaStats).sort();
+  const areaCards = areaKeys.length ? `<div class="area-cards-wrap">
+    <div class="area-cards-title">📊 Avanço por Área</div>
+    <div class="area-cards-grid">
+    ${areaKeys.map(a => {
+      const st = areaStats[a];
+      const fpc = st.count ? Math.round(st.fabSum / st.count) : 0;
+      const mpc = st.count ? Math.round(st.monSum / st.count) : 0;
+      return `<div class="area-card">
+        <div class="area-card-hd"><span class="area-card-name">Área ${a}</span><span class="area-card-cnt">${st.count} folha${st.count!==1?'s':''}</span></div>
+        <div class="area-card-row">
+          <span class="area-card-lbl">⚙️ Fab</span>
+          <div class="area-card-bar"><div class="area-card-fill acf-fab" style="width:${fpc}%"></div></div>
+          <span class="area-card-pct" style="color:#0B3D91">${fpc}%</span>
+        </div>
+        <div class="area-card-row">
+          <span class="area-card-lbl">🔧 Mon</span>
+          <div class="area-card-bar"><div class="area-card-fill acf-mon" style="width:${mpc}%"></div></div>
+          <span class="area-card-pct" style="color:#00A8E8">${mpc}%</span>
+        </div>
+      </div>`;
+    }).join('')}
+    </div>
+  </div>` : '';
+
   const areas = [...new Set(list.map(e => e.area).filter(Boolean))].sort();
   const fluids = [...new Set(list.map(e => _fluidoDaLinha(e.line)).filter(Boolean))].sort();
   const fb = `<div class="filter-bar">
@@ -2104,7 +2152,7 @@ function renderIsoView() {
     <tbody id="tbl-body"></tbody>
   </table></div>`;
 
-  document.getElementById('view-isos').innerHTML = bc + discTabs + sb + fb + isoBulkBar + tbl + '</div>';
+  document.getElementById('view-isos').innerHTML = bc + discTabs + sb + areaCards + fb + isoBulkBar + tbl + '</div>';
   filterTable();
 }
 
@@ -2140,8 +2188,8 @@ function filterTable() {
       } else if (_cls === 'Apenas Montagem') {
         _done = (_monP >= 100);
       } else {
-        // Fabricação: fab OU mon a 100%
-        _done = (_fabP >= 100 || _monP >= 100);
+        // Fabricação: precisa de fab E mon a 100%
+        _done = (_fabP >= 100 && _monP >= 100);
       }
       if (_done === null) return false;
       if (isoFilterFab === 'c100' && !_done) return false;
