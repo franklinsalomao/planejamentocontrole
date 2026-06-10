@@ -2423,15 +2423,9 @@ function renderPlanejamento(discTabs, bc) {
   // ── Cabeçalho e totais físicos ──
   var header = '<div style="padding:16px 16px 8px">'
     + '<div style="font-size:16px;font-weight:700;color:var(--hb)">🗓️ Planejamento — Físico × Financeiro</div>'
-    + '<div style="font-size:11px;color:var(--hmu);margin-top:2px">Índice de referência: ISO BK-BA01-04200-IS-20-01642 · 56,5 m / 139 Hh · equipe 2 caldeireiros + 1 soldador · <strong>2,46 Hh/m</strong>. Base de cálculo: '+PLAN_HORAS_FAB+' h/dia (Fab) · '+PLAN_HORAS_MON+' h/dia (Mon) · '+PLAN_DIAS_MES+' dias úteis/mês.</div>'
     + '</div>';
 
-  var totals = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;padding:0 16px 14px">'
-    + '<div class="dash-tot dash-tot-blue"><div class="dash-tot-lbl">⏱️ Hh Total (Fab + Mon)</div><div class="dash-tot-val" id="plan-tot-hh" style="font-size:18px">—</div></div>'
-    + '<div class="dash-tot dash-tot-cyan"><div class="dash-tot-lbl">📅 Prazo c/ Recursos</div><div class="dash-tot-val" id="plan-tot-paralelo">—</div><div class="dash-tot-sub">maior prazo (Fab ou Mon)</div></div>'
-    + '<div class="dash-tot dash-tot-green"><div class="dash-tot-lbl">📆 Prazo Sequencial</div><div class="dash-tot-val" id="plan-tot-seq">—</div><div class="dash-tot-sub">Fab + Mon somados</div></div>'
-    + '<div class="dash-tot" style="background:linear-gradient(135deg,#5e35b1,#7e57c2)"><div class="dash-tot-lbl">👷 Recursos Dimensionados</div><div class="dash-tot-val" id="plan-tot-rec" style="font-size:16px">—</div></div>'
-    + '</div>';
+  var totals = '';
 
   // ── Seção Físico × Financeiro ──
   var finState = _planFinState || {};
@@ -2482,59 +2476,8 @@ function renderPlanejamento(discTabs, bc) {
     +'<div id="fin-result-table"></div>'
     +'</div></div>';
 
-  // ── Tabela por isométrico ──
-  var rows = [];
-  list.forEach(function(e){
-    var d=_planHhIso(e.num); if (d.hh<=0) return;
-    var rec=_planRecursos[e.num]||1;
-    var dias=d.hh/(rec*PLAN_HORAS_FAB);
-    rows.push({num:e.num, hh:d.hh, metros:d.metros, rec:_planRecursos[e.num]||'', dias:dias, detalhes:d.detalhes});
-  });
-  rows.sort(function(a,b){ return b.hh-a.hh; });
 
-  var isoTbl;
-  if (rows.length) {
-    var trs = rows.map(function(r){
-      var sid = _planSafeId(r.num);
-      // Detail rows for each tube
-      var detRows = r.detalhes.map(function(d){
-        return '<tr style="background:#f8fafd;border-top:none">'
-          +'<td colspan="1" style="padding:2px 8px 2px 28px;font-size:9.5px;color:var(--hmu)"></td>'
-          +'<td style="padding:2px 8px;font-size:9.5px;color:var(--hmu);text-align:center">'+d.mat+' '+d.sch+'</td>'
-          +'<td style="padding:2px 8px;font-size:9.5px;color:var(--hmu);text-align:center">'+d.dia+'</td>'
-          +'<td style="padding:2px 8px;font-size:9.5px;color:var(--hmu);text-align:center">'+d.metros.toFixed(2)+' m</td>'
-          +'<td style="padding:2px 8px;font-size:9.5px;color:#0B3D91;text-align:center;font-weight:600">'+d.hhm+' Hh/m</td>'
-          +'<td style="padding:2px 8px;font-size:9.5px;color:var(--hb);text-align:center;font-weight:600">'+d.hh.toFixed(2)+' Hh</td>'
-          +'<td colspan="2"></td>'
-          +'</tr>';
-      }).join('');
-      return '<tr style="border-top:2px solid #e8eef7">'
-        +'<td style="font-family:monospace;font-size:10px;font-weight:600">'+r.num+'</td>'
-        +'<td colspan="2" style="text-align:center;font-size:10px;color:var(--hmu)">'+r.detalhes.length+' trecho(s)</td>'
-        +'<td style="text-align:center;font-weight:600">'+r.metros.toFixed(1)+' m</td>'
-        +'<td style="text-align:center;font-weight:700;color:var(--hb)">—</td>'
-        +'<td style="text-align:center;font-weight:700;color:var(--hb)">'+Math.round(r.hh)+' Hh</td>'
-        +'<td style="text-align:center"><input type="number" min="0" step="1" value="'+r.rec+'" placeholder="1" data-iso="'+sid+'" onchange="planSetByDataset(this)" style="width:60px;text-align:center;padding:4px 6px;border:1px solid var(--hbr);border-radius:6px;font-size:11px;background:#fff;outline:none"></td>'
-        +'<td style="text-align:center;font-weight:700;color:#1a8c4e" id="plan-prazo-'+sid+'">'+(r.dias>0?r.dias.toFixed(1)+' dias':'—')+'</td>'
-        +'</tr>'
-        + detRows;
-    }).join('');
-    isoTbl = '<div class="tbl-wrap" style="margin:0 16px 20px"><div style="font-size:12px;font-weight:700;color:var(--hb);margin-bottom:8px">📋 Prazo por Isométrico — Detalhamento por Diâmetro</div>'
-      +'<table style="width:100%"><thead><tr>'
-      +'<th>Isométrico</th>'
-      +'<th style="text-align:center">Material</th>'
-      +'<th style="text-align:center">Diâmetro</th>'
-      +'<th style="text-align:center">Metragem</th>'
-      +'<th style="text-align:center">Índice (Hh/m)</th>'
-      +'<th style="text-align:center">Hh Fabricação</th>'
-      +'<th style="text-align:center;min-width:80px">Recursos</th>'
-      +'<th style="text-align:center;min-width:90px">Prazo</th>'
-      +'</tr></thead><tbody>'+trs+'</tbody></table></div>';
-  } else {
-    isoTbl = '<div class="ph-panel" style="margin:0 16px 16px"><div style="font-size:32px">📭</div><strong>Nenhum tubo calculável encontrado</strong><span style="font-size:11px">Cadastre materiais (tubos com metragem) nos isométricos.</span></div>';
-  }
-
-  document.getElementById('view-isos').innerHTML = bc + discTabs + header + totals + finSection + isoTbl + '</div>';
+    document.getElementById('view-isos').innerHTML = bc + discTabs + header + finSection + '</div>';
   _planRefreshTotals();
   _planRenderFinTable();
 }
