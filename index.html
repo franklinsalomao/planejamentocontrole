@@ -2320,26 +2320,44 @@ function renderPlanejamento(discTabs, bc) {
     var d=_planHhIso(e.num); if (d.hh<=0) return;
     var rec=_planRecursos[e.num]||1;
     var dias=d.hh/(rec*PLAN_HORAS_DIA);
-    rows.push({num:e.num, hh:d.hh, metros:d.metros, rec:_planRecursos[e.num]||'', dias:dias});
+    rows.push({num:e.num, hh:d.hh, metros:d.metros, rec:_planRecursos[e.num]||'', dias:dias, detalhes:d.detalhes});
   });
   rows.sort(function(a,b){ return b.hh-a.hh; });
 
   var isoTbl;
   if (rows.length) {
-    var trs=rows.map(function(r){
-      var sid=_planSafeId(r.num);
-      return '<tr>'
-        +'<td style="font-family:monospace;font-size:10px">'+r.num+'</td>'
-        +'<td style="text-align:center">'+r.metros.toFixed(1)+' m</td>'
-        +'<td style="text-align:center;font-weight:600;color:var(--hb)">'+Math.round(r.hh)+' Hh</td>'
+    var trs = rows.map(function(r){
+      var sid = _planSafeId(r.num);
+      // Detail rows for each tube
+      var detRows = r.detalhes.map(function(d){
+        return '<tr style="background:#f8fafd;border-top:none">'
+          +'<td colspan="1" style="padding:2px 8px 2px 28px;font-size:9.5px;color:var(--hmu)"></td>'
+          +'<td style="padding:2px 8px;font-size:9.5px;color:var(--hmu);text-align:center">'+d.mat+' '+d.sch+'</td>'
+          +'<td style="padding:2px 8px;font-size:9.5px;color:var(--hmu);text-align:center">'+d.dia+'</td>'
+          +'<td style="padding:2px 8px;font-size:9.5px;color:var(--hmu);text-align:center">'+d.metros.toFixed(2)+' m</td>'
+          +'<td style="padding:2px 8px;font-size:9.5px;color:#0B3D91;text-align:center;font-weight:600">'+d.hhm+' Hh/m</td>'
+          +'<td style="padding:2px 8px;font-size:9.5px;color:var(--hb);text-align:center;font-weight:600">'+d.hh.toFixed(2)+' Hh</td>'
+          +'<td colspan="2"></td>'
+          +'</tr>';
+      }).join('');
+      return '<tr style="border-top:2px solid #e8eef7">'
+        +'<td style="font-family:monospace;font-size:10px;font-weight:600">'+r.num+'</td>'
+        +'<td colspan="2" style="text-align:center;font-size:10px;color:var(--hmu)">'+r.detalhes.length+' trecho(s)</td>'
+        +'<td style="text-align:center;font-weight:600">'+r.metros.toFixed(1)+' m</td>'
+        +'<td style="text-align:center;font-weight:700;color:var(--hb)">—</td>'
+        +'<td style="text-align:center;font-weight:700;color:var(--hb)">'+Math.round(r.hh)+' Hh</td>'
         +'<td style="text-align:center"><input type="number" min="0" step="1" value="'+r.rec+'" placeholder="1" data-iso="'+sid+'" onchange="planSetByDataset(this)" style="width:60px;text-align:center;padding:4px 6px;border:1px solid var(--hbr);border-radius:6px;font-size:11px;background:#fff;outline:none"></td>'
         +'<td style="text-align:center;font-weight:700;color:#1a8c4e" id="plan-prazo-'+sid+'">'+(r.dias>0?r.dias.toFixed(1)+' dias':'—')+'</td>'
-        +'</tr>';
+        +'</tr>'
+        + detRows;
     }).join('');
-    isoTbl = '<div class="tbl-wrap" style="margin:0 16px 20px"><div style="font-size:12px;font-weight:700;color:var(--hb);margin-bottom:8px">📋 Prazo por Isométrico</div>'
+    isoTbl = '<div class="tbl-wrap" style="margin:0 16px 20px"><div style="font-size:12px;font-weight:700;color:var(--hb);margin-bottom:8px">📋 Prazo por Isométrico — Detalhamento por Diâmetro</div>'
       +'<table style="width:100%"><thead><tr>'
       +'<th>Isométrico</th>'
+      +'<th style="text-align:center">Material</th>'
+      +'<th style="text-align:center">Diâmetro</th>'
       +'<th style="text-align:center">Metragem</th>'
+      +'<th style="text-align:center">Índice (Hh/m)</th>'
       +'<th style="text-align:center">Hh Fabricação</th>'
       +'<th style="text-align:center;min-width:80px">Recursos</th>'
       +'<th style="text-align:center;min-width:90px">Prazo</th>'
