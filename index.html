@@ -2171,6 +2171,21 @@ function _planHhIso(isoNum) {
   });
   return {hh:totalHh, metros:totalM, detalhes:detalhes};
 }
+function _planHhIsoMon(isoNum) {
+  var mats = (typeof matsCtrl!=='undefined'?matsCtrl:[]).filter(function(m){
+    return (m.iso||'').trim()===isoNum && (m.classificacao||'')==='montagem';
+  });
+  var totalHh=0, totalM=0;
+  mats.forEach(function(m){
+    var metros = _planMetros(m.quant); if (metros<=0) return;
+    var mat=_planMaterial(m.descricao), sch=_planSch(m.descricao), dia=_planDiam(m.diam);
+    var key=mat+'|'+sch+'|'+dia;
+    var hhm=PROD_INDEX[key]||PROD_INDEX['AC|'+sch+'|'+dia];
+    if (hhm==null) return;
+    totalHh+=hhm*metros; totalM+=metros;
+  });
+  return {hh:totalHh, metros:totalM};
+}
 function _planSafeId(s){ return String(s).replace(/[^a-zA-Z0-9]/g,'_'); }
 
 function planSetByDataset(el) {
@@ -2195,21 +2210,32 @@ function planSetRecurso(isoNum, val) {
 }
 
 function _planRefreshTotals() {
-  var list=currentProjId?projIsos(currentProjId):isos;
-  var totalHh=0, maxDias=0, somaDias=0, totalRec=0;
+  var list = currentProjId ? projIsos(currentProjId) : isos;
+  var st = _planFinState || {};
+  // Recursos do dimensionamento financeiro
+  var recFab  = (st.recFab  || []).length ? Math.max.apply(null, st.recFab)  : 0;
+  var recMon  = (st.recMon  || []).length ? Math.max.apply(null, st.recMon)  : 0;
+
+  var totalHhFab = 0, totalHhMon = 0;
   list.forEach(function(e){
-    var d=_planHhIso(e.num); if (d.hh<=0) return;
-    totalHh+=d.hh;
-    var rec=_planRecursos[e.num]||1;
-    totalRec+=(_planRecursos[e.num]||0);
-    var dias=d.hh/(rec*PLAN_HORAS_FAB);
-    somaDias+=dias; if (dias>maxDias) maxDias=dias;
+    var df = _planHhIso(e.num);
+    var dm = _planHhIsoMon(e.num);
+    totalHhFab += df.hh;
+    totalHhMon += dm.hh;
   });
-  var el=function(id,v){ var e=document.getElementById(id); if(e) e.textContent=v; };
-  el('plan-tot-hh', Math.round(totalHh)+' Hh');
-  el('plan-tot-paralelo', maxDias>0?maxDias.toFixed(1)+' dias':'—');
-  el('plan-tot-seq', somaDias>0?somaDias.toFixed(1)+' dias':'—');
-  el('plan-tot-rec', totalRec+' rec');
+  var totalHh = totalHhFab + totalHhMon;
+
+  // Prazo com recursos dimensionados
+  var prazoFab = recFab > 0 && totalHhFab > 0 ? totalHhFab / (recFab * PLAN_HORAS_FAB) : 0;
+  var prazoMon = recMon > 0 && totalHhMon > 0 ? totalHhMon / (recMon * PLAN_HORAS_MON) : 0;
+  var prazoParalelo = Math.max(prazoFab, prazoMon);
+  var prazoSeq = prazoFab + prazoMon;
+
+  var el = function(id, v) { var e = document.getElementById(id); if (e) e.textContent = v; };
+  el('plan-tot-hh', Math.round(totalHhFab) + ' Hh (Fab) + ' + Math.round(totalHhMon) + ' Hh (Mon)');
+  el('plan-tot-paralelo', prazoParalelo > 0 ? Math.ceil(prazoParalelo) + ' dias' : 'Insira recursos');
+  el('plan-tot-seq', prazoSeq > 0 ? Math.ceil(prazoSeq) + ' dias' : '—');
+  el('plan-tot-rec', (recFab + recMon) + ' rec (Fab ' + recFab + ' + Mon ' + recMon + ')');
 }
 
 // ── Financeiro ──
@@ -2260,6 +2286,7 @@ function planUpdateFin() {
     recFab:recFab, recMon:recMon };
   _planSaveFin();
   _planRenderFinTable();
+  _planRefreshTotals();
 }
 
 function planAddRec(scope) {
@@ -2435,10 +2462,10 @@ function renderPlanejamento(discTabs, bc) {
     + '</div>';
 
   var totals = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;padding:0 16px 14px">'
-    + '<div class="dash-tot dash-tot-blue"><div class="dash-tot-lbl">⏱️ Hh Total Fabricação</div><div class="dash-tot-val" id="plan-tot-hh">—</div></div>'
-    + '<div class="dash-tot dash-tot-cyan"><div class="dash-tot-lbl">📅 Prazo Paralelo</div><div class="dash-tot-val" id="plan-tot-paralelo">—</div><div class="dash-tot-sub">maior prazo entre isos</div></div>'
-    + '<div class="dash-tot dash-tot-green"><div class="dash-tot-lbl">📆 Prazo Sequencial</div><div class="dash-tot-val" id="plan-tot-seq">—</div><div class="dash-tot-sub">soma de todos</div></div>'
-    + '<div class="dash-tot" style="background:linear-gradient(135deg,#5e35b1,#7e57c2)"><div class="dash-tot-lbl">👷 Recursos Alocados</div><div class="dash-tot-val" id="plan-tot-rec">—</div></div>'
+    + '<div class="dash-tot dash-tot-blue"><div class="dash-tot-lbl">⏱️ Hh Total (Fab + Mon)</div><div class="dash-tot-val" id="plan-tot-hh" style="font-size:18px">—</div></div>'
+    + '<div class="dash-tot dash-tot-cyan"><div class="dash-tot-lbl">📅 Prazo c/ Recursos</div><div class="dash-tot-val" id="plan-tot-paralelo">—</div><div class="dash-tot-sub">maior prazo (Fab ou Mon)</div></div>'
+    + '<div class="dash-tot dash-tot-green"><div class="dash-tot-lbl">📆 Prazo Sequencial</div><div class="dash-tot-val" id="plan-tot-seq">—</div><div class="dash-tot-sub">Fab + Mon somados</div></div>'
+    + '<div class="dash-tot" style="background:linear-gradient(135deg,#5e35b1,#7e57c2)"><div class="dash-tot-lbl">👷 Recursos Dimensionados</div><div class="dash-tot-val" id="plan-tot-rec" style="font-size:16px">—</div></div>'
     + '</div>';
 
   // ── Seção Físico × Financeiro ──
