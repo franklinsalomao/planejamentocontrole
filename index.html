@@ -2351,6 +2351,52 @@ function _planRenderFinTable() {
     }
   }
 
+  // ── Cards de Hh segregado ──
+  var hhCards = '';
+  if (custoFab > 0 || custoMon > 0) {
+    var mesesFabC = custoFab > 0 ? Math.ceil(vlFab / custoFab) : 0;
+    var mesesMonC = custoMon > 0 ? Math.ceil(vlMon / custoMon) : 0;
+
+    var hhCaldFab = (st.caldFab||0) * PLAN_HORAS_FAB * PLAN_DIAS_MES * mesesFabC;
+    var hhSoldFab = (st.soldFab||0) * PLAN_HORAS_FAB * PLAN_DIAS_MES * mesesFabC;
+    var hhTotalFab = hhCaldFab + hhSoldFab;
+
+    var hhCaldMon = (st.caldMon||0) * PLAN_HORAS_MON * PLAN_DIAS_MES * mesesMonC;
+    var hhSoldMon = (st.soldMon||0) * PLAN_HORAS_MON * PLAN_DIAS_MES * mesesMonC;
+    var hhTotalMon = hhCaldMon + hhSoldMon;
+
+    var hhGeral = hhTotalFab + hhTotalMon;
+
+    hhCards = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-bottom:16px">'
+      // Fab
+      +'<div style="background:#fff;border:1px solid #d0d8e8;border-radius:10px;padding:14px 16px;border-left:4px solid #0B3D91">'
+      +'<div style="font-size:11px;font-weight:700;color:#0B3D91;margin-bottom:10px">⚙️ Hh Fabricação <span style="font-weight:400;color:var(--hmu)">('+mesesFabC+' '+(mesesFabC===1?'mês':'meses')+' × 8h/dia × '+PLAN_DIAS_MES+' dias)</span></div>'
+      +'<div style="display:flex;gap:16px;margin-bottom:8px">'
+      +'<div><div style="font-size:9px;color:var(--hmu);text-transform:uppercase">🔧 Caldeireiros ('+st.caldFab+')</div><div style="font-size:20px;font-weight:800;color:#0B3D91">'+_planBRL(Math.round(hhCaldFab))+' <span style="font-size:12px;font-weight:400">Hh</span></div></div>'
+      +'<div><div style="font-size:9px;color:var(--hmu);text-transform:uppercase">⚡ Soldadores ('+st.soldFab+')</div><div style="font-size:20px;font-weight:800;color:#0B3D91">'+_planBRL(Math.round(hhSoldFab))+' <span style="font-size:12px;font-weight:400">Hh</span></div></div>'
+      +'</div>'
+      +'<div style="border-top:1px solid #e8eef7;padding-top:6px;font-size:12px;font-weight:700;color:var(--hb)">Total Fab: '+_planBRL(Math.round(hhTotalFab))+' Hh</div>'
+      +'</div>'
+      // Mon
+      +'<div style="background:#fff;border:1px solid #b0ddf0;border-radius:10px;padding:14px 16px;border-left:4px solid #00A8E8">'
+      +'<div style="font-size:11px;font-weight:700;color:#0077b6;margin-bottom:10px">🔧 Hh Montagem <span style="font-weight:400;color:var(--hmu)">('+mesesMonC+' '+(mesesMonC===1?'mês':'meses')+' × 6,5h/dia × '+PLAN_DIAS_MES+' dias)</span></div>'
+      +'<div style="display:flex;gap:16px;margin-bottom:8px">'
+      +'<div><div style="font-size:9px;color:var(--hmu);text-transform:uppercase">🔧 Caldeireiros ('+st.caldMon+')</div><div style="font-size:20px;font-weight:800;color:#0077b6">'+_planBRL(Math.round(hhCaldMon))+' <span style="font-size:12px;font-weight:400">Hh</span></div></div>'
+      +'<div><div style="font-size:9px;color:var(--hmu);text-transform:uppercase">⚡ Soldadores ('+st.soldMon+')</div><div style="font-size:20px;font-weight:800;color:#0077b6">'+_planBRL(Math.round(hhSoldMon))+' <span style="font-size:12px;font-weight:400">Hh</span></div></div>'
+      +'</div>'
+      +'<div style="border-top:1px solid #e8eef7;padding-top:6px;font-size:12px;font-weight:700;color:var(--hb)">Total Mon: '+_planBRL(Math.round(hhTotalMon))+' Hh</div>'
+      +'</div>'
+      // Total geral
+      +'<div style="background:linear-gradient(135deg,#071d4a,#0B3D91);border-radius:10px;padding:14px 16px;color:#fff;display:flex;flex-direction:column;justify-content:center">'
+      +'<div style="font-size:11px;opacity:.8;margin-bottom:8px">📊 Hh Total do Projeto</div>'
+      +'<div style="font-size:28px;font-weight:800">'+_planBRL(Math.round(hhGeral))+' <span style="font-size:14px;font-weight:400">Hh</span></div>'
+      +'<div style="margin-top:8px;font-size:10px;opacity:.7">'
+      +'Fab: '+_planBRL(Math.round(hhTotalFab))+' Hh ('+Math.round(hhGeral>0?hhTotalFab/hhGeral*100:0)+'%) · '
+      +'Mon: '+_planBRL(Math.round(hhTotalMon))+' Hh ('+Math.round(hhGeral>0?hhTotalMon/hhGeral*100:0)+'%)</div>'
+      +'</div>'
+      +'</div>';
+  }
+
   // ── Fluxo mês a mês (montagem inicia mês 2) ──
   if (custoFab <= 0 && custoMon <= 0) {
     tbl.innerHTML = orc + '<div style="color:var(--hmu);font-size:11px;padding:8px 0">Defina recursos para ver o fluxo.</div>';
@@ -2427,7 +2473,7 @@ function _planRenderFinTable() {
 +'<td style="padding:8px"><div style="background:rgba(255,255,255,.15);border-radius:10px;height:20px;position:relative"><div style="height:100%;width:'+(valor>0?Math.round(vlBook/valor*100):0)+'%;background:#00e676;border-radius:10px"></div><span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff">'+(valor>0?Math.round(vlBook/valor*100):0)+'%</span></div></td>'
 +'</tr></tbody></table>';
 
-  tbl.innerHTML = orc + alerta + fluxo;
+  tbl.innerHTML = orc + alerta + hhCards + fluxo;
 }
 
 function renderPlanejamento(discTabs, bc) {
