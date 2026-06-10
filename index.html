@@ -2130,11 +2130,22 @@ function filterTable() {
     if (fp && e.paint !== fp) return false;
     if (fcl && (e.classif||'Fabricação') !== fcl) return false;
     if (isoFilterFab) {
-      var fp = Math.round((e.fab&&e.fab.pre||0)*.30+(e.fab&&e.fab.sol||0)*.50+(e.fab&&e.fab.end||0)*.20);
-      var mp = Math.round((e.mon&&e.mon.pre||0)*.30+(e.mon&&e.mon.sol||0)*.50+(e.mon&&e.mon.end||0)*.20);
-      var total = Math.round((fp + mp) / 2);
-      if (isoFilterFab === 'c100'  && total < 100) return false;
-      if (isoFilterFab === 'pend'  && total >= 100) return false;
+      var _cls = e.classif || 'Fabricação';
+      var _fabP = Math.round((e.fab&&e.fab.pre||0)*.30+(e.fab&&e.fab.sol||0)*.50+(e.fab&&e.fab.end||0)*.20);
+      var _monP = Math.round((e.mon&&e.mon.pre||0)*.30+(e.mon&&e.mon.sol||0)*.50+(e.mon&&e.mon.end||0)*.20);
+      var _done;
+      if (_cls === 'Referência' || _cls === 'Desmontagem') {
+        // Sem avanço aplicável — não entra em nenhum dos dois filtros
+        _done = null;
+      } else if (_cls === 'Apenas Montagem') {
+        _done = (_monP >= 100);
+      } else {
+        // Fabricação: fab OU mon a 100%
+        _done = (_fabP >= 100 || _monP >= 100);
+      }
+      if (_done === null) return false;
+      if (isoFilterFab === 'c100' && !_done) return false;
+      if (isoFilterFab === 'pend' &&  _done) return false;
     }
     return true;
   });
