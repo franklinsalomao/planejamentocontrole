@@ -2029,12 +2029,10 @@ function renderIsoView() {
     <span id="filter-count" style="font-size:10px;color:var(--hmu)"></span>
     <span style="flex:1"></span>
     <button class="btn btn-cyan" style="height:26px;font-size:10.5px;font-weight:700;box-shadow:0 0 0 2px rgba(0,168,232,.35)" onclick="document.getElementById('exp-modal').classList.add('open')">📄 Exportar</button>
-    <button class="btn btn-out" style="height:26px;font-size:10.5px;background:rgba(46,125,50,.15);color:#2e7d32;border-color:#a5d6a7" onclick="sincronizarPlanilha()">🔄 Planilha</button>
     <button class="btn btn-out" style="height:26px;font-size:10.5px;background:rgba(46,125,50,.12);color:#2e7d32;border-color:#a5d6a7" onclick="openImportIsosModal()" title="Importar isométricos via Excel">📥 Importar XLSX</button>
     <input type="file" id="isos-import-inp2" accept=".xlsx,.xls" style="display:none" onchange="if(this.files[0]){importIsosXLSX(this.files[0]);this.value=''}">
     <input type="file" id="isos-pdf-inp" accept=".pdf" multiple style="display:none" onchange="if(this.files.length){handlePdfFiles(this.files);this.value=''}">
     <button class="btn btn-cyan" style="height:26px;font-size:10.5px;background:rgba(0,90,180,.85)" onclick="openPdfImportFlow()" title="Importar PDFs de isométricos">📎 Importar PDF</button>
-    <button class="btn btn-cyan" style="height:26px;font-size:10.5px" onclick="reqAuth('add-iso')">+ Nova Folha</button>
   </div>`;
 
   const effTabs = getEffectiveDiscTabs(currentProjId);
