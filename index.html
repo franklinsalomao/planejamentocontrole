@@ -2254,9 +2254,9 @@ function planUpdateFin() {
   var recFab = [], recMon = [], recBook = [];
   (document.querySelectorAll('.fin-row-fab input')||[]).forEach(function(el){ var v=parseInt(el.value)||0; if(v) recFab.push(v); });
   (document.querySelectorAll('.fin-row-mon input')||[]).forEach(function(el){ var v=parseInt(el.value)||0; if(v) recMon.push(v); });
-  (document.querySelectorAll('.fin-row-book input')||[]).forEach(function(el){ var v=parseInt(el.value)||0; if(v) recBook.push(v); });
-  _planFinState = { valor:valor, prodFab:prodFab, prodMon:prodMon, prodBook:prodBook,
-    recFab:recFab, recMon:recMon, recBook:recBook };
+  // Book sem recursos
+  _planFinState = { valor:valor, prodFab:prodFab, prodMon:prodMon,
+    recFab:recFab, recMon:recMon };
   _planSaveFin();
   _planRenderFinTable();
 }
@@ -2279,49 +2279,126 @@ function _planRenderFinTable() {
   var valor = st.valor || 0;
   if (!valor) { tbl.innerHTML = '<div style="color:var(--hmu);font-size:11px;padding:8px 0">Preencha o Valor do Projeto para calcular.</div>'; return; }
 
-  // Distribuição: 30% Fab / 50% Mon / 20% Book
   var vlFab  = valor * 0.30;
   var vlMon  = valor * 0.50;
   var vlBook = valor * 0.20;
+  var prodFab = st.prodFab || 0;
+  var prodMon = st.prodMon || 0;
+  var recFab  = st.recFab  || [];
+  var recMon  = st.recMon  || [];
 
-  function buildSection(label, cor, vl, prodRec, recs) {
+  // ── Resumo por escopo ──
+  function scopeRow(label, cor, vl, prodRec, recs) {
     if (!prodRec || !recs.length) return '';
-    var rows = recs.map(function(rec, i) {
-      var prodEq   = rec * prodRec;
-      var prazo    = vl / prodEq;
-      var bg = i%2===0 ? '#fff' : '#f8fafd';
-      return '<tr style="background:'+bg+';border-bottom:1px solid #e8eef7">'
-        + '<td style="padding:8px 12px;font-size:11px;color:var(--hmu)">'+label+'</td>'
-        + '<td style="padding:8px 12px;text-align:right;font-size:11px;font-weight:600;color:var(--hb)">R$ '+vl.toLocaleString('pt-BR',{maximumFractionDigits:0})+'</td>'
-        + '<td style="padding:8px 12px;text-align:right;font-size:11px">R$ '+prodRec.toLocaleString('pt-BR',{maximumFractionDigits:0})+'</td>'
-        + '<td style="padding:8px 12px;text-align:center;font-size:13px;font-weight:700;color:var(--hb)">'+rec+'</td>'
-        + '<td style="padding:8px 12px;text-align:right;font-size:11px;font-weight:600;color:#1a8c4e">R$ '+prodEq.toLocaleString('pt-BR',{maximumFractionDigits:0})+'</td>'
-        + '<td style="padding:8px 12px;text-align:center;font-size:13px;font-weight:700;color:'+(prazo<=3?'#1a8c4e':prazo<=6?'#c07000':'var(--hd)')+'">'+_planFmtMeses(prazo)+'</td>'
-        + '</tr>';
+    return recs.map(function(rec){
+      var prodEq = rec * prodRec;
+      var prazo  = Math.ceil(vl / prodEq);
+      return '<tr style="border-bottom:1px solid #e8eef7">'
+        +'<td style="padding:8px 12px;font-size:11px;color:var(--hmu)">'+label+'</td>'
+        +'<td style="padding:8px 12px;text-align:right;font-size:11px;font-weight:600;color:var(--hb)">R$ '+_planBRL(vl)+'</td>'
+        +'<td style="padding:8px 12px;text-align:right;font-size:11px">R$ '+_planBRL(prodRec)+'</td>'
+        +'<td style="padding:8px 12px;text-align:center;font-size:13px;font-weight:700;color:var(--hb)">'+rec+'</td>'
+        +'<td style="padding:8px 12px;text-align:right;font-size:11px;font-weight:600;color:#1a8c4e">R$ '+_planBRL(prodEq)+'</td>'
+        +'<td style="padding:8px 12px;text-align:center;font-size:13px;font-weight:700;color:'+(prazo<=3?'#1a8c4e':prazo<=6?'#c07000':'var(--hd)')+'">'+prazo+(prazo===1?' mês':' meses')+'</td>'
+        +'</tr>';
     }).join('');
-    return '<tr style="background:'+cor+'"><td colspan="6" style="padding:6px 12px;font-size:10px;font-weight:700;color:#fff;letter-spacing:.5px">'+label.toUpperCase()+'</td></tr>'
-      + rows;
   }
 
-  var html = '<table style="width:100%;border-collapse:collapse">'
-    + '<thead><tr style="background:linear-gradient(90deg,#071d4a,#0B3D91);color:#fff">'
-    + '<th style="padding:9px 12px;text-align:left;font-size:11px">Escopo</th>'
-    + '<th style="padding:9px 12px;text-align:right;font-size:11px">Valor do Escopo</th>'
-    + '<th style="padding:9px 12px;text-align:right;font-size:11px">Prod. Mensal/Rec.</th>'
-    + '<th style="padding:9px 12px;text-align:center;font-size:11px">Recursos</th>'
-    + '<th style="padding:9px 12px;text-align:right;font-size:11px">Prod. Mensal Equipe</th>'
-    + '<th style="padding:9px 12px;text-align:center;font-size:11px">Prazo Máximo</th>'
-    + '</tr></thead><tbody>';
+  var resumo = '<table style="width:100%;border-collapse:collapse;margin-bottom:18px">'
+    +'<thead><tr style="background:linear-gradient(90deg,#071d4a,#0B3D91);color:#fff">'
+    +'<th style="padding:9px 12px;text-align:left;font-size:11px">Escopo</th>'
+    +'<th style="padding:9px 12px;text-align:right;font-size:11px">Valor</th>'
+    +'<th style="padding:9px 12px;text-align:right;font-size:11px">Prod./Rec.</th>'
+    +'<th style="padding:9px 12px;text-align:center;font-size:11px">Recursos</th>'
+    +'<th style="padding:9px 12px;text-align:right;font-size:11px">Prod. Equipe</th>'
+    +'<th style="padding:9px 12px;text-align:center;font-size:11px">Prazo</th>'
+    +'</tr></thead><tbody>';
+  resumo += scopeRow('⚙️ Fabricação (30%)', '#0B3D91', vlFab, prodFab, recFab);
+  resumo += scopeRow('🔧 Montagem (50%)', '#00A8E8', vlMon, prodMon, recMon);
+  // Book na tabela sem recurso
+  resumo += '<tr style="border-bottom:1px solid #e8eef7">'
+    +'<td style="padding:8px 12px;font-size:11px;color:var(--hmu)">📚 Book (20%)</td>'
+    +'<td style="padding:8px 12px;text-align:right;font-size:11px;font-weight:600;color:var(--hb)">R$ '+_planBRL(vlBook)+'</td>'
+    +'<td colspan="3" style="padding:8px 12px;text-align:center;font-size:10px;color:var(--hmu)">Medido na entrega final</td>'
+    +'<td style="padding:8px 12px;text-align:center;font-size:11px;font-weight:600;color:#1a8c4e">—</td></tr>';
+  resumo += '</tbody></table>';
 
-  html += buildSection('⚙️ Fabricação (30%)',  '#0B3D91', vlFab,  st.prodFab  || 0, st.recFab  || []);
-  html += buildSection('🔧 Montagem (50%)',    '#00A8E8', vlMon,  st.prodMon  || 0, st.recMon  || []);
-  html += buildSection('📚 Book (20%)',        '#1a8c4e', vlBook, st.prodBook || 0, st.recBook || []);
+  // ── Fluxo mês a mês ──
+  var maxRecFab  = recFab.length ? Math.max.apply(null, recFab) : 0;
+  var maxRecMon  = recMon.length ? Math.max.apply(null, recMon) : 0;
+  var mensalFab  = maxRecFab * prodFab;
+  var mensalMon  = maxRecMon * prodMon;
+  var mensalTotal = mensalFab + mensalMon;
 
-  if (!html.includes('<tr style="background:#')) {
-    html += '<tr><td colspan="6" style="padding:12px;color:var(--hmu);font-size:11px;text-align:center">Preencha a produção mensal e adicione recursos em cada escopo.</td></tr>';
+  if (mensalTotal <= 0) {
+    tbl.innerHTML = resumo + '<div style="color:var(--hmu);font-size:11px;padding:8px 0">Preencha produção e recursos para ver o fluxo mensal.</div>';
+    return;
   }
-  html += '</tbody></table>';
-  tbl.innerHTML = html;
+
+  var mesesFab  = mensalFab  > 0 ? Math.ceil(vlFab  / mensalFab)  : 0;
+  var mesesMon  = mensalMon  > 0 ? Math.ceil(vlMon  / mensalMon)  : 0;
+  var maxMeses  = Math.max(mesesFab, mesesMon, 1);
+
+  var fluxo = '<div style="font-size:12px;font-weight:700;color:var(--hb);margin-bottom:8px">📊 Saldo do Projeto — Mês a Mês</div>'
+    +'<div style="font-size:10px;color:var(--hmu);margin-bottom:10px">Recursos considerados: Fab '+maxRecFab+' · Mon '+maxRecMon+'. Book é medido na entrega final.</div>'
+    +'<table style="width:100%;border-collapse:collapse"><thead><tr style="background:linear-gradient(90deg,#071d4a,#0B3D91);color:#fff">'
+    +'<th style="padding:8px 10px;font-size:10px;text-align:center">Mês</th>'
+    +'<th style="padding:8px 10px;font-size:10px;text-align:right">Fab Mensal</th>'
+    +'<th style="padding:8px 10px;font-size:10px;text-align:right">Fab Acum.</th>'
+    +'<th style="padding:8px 10px;font-size:10px;text-align:right">Saldo Fab</th>'
+    +'<th style="padding:8px 10px;font-size:10px;text-align:right">Mon Mensal</th>'
+    +'<th style="padding:8px 10px;font-size:10px;text-align:right">Mon Acum.</th>'
+    +'<th style="padding:8px 10px;font-size:10px;text-align:right">Saldo Mon</th>'
+    +'<th style="padding:8px 10px;font-size:10px;text-align:right;font-weight:700">Total Acum.</th>'
+    +'<th style="padding:8px 10px;font-size:10px;text-align:right;font-weight:700">Saldo Projeto</th>'
+    +'<th style="padding:8px 10px;font-size:10px;text-align:center">%</th>'
+    +'</tr></thead><tbody>';
+
+  var acumFab = 0, acumMon = 0;
+  var valorFabMon = vlFab + vlMon; // saldo considerando só fab+mon (book na entrega)
+  for (var mes = 1; mes <= maxMeses; mes++) {
+    var gFab = (mes <= mesesFab && mensalFab > 0) ? Math.min(mensalFab, vlFab - acumFab) : 0;
+    var gMon = (mes <= mesesMon && mensalMon > 0) ? Math.min(mensalMon, vlMon - acumMon) : 0;
+    if (gFab < 0) gFab = 0;
+    if (gMon < 0) gMon = 0;
+    acumFab += gFab;
+    acumMon += gMon;
+    var acumTotal = acumFab + acumMon;
+    var saldoFab = vlFab - acumFab;
+    var saldoMon = vlMon - acumMon;
+    var saldoProj = valor - acumTotal - vlBook; // book fica reservado
+    var pctConsumo = valorFabMon > 0 ? Math.round(acumTotal / valorFabMon * 100) : 0;
+
+    var alertFab = acumFab > vlFab;
+    var alertMon = acumMon > vlMon;
+    var alertProj = saldoProj < 0;
+    var bg = mes % 2 === 0 ? '#f8fafd' : '#fff';
+    if (alertProj) bg = '#fff0f0';
+
+    fluxo += '<tr style="background:'+bg+';border-bottom:1px solid #e8eef7">'
+      +'<td style="padding:6px 10px;text-align:center;font-size:11px;font-weight:600">'+mes+'</td>'
+      +'<td style="padding:6px 10px;text-align:right;font-size:11px">'+(gFab>0?'R$ '+_planBRL(gFab):'—')+'</td>'
+      +'<td style="padding:6px 10px;text-align:right;font-size:11px;font-weight:600">R$ '+_planBRL(acumFab)+'</td>'
+      +'<td style="padding:6px 10px;text-align:right;font-size:11px;font-weight:600;color:'+(alertFab?'var(--hd)':'#1a8c4e')+'">'+(alertFab?'⚠️ ':'')+'R$ '+_planBRL(Math.abs(saldoFab))+(alertFab?' DEFICIT':'')+'</td>'
+      +'<td style="padding:6px 10px;text-align:right;font-size:11px">'+(gMon>0?'R$ '+_planBRL(gMon):'—')+'</td>'
+      +'<td style="padding:6px 10px;text-align:right;font-size:11px;font-weight:600">R$ '+_planBRL(acumMon)+'</td>'
+      +'<td style="padding:6px 10px;text-align:right;font-size:11px;font-weight:600;color:'+(alertMon?'var(--hd)':'#1a8c4e')+'">'+(alertMon?'⚠️ ':'')+'R$ '+_planBRL(Math.abs(saldoMon))+(alertMon?' DEFICIT':'')+'</td>'
+      +'<td style="padding:6px 10px;text-align:right;font-size:11px;font-weight:700;color:var(--hb)">R$ '+_planBRL(acumTotal)+'</td>'
+      +'<td style="padding:6px 10px;text-align:right;font-size:11px;font-weight:700;color:'+(alertProj?'#fff':'#1a8c4e')+';'+(alertProj?'background:var(--hd);border-radius:4px;':'')+'">R$ '+_planBRL(Math.abs(saldoProj))+(alertProj?' ⛔':'')+'</td>'
+      +'<td style="padding:6px 10px;text-align:center;font-size:11px;font-weight:700"><div style="background:#e8eef7;border-radius:10px;height:18px;overflow:hidden;min-width:48px;position:relative"><div style="height:100%;background:'+(pctConsumo>100?'var(--hd)':pctConsumo>80?'#c07000':'#1a8c4e')+';width:'+Math.min(pctConsumo,100)+'%;border-radius:10px"></div><span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:'+(pctConsumo>50?'#fff':'var(--ht)')+'">'+pctConsumo+'%</span></div></td>'
+      +'</tr>';
+  }
+  // Linha do Book na entrega final
+  fluxo += '<tr style="background:#edf7ed;border-top:2px solid #a5d6a7">'
+    +'<td style="padding:8px 10px;text-align:center;font-size:11px;font-weight:700;color:#1a8c4e">Final</td>'
+    +'<td colspan="6" style="padding:8px 10px;font-size:11px;color:#1a8c4e;font-weight:600">📚 Book — Entrega de documentação</td>'
+    +'<td style="padding:8px 10px;text-align:right;font-size:11px;font-weight:700;color:#1a8c4e">R$ '+_planBRL(vlBook)+'</td>'
+    +'<td style="padding:8px 10px;text-align:right;font-size:11px;font-weight:700;color:#1a8c4e">R$ 0</td>'
+    +'<td style="padding:8px 10px;text-align:center;font-size:10px;font-weight:700;color:#1a8c4e">100%</td>'
+    +'</tr>';
+  fluxo += '</tbody></table>';
+
+  tbl.innerHTML = resumo + fluxo;
 }
 
 function renderPlanejamento(discTabs, bc) {
@@ -2381,14 +2458,10 @@ function renderPlanejamento(discTabs, bc) {
     +'<div id="fin-wrap-mon">'+_finRecRows('mon', finState.recMon||[4])+'</div>'
     +'<button onclick="planAddRec(\'mon\')" style="font-size:10px;padding:3px 10px;border-radius:5px;border:1px solid #0077b6;color:#0077b6;background:#fff;cursor:pointer">+ Recurso</button>'
     +'</div>'
-    // Book 20%
+    // Book 20% — sem recursos, medido na entrega final
     +'<div style="background:#edf7ed;border:1px solid #a5d6a7;border-radius:10px;padding:12px">'
     +'<div style="font-size:11px;font-weight:700;color:#1a8c4e;margin-bottom:8px">📚 Book (20%)'+(finState.valor?' — <span style="font-weight:400">R$ '+_planBRL(finState.valor*0.2)+'</span>':'')+'</div>'
-    +'<label class="mats-add-lbl">Prod. Mensal/Recurso (R$)</label>'
-    +'<input id="fin-prod-book" type="text" inputmode="numeric" class="mats-add-inp" style="margin-bottom:8px" placeholder="Ex: 15.000" value="'+(finState.prodBook?_planBRL(finState.prodBook):'')+'" oninput="_planMaskBRL(this)" onchange="planUpdateFin()" onblur="planUpdateFin()">'
-    +'<label class="mats-add-lbl">Recursos</label>'
-    +'<div id="fin-wrap-book">'+_finRecRows('book', finState.recBook||[2])+'</div>'
-    +'<button onclick="planAddRec(\'book\')" style="font-size:10px;padding:3px 10px;border-radius:5px;border:1px solid #1a8c4e;color:#1a8c4e;background:#fff;cursor:pointer">+ Recurso</button>'
+    +'<div style="font-size:10px;color:var(--hmu);line-height:1.5">Documentação técnica.<br>Medido na entrega total do projeto.<br>Sem alocação de recurso mensal.</div>'
     +'</div>'
     +'</div>'
     +'<div id="fin-result-table"></div>'
