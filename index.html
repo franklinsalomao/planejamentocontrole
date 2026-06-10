@@ -2212,64 +2212,114 @@ function _planRefreshTotals() {
 }
 
 // ── Financeiro ──
+function _planBRL(n) {
+  if (!n) return '';
+  return Number(n).toLocaleString('pt-BR', {minimumFractionDigits:0, maximumFractionDigits:0});
+}
+function _planParseBRL(s) {
+  // Remove R$, spaces, dots (thousand sep), replace comma with dot
+  var clean = String(s).replace(/R\$\s*/g,'').replace(/\./g,'').replace(',','.').trim();
+  return parseFloat(clean) || 0;
+}
+function _planMaskBRL(el) {
+  // Strip non-digits
+  var raw = el.value.replace(/\D/g,'');
+  if (!raw) { el.value = ''; return; }
+  var n = parseInt(raw, 10);
+  el.value = n.toLocaleString('pt-BR');
+}
+function planMaskBrl(el) {
+  var raw = (el.value || '').replace(/\./g,'').replace(',','.').replace(/[^0-9.]/g,'');
+  var n = parseFloat(raw);
+  if (Number.isFinite(n) && n > 0) {
+    el.value = Math.round(n).toLocaleString('pt-BR');
+  }
+}
+// Prazo em meses com no máximo 2 casas, sem decimais desnecessários
+function _planFmtMeses(m) {
+  if (!Number.isFinite(m) || m <= 0) return '—';
+  var r = Math.ceil(m);
+  return r + (r === 1 ? ' mês' : ' meses');
+}
+
 function planUpdateFin() {
-  var valor     = parseFloat((document.getElementById('fin-valor')||{}).value||'0')||0;
-  var prodRec   = parseFloat((document.getElementById('fin-prod-rec')||{}).value||'0')||0;
-  var wrap      = document.getElementById('fin-linhas-wrap'); if (!wrap) return;
-  var linhas    = wrap.querySelectorAll('.fin-linha');
-  var rows = [];
-  linhas.forEach(function(ln){
-    var rec = parseInt((ln.querySelector('input')||{}).value||'0')||0;
-    rows.push(rec);
-  });
-  _planFinState = { valor:valor, prodRec:prodRec, linhas:rows };
+  var valor   = _planParseBRL((document.getElementById('fin-valor')   ||{}).value||'0');
+  var prodFab = _planParseBRL((document.getElementById('fin-prod-fab')||{}).value||'0');
+  var prodMon = _planParseBRL((document.getElementById('fin-prod-mon')||{}).value||'0');
+  var prodBook= _planParseBRL((document.getElementById('fin-prod-book')||{}).value||'0');
+  function getRec(id) {
+    var el = document.getElementById(id); return el ? (parseInt(el.value)||0) : 0;
+  }
+  // Collect resource rows per scope
+  var recFab = [], recMon = [], recBook = [];
+  (document.querySelectorAll('.fin-row-fab input')||[]).forEach(function(el){ var v=parseInt(el.value)||0; if(v) recFab.push(v); });
+  (document.querySelectorAll('.fin-row-mon input')||[]).forEach(function(el){ var v=parseInt(el.value)||0; if(v) recMon.push(v); });
+  (document.querySelectorAll('.fin-row-book input')||[]).forEach(function(el){ var v=parseInt(el.value)||0; if(v) recBook.push(v); });
+  _planFinState = { valor:valor, prodFab:prodFab, prodMon:prodMon, prodBook:prodBook,
+    recFab:recFab, recMon:recMon, recBook:recBook };
   _planSaveFin();
   _planRenderFinTable();
 }
 
-function planAddLinha() {
-  var wrap = document.getElementById('fin-linhas-wrap'); if (!wrap) return;
+function planAddRec(scope) {
+  var wrap = document.getElementById('fin-wrap-'+scope); if (!wrap) return;
   var ln = document.createElement('div');
-  ln.className = 'fin-linha';
+  ln.className = 'fin-linha fin-row-'+scope;
   ln.style.cssText = 'display:flex;align-items:center;gap:8px;margin-bottom:6px';
-  ln.innerHTML = '<input type="number" min="1" value="1" style="width:70px;padding:5px 8px;border:1px solid var(--hbr);border-radius:6px;font-size:12px" onchange="planUpdateFin()">'
-    + '<button onclick="this.parentElement.remove();planUpdateFin()" style="background:#fdecea;border:1px solid #e0c8c8;color:var(--hd);border-radius:5px;padding:3px 9px;cursor:pointer;font-size:11px">✕</button>';
+  ln.innerHTML = '<input type="number" min="1" value="1" style="width:60px;padding:4px 8px;border:1px solid var(--hbr);border-radius:6px;font-size:12px" onchange="planUpdateFin()">'
+    + '<span style="font-size:10px;color:var(--hmu)">recursos</span>'
+    + '<button onclick="this.parentElement.remove();planUpdateFin()" style="background:#fdecea;border:1px solid #e0c8c8;color:var(--hd);border-radius:5px;padding:2px 8px;cursor:pointer;font-size:10px">✕</button>';
   wrap.appendChild(ln);
   planUpdateFin();
 }
 
 function _planRenderFinTable() {
   var tbl = document.getElementById('fin-result-table'); if (!tbl) return;
-  if (!_planFinState || !_planFinState.valor || !_planFinState.prodRec) {
-    tbl.innerHTML = '<div style="color:var(--hmu);font-size:11px;padding:10px 0">Preencha o Valor do Projeto e a Produção por Recurso.</div>';
-    return;
+  var st = _planFinState || {};
+  var valor = st.valor || 0;
+  if (!valor) { tbl.innerHTML = '<div style="color:var(--hmu);font-size:11px;padding:8px 0">Preencha o Valor do Projeto para calcular.</div>'; return; }
+
+  // Distribuição: 30% Fab / 50% Mon / 20% Book
+  var vlFab  = valor * 0.30;
+  var vlMon  = valor * 0.50;
+  var vlBook = valor * 0.20;
+
+  function buildSection(label, cor, vl, prodRec, recs) {
+    if (!prodRec || !recs.length) return '';
+    var rows = recs.map(function(rec, i) {
+      var prodEq   = rec * prodRec;
+      var prazo    = vl / prodEq;
+      var bg = i%2===0 ? '#fff' : '#f8fafd';
+      return '<tr style="background:'+bg+';border-bottom:1px solid #e8eef7">'
+        + '<td style="padding:8px 12px;font-size:11px;color:var(--hmu)">'+label+'</td>'
+        + '<td style="padding:8px 12px;text-align:right;font-size:11px;font-weight:600;color:var(--hb)">R$ '+vl.toLocaleString('pt-BR',{maximumFractionDigits:0})+'</td>'
+        + '<td style="padding:8px 12px;text-align:right;font-size:11px">R$ '+prodRec.toLocaleString('pt-BR',{maximumFractionDigits:0})+'</td>'
+        + '<td style="padding:8px 12px;text-align:center;font-size:13px;font-weight:700;color:var(--hb)">'+rec+'</td>'
+        + '<td style="padding:8px 12px;text-align:right;font-size:11px;font-weight:600;color:#1a8c4e">R$ '+prodEq.toLocaleString('pt-BR',{maximumFractionDigits:0})+'</td>'
+        + '<td style="padding:8px 12px;text-align:center;font-size:13px;font-weight:700;color:'+(prazo<=3?'#1a8c4e':prazo<=6?'#c07000':'var(--hd)')+'">'+_planFmtMeses(prazo)+'</td>'
+        + '</tr>';
+    }).join('');
+    return '<tr style="background:'+cor+'"><td colspan="6" style="padding:6px 12px;font-size:10px;font-weight:700;color:#fff;letter-spacing:.5px">'+label.toUpperCase()+'</td></tr>'
+      + rows;
   }
-  var valor=_planFinState.valor, prodRec=_planFinState.prodRec, rows=_planFinState.linhas||[];
-  if (!rows.length) { tbl.innerHTML='<div style="color:var(--hmu);font-size:11px;padding:10px 0">Adicione ao menos uma linha de recursos.</div>'; return; }
+
   var html = '<table style="width:100%;border-collapse:collapse">'
     + '<thead><tr style="background:linear-gradient(90deg,#071d4a,#0B3D91);color:#fff">'
-    + '<th style="padding:9px 12px;text-align:left;font-size:11px;border-radius:6px 0 0 0">Valor do Projeto</th>'
-    + '<th style="padding:9px 12px;text-align:center;font-size:11px">Produção Mensal<br>por Recurso</th>'
+    + '<th style="padding:9px 12px;text-align:left;font-size:11px">Escopo</th>'
+    + '<th style="padding:9px 12px;text-align:right;font-size:11px">Valor do Escopo</th>'
+    + '<th style="padding:9px 12px;text-align:right;font-size:11px">Prod. Mensal/Rec.</th>'
     + '<th style="padding:9px 12px;text-align:center;font-size:11px">Recursos</th>'
-    + '<th style="padding:9px 12px;text-align:center;font-size:11px">Produção Mensal<br>da Equipe</th>'
-    + '<th style="padding:9px 12px;text-align:center;font-size:11px;border-radius:0 6px 0 0">Prazo Máximo</th>'
+    + '<th style="padding:9px 12px;text-align:right;font-size:11px">Prod. Mensal Equipe</th>'
+    + '<th style="padding:9px 12px;text-align:center;font-size:11px">Prazo Máximo</th>'
     + '</tr></thead><tbody>';
-  rows.forEach(function(rec, i){
-    if (!rec) return;
-    var prodEquipe = rec * prodRec;
-    var prazoMeses = valor / prodEquipe;
-    var bg = i%2===0 ? '#fff' : '#f8fafd';
-    var prazoFmt = Number.isInteger(Math.round(prazoMeses*100)/100)
-      ? Math.round(prazoMeses) + ' meses'
-      : prazoMeses.toFixed(2).replace('.',',') + ' meses';
-    html += '<tr style="background:'+bg+';border-bottom:1px solid #e8eef7">'
-      + '<td style="padding:10px 12px;font-size:12px;font-weight:600;color:var(--hb)">R$ '+valor.toLocaleString('pt-BR')+'</td>'
-      + '<td style="padding:10px 12px;text-align:center;font-size:12px">R$ '+prodRec.toLocaleString('pt-BR')+'</td>'
-      + '<td style="padding:10px 12px;text-align:center;font-size:13px;font-weight:700;color:var(--hb)">'+rec+'</td>'
-      + '<td style="padding:10px 12px;text-align:center;font-size:12px;font-weight:600;color:#1a8c4e">R$ '+prodEquipe.toLocaleString('pt-BR')+'</td>'
-      + '<td style="padding:10px 12px;text-align:center;font-size:13px;font-weight:700;color:'+(prazoMeses<=3?'#1a8c4e':prazoMeses<=6?'#c07000':'var(--hd)')+'">'+prazoFmt+'</td>'
-      + '</tr>';
-  });
+
+  html += buildSection('⚙️ Fabricação (30%)',  '#0B3D91', vlFab,  st.prodFab  || 0, st.recFab  || []);
+  html += buildSection('🔧 Montagem (50%)',    '#00A8E8', vlMon,  st.prodMon  || 0, st.recMon  || []);
+  html += buildSection('📚 Book (20%)',        '#1a8c4e', vlBook, st.prodBook || 0, st.recBook || []);
+
+  if (!html.includes('<tr style="background:#')) {
+    html += '<tr><td colspan="6" style="padding:12px;color:var(--hmu);font-size:11px;text-align:center">Preencha a produção mensal e adicione recursos em cada escopo.</td></tr>';
+  }
   html += '</tbody></table>';
   tbl.innerHTML = html;
 }
@@ -2293,26 +2343,56 @@ function renderPlanejamento(discTabs, bc) {
 
   // ── Seção Físico × Financeiro ──
   var finState = _planFinState || {};
-  var finLinhas = finState.linhas || [4, 6, 10];
-  var finLinhasHtml = finLinhas.map(function(r){
-    return '<div class="fin-linha" style="display:flex;align-items:center;gap:8px;margin-bottom:6px">'
-      + '<input type="number" min="1" value="'+r+'" style="width:70px;padding:5px 8px;border:1px solid var(--hbr);border-radius:6px;font-size:12px" onchange="planUpdateFin()">'
-      + '<button onclick="this.parentElement.remove();planUpdateFin()" style="background:#fdecea;border:1px solid #e0c8c8;color:var(--hd);border-radius:5px;padding:3px 9px;cursor:pointer;font-size:11px">✕</button>'
-      + '</div>';
-  }).join('');
+
+  function _finRecRows(scope, recs) {
+    return (recs||[1]).map(function(r){
+      return '<div class="fin-linha fin-row-'+scope+'" style="display:flex;align-items:center;gap:6px;margin-bottom:5px">'
+        +'<input type="number" min="1" value="'+r+'" style="width:55px;padding:4px 6px;border:1px solid var(--hbr);border-radius:6px;font-size:11px;text-align:center" onchange="planUpdateFin()">'
+        +'<span style="font-size:9px;color:var(--hmu)">rec.</span>'
+        +'<button onclick="this.parentElement.remove();planUpdateFin()" style="background:#fdecea;border:1px solid #e0c8c8;color:var(--hd);border-radius:4px;padding:2px 6px;cursor:pointer;font-size:9px">✕</button>'
+        +'</div>';
+    }).join('');
+  }
 
   var finSection = '<div style="margin:0 16px 16px;background:#fff;border:1px solid #d0d8e8;border-radius:12px;overflow:hidden">'
-    + '<div style="background:linear-gradient(100deg,#071d4a,#0B3D91);padding:12px 18px;color:#fff;font-size:13px;font-weight:700">💰 Controle Físico × Financeiro</div>'
-    + '<div style="padding:16px 18px">'
-    + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:16px">'
-    + '<div><label class="mats-add-lbl">Valor do Projeto (R$)</label><input id="fin-valor" type="number" min="0" class="mats-add-inp" placeholder="Ex: 300000" value="'+(finState.valor||'')+'" onchange="planUpdateFin()" onblur="planUpdateFin()"></div>'
-    + '<div><label class="mats-add-lbl">Produção Mensal por Recurso (R$)</label><input id="fin-prod-rec" type="number" min="0" class="mats-add-inp" placeholder="Ex: 15000" value="'+(finState.prodRec||'')+'" onchange="planUpdateFin()" onblur="planUpdateFin()"></div>'
-    + '<div><label class="mats-add-lbl">Linhas de Recursos</label>'
-    + '<div id="fin-linhas-wrap">'+finLinhasHtml+'</div>'
-    + '<button onclick="planAddLinha()" style="margin-top:4px;font-size:11px;padding:4px 12px;border-radius:6px;border:1px solid var(--hbm);color:var(--hbm);background:#fff;cursor:pointer">+ Adicionar linha</button>'
-    + '</div></div>'
-    + '<div id="fin-result-table"></div>'
-    + '</div></div>';
+    +'<div style="background:linear-gradient(100deg,#071d4a,#0B3D91);padding:12px 18px;color:#fff;font-size:13px;font-weight:700">💰 Controle Físico × Financeiro</div>'
+    +'<div style="padding:16px 18px">'
+    // Valor global
+    +'<div style="margin-bottom:16px;max-width:300px"><label class="mats-add-lbl">Valor Global do Projeto (R$)</label>'
+    +'<input id="fin-valor" type="text" inputmode="numeric" class="mats-add-inp" style="font-size:15px;font-weight:700" placeholder="Ex: 300.000" value="'+(finState.valor?_planBRL(finState.valor):'')+'" oninput="_planMaskBRL(this)" onchange="planUpdateFin()" onblur="planUpdateFin()">'
+    +'<div style="font-size:9px;color:var(--hmu);margin-top:4px">30% Fabricação · 50% Montagem · 20% Book</div></div>'
+    // 3 escopos lado a lado
+    +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:16px">'
+    // Fabricação 30%
+    +'<div style="background:#f0f4fb;border:1px solid #d0d8e8;border-radius:10px;padding:12px">'
+    +'<div style="font-size:11px;font-weight:700;color:#0B3D91;margin-bottom:8px">⚙️ Fabricação (30%)'+(finState.valor?' — <span style="font-weight:400">R$ '+_planBRL(finState.valor*0.3)+'</span>':'')+'</div>'
+    +'<label class="mats-add-lbl">Prod. Mensal/Recurso (R$)</label>'
+    +'<input id="fin-prod-fab" type="text" inputmode="numeric" class="mats-add-inp" style="margin-bottom:8px" placeholder="Ex: 15.000" value="'+(finState.prodFab?_planBRL(finState.prodFab):'')+'" oninput="_planMaskBRL(this)" onchange="planUpdateFin()" onblur="planUpdateFin()">'
+    +'<label class="mats-add-lbl">Recursos</label>'
+    +'<div id="fin-wrap-fab">'+_finRecRows('fab', finState.recFab||[4])+'</div>'
+    +'<button onclick="planAddRec(\'fab\')" style="font-size:10px;padding:3px 10px;border-radius:5px;border:1px solid #0B3D91;color:#0B3D91;background:#fff;cursor:pointer">+ Recurso</button>'
+    +'</div>'
+    // Montagem 50%
+    +'<div style="background:#e8f8fd;border:1px solid #b0ddf0;border-radius:10px;padding:12px">'
+    +'<div style="font-size:11px;font-weight:700;color:#0077b6;margin-bottom:8px">🔧 Montagem (50%)'+(finState.valor?' — <span style="font-weight:400">R$ '+_planBRL(finState.valor*0.5)+'</span>':'')+'</div>'
+    +'<label class="mats-add-lbl">Prod. Mensal/Recurso (R$)</label>'
+    +'<input id="fin-prod-mon" type="text" inputmode="numeric" class="mats-add-inp" style="margin-bottom:8px" placeholder="Ex: 15.000" value="'+(finState.prodMon?_planBRL(finState.prodMon):'')+'" oninput="_planMaskBRL(this)" onchange="planUpdateFin()" onblur="planUpdateFin()">'
+    +'<label class="mats-add-lbl">Recursos</label>'
+    +'<div id="fin-wrap-mon">'+_finRecRows('mon', finState.recMon||[4])+'</div>'
+    +'<button onclick="planAddRec(\'mon\')" style="font-size:10px;padding:3px 10px;border-radius:5px;border:1px solid #0077b6;color:#0077b6;background:#fff;cursor:pointer">+ Recurso</button>'
+    +'</div>'
+    // Book 20%
+    +'<div style="background:#edf7ed;border:1px solid #a5d6a7;border-radius:10px;padding:12px">'
+    +'<div style="font-size:11px;font-weight:700;color:#1a8c4e;margin-bottom:8px">📚 Book (20%)'+(finState.valor?' — <span style="font-weight:400">R$ '+_planBRL(finState.valor*0.2)+'</span>':'')+'</div>'
+    +'<label class="mats-add-lbl">Prod. Mensal/Recurso (R$)</label>'
+    +'<input id="fin-prod-book" type="text" inputmode="numeric" class="mats-add-inp" style="margin-bottom:8px" placeholder="Ex: 15.000" value="'+(finState.prodBook?_planBRL(finState.prodBook):'')+'" oninput="_planMaskBRL(this)" onchange="planUpdateFin()" onblur="planUpdateFin()">'
+    +'<label class="mats-add-lbl">Recursos</label>'
+    +'<div id="fin-wrap-book">'+_finRecRows('book', finState.recBook||[2])+'</div>'
+    +'<button onclick="planAddRec(\'book\')" style="font-size:10px;padding:3px 10px;border-radius:5px;border:1px solid #1a8c4e;color:#1a8c4e;background:#fff;cursor:pointer">+ Recurso</button>'
+    +'</div>'
+    +'</div>'
+    +'<div id="fin-result-table"></div>'
+    +'</div></div>';
 
   // ── Tabela por isométrico ──
   var rows = [];
