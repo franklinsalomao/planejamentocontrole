@@ -2213,8 +2213,8 @@ function _planRefreshTotals() {
   var list = currentProjId ? projIsos(currentProjId) : isos;
   var st = _planFinState || {};
   // Recursos do dimensionamento financeiro
-  var recFab  = (st.recFab  || []).length ? Math.max.apply(null, st.recFab)  : 0;
-  var recMon  = (st.recMon  || []).length ? Math.max.apply(null, st.recMon)  : 0;
+  var recFab  = (st.caldFab||0) + (st.soldFab||0);
+  var recMon  = (st.caldMon||0) + (st.soldMon||0);
 
   var totalHhFab = 0, totalHhMon = 0;
   list.forEach(function(e){
@@ -2270,150 +2270,149 @@ function _planFmtMeses(m) {
 }
 
 function planUpdateFin() {
-  var valor   = _planParseBRL((document.getElementById('fin-valor')   ||{}).value||'0');
-  var prodFab = _planParseBRL((document.getElementById('fin-prod-fab')||{}).value||'0');
-  var prodMon = _planParseBRL((document.getElementById('fin-prod-mon')||{}).value||'0');
-  var prodBook= _planParseBRL((document.getElementById('fin-prod-book')||{}).value||'0');
-  function getRec(id) {
-    var el = document.getElementById(id); return el ? (parseInt(el.value)||0) : 0;
-  }
-  // Collect resource rows per scope
-  var recFab = [], recMon = [], recBook = [];
-  (document.querySelectorAll('.fin-row-fab input')||[]).forEach(function(el){ var v=parseInt(el.value)||0; if(v) recFab.push(v); });
-  (document.querySelectorAll('.fin-row-mon input')||[]).forEach(function(el){ var v=parseInt(el.value)||0; if(v) recMon.push(v); });
-  // Book sem recursos
-  _planFinState = { valor:valor, prodFab:prodFab, prodMon:prodMon,
-    recFab:recFab, recMon:recMon };
+  var valor = _planParseBRL((document.getElementById('fin-valor')||{}).value||'0');
+  // Fabricação
+  var prodCaldFab = _planParseBRL((document.getElementById('fin-pcald-fab')||{}).value||'0');
+  var prodSoldFab = _planParseBRL((document.getElementById('fin-psold-fab')||{}).value||'0');
+  var caldFab = parseInt((document.getElementById('fin-cald-fab')||{}).value||'0')||0;
+  var soldFab = parseInt((document.getElementById('fin-sold-fab')||{}).value||'0')||0;
+  // Montagem
+  var prodCaldMon = _planParseBRL((document.getElementById('fin-pcald-mon')||{}).value||'0');
+  var prodSoldMon = _planParseBRL((document.getElementById('fin-psold-mon')||{}).value||'0');
+  var caldMon = parseInt((document.getElementById('fin-cald-mon')||{}).value||'0')||0;
+  var soldMon = parseInt((document.getElementById('fin-sold-mon')||{}).value||'0')||0;
+
+  _planFinState = {
+    valor: valor,
+    prodCaldFab: prodCaldFab, prodSoldFab: prodSoldFab, caldFab: caldFab, soldFab: soldFab,
+    prodCaldMon: prodCaldMon, prodSoldMon: prodSoldMon, caldMon: caldMon, soldMon: soldMon
+  };
   _planSaveFin();
   _planRenderFinTable();
   _planRefreshTotals();
 }
 
-function planAddRec(scope) {
-  var wrap = document.getElementById('fin-wrap-'+scope); if (!wrap) return;
-  var ln = document.createElement('div');
-  ln.className = 'fin-linha fin-row-'+scope;
-  ln.style.cssText = 'display:flex;align-items:center;gap:8px;margin-bottom:6px';
-  ln.innerHTML = '<input type="number" min="1" value="1" style="width:60px;padding:4px 8px;border:1px solid var(--hbr);border-radius:6px;font-size:12px" onchange="planUpdateFin()">'
-    + '<span style="font-size:10px;color:var(--hmu)">recursos</span>'
-    + '<button onclick="this.parentElement.remove();planUpdateFin()" style="background:#fdecea;border:1px solid #e0c8c8;color:var(--hd);border-radius:5px;padding:2px 8px;cursor:pointer;font-size:10px">✕</button>';
-  wrap.appendChild(ln);
-  planUpdateFin();
-}
+
 
 function _planRenderFinTable() {
   var tbl = document.getElementById('fin-result-table'); if (!tbl) return;
   var st = _planFinState || {};
   var valor = st.valor || 0;
-  if (!valor) { tbl.innerHTML = '<div style="color:var(--hmu);font-size:11px;padding:8px 0">Preencha o Valor do Projeto para calcular.</div>'; return; }
+  if (!valor) { tbl.innerHTML = '<div style="color:var(--hmu);font-size:11px;padding:8px 0">Preencha o Valor do Projeto.</div>'; return; }
 
   var vlFab=valor*0.30, vlMon=valor*0.50, vlBook=valor*0.20;
-  var prodFab=st.prodFab||0, prodMon=st.prodMon||0;
-  var recFab=st.recFab||[], recMon=st.recMon||[];
-  var maxRecFab=recFab.length?Math.max.apply(null,recFab):0;
-  var maxRecMon=recMon.length?Math.max.apply(null,recMon):0;
-  var custoFab=maxRecFab*prodFab, custoMon=maxRecMon*prodMon;
-  var custoTotal=custoFab+custoMon;
-  var orcExec=vlFab+vlMon; // orçamento executável (sem book)
+  var orcExec = vlFab + vlMon;
 
-  // ── Painel de orçamento ──
-  var orcamento = '<div style="background:linear-gradient(135deg,#071d4a,#0B3D91);border-radius:10px;padding:16px 20px;color:#fff;margin-bottom:16px">'
+  // Custos mensais por escopo
+  var custoFab = (st.caldFab||0)*(st.prodCaldFab||0) + (st.soldFab||0)*(st.prodSoldFab||0);
+  var custoMon = (st.caldMon||0)*(st.prodCaldMon||0) + (st.soldMon||0)*(st.prodSoldMon||0);
+  var recTotalFab = (st.caldFab||0) + (st.soldFab||0);
+  var recTotalMon = (st.caldMon||0) + (st.soldMon||0);
+
+  // ── Painel de Orçamento ──
+  var orc = '<div style="background:linear-gradient(135deg,#071d4a,#0B3D91);border-radius:10px;padding:16px 20px;color:#fff;margin-bottom:16px">'
     +'<div style="font-size:14px;font-weight:700;margin-bottom:12px">💰 Orçamento do Projeto</div>'
     +'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px">'
-    +'<div><div style="font-size:9px;opacity:.7;text-transform:uppercase;letter-spacing:.5px">Valor Global</div><div style="font-size:20px;font-weight:800;margin-top:2px">R$ '+_planBRL(valor)+'</div></div>'
-    +'<div style="border-left:1px solid rgba(255,255,255,.2);padding-left:14px"><div style="font-size:9px;opacity:.7;text-transform:uppercase">⚙️ Fabricação (30%)</div><div style="font-size:16px;font-weight:700;margin-top:2px">R$ '+_planBRL(vlFab)+'</div><div style="font-size:10px;opacity:.7">'+maxRecFab+' rec × R$ '+_planBRL(prodFab)+' = R$ '+_planBRL(custoFab)+'/mês</div></div>'
-    +'<div style="border-left:1px solid rgba(255,255,255,.2);padding-left:14px"><div style="font-size:9px;opacity:.7;text-transform:uppercase">🔧 Montagem (50%)</div><div style="font-size:16px;font-weight:700;margin-top:2px">R$ '+_planBRL(vlMon)+'</div><div style="font-size:10px;opacity:.7">'+maxRecMon+' rec × R$ '+_planBRL(prodMon)+' = R$ '+_planBRL(custoMon)+'/mês</div></div>'
+    +'<div><div style="font-size:9px;opacity:.7;text-transform:uppercase">Valor Global</div><div style="font-size:20px;font-weight:800;margin-top:2px">R$ '+_planBRL(valor)+'</div></div>'
+    +'<div style="border-left:1px solid rgba(255,255,255,.2);padding-left:14px"><div style="font-size:9px;opacity:.7;text-transform:uppercase">⚙️ Fabricação (30%)</div><div style="font-size:16px;font-weight:700;margin-top:2px">R$ '+_planBRL(vlFab)+'</div>'
+    +'<div style="font-size:9px;opacity:.7">'+st.caldFab+' cald × R$ '+_planBRL(st.prodCaldFab||0)+' + '+st.soldFab+' sold × R$ '+_planBRL(st.prodSoldFab||0)+'</div>'
+    +'<div style="font-size:10px;opacity:.9;font-weight:600;margin-top:2px">= R$ '+_planBRL(custoFab)+'/mês</div></div>'
+    +'<div style="border-left:1px solid rgba(255,255,255,.2);padding-left:14px"><div style="font-size:9px;opacity:.7;text-transform:uppercase">🔧 Montagem (50%) — início mês 2</div><div style="font-size:16px;font-weight:700;margin-top:2px">R$ '+_planBRL(vlMon)+'</div>'
+    +'<div style="font-size:9px;opacity:.7">'+st.caldMon+' cald × R$ '+_planBRL(st.prodCaldMon||0)+' + '+st.soldMon+' sold × R$ '+_planBRL(st.prodSoldMon||0)+'</div>'
+    +'<div style="font-size:10px;opacity:.9;font-weight:600;margin-top:2px">= R$ '+_planBRL(custoMon)+'/mês</div></div>'
     +'<div style="border-left:1px solid rgba(255,255,255,.2);padding-left:14px"><div style="font-size:9px;opacity:.7;text-transform:uppercase">📚 Book (20%)</div><div style="font-size:16px;font-weight:700;margin-top:2px">R$ '+_planBRL(vlBook)+'</div><div style="font-size:10px;opacity:.7">Entrega final</div></div>'
     +'</div></div>';
 
   // ── Alerta ──
   var alerta = '';
-  if (custoTotal > 0) {
-    var mesesViavel = Math.floor(orcExec / custoTotal);
-    var mesesFab = custoFab>0 ? Math.ceil(vlFab/custoFab) : 0;
-    var mesesMon = custoMon>0 ? Math.ceil(vlMon/custoMon) : 0;
-    var prazoMaior = Math.max(mesesFab, mesesMon);
-    var gastoProjetado = custoFab*mesesFab + custoMon*mesesMon;
-    if (gastoProjetado > orcExec * 1.01) {
-      var deficit = gastoProjetado - orcExec;
+  if (custoFab > 0 || custoMon > 0) {
+    var mesesFab = custoFab > 0 ? Math.ceil(vlFab / custoFab) : 0;
+    var mesesMon = custoMon > 0 ? Math.ceil(vlMon / custoMon) + 1 : 0; // +1 por começar no mês 2
+    var prazoTotal = Math.max(mesesFab, mesesMon);
+    var gastoFab = custoFab * (custoFab > 0 ? Math.ceil(vlFab / custoFab) : 0);
+    var gastoMon = custoMon * (custoMon > 0 ? Math.ceil(vlMon / custoMon) : 0);
+    var gastoProj = Math.min(gastoFab, vlFab) + Math.min(gastoMon, vlMon);
+
+    if (gastoProj > orcExec * 1.01) {
       alerta = '<div style="background:#fdecea;border-left:4px solid var(--hd);border-radius:0 8px 8px 0;padding:12px 16px;margin-bottom:14px">'
-        +'<span style="font-weight:700;color:var(--hd)">⛔ Projeção de Déficit: R$ '+_planBRL(Math.round(deficit))+'</span>'
-        +'<span style="font-size:11px;color:var(--ht);margin-left:12px">Custo mensal R$ '+_planBRL(custoTotal)+' × '+prazoMaior+' meses > Orçamento R$ '+_planBRL(Math.round(orcExec))+'. Reduza recursos ou aumente produtividade.</span>'
-        +'</div>';
+        +'<span style="font-weight:700;color:var(--hd)">⛔ Projeção de Déficit: R$ '+_planBRL(Math.round(gastoProj-orcExec))+'</span>'
+        +'<span style="font-size:11px;color:var(--ht);margin-left:12px">Reduza recursos ou aumente produtividade.</span></div>';
     } else {
       alerta = '<div style="background:#edf7ed;border-left:4px solid #1a8c4e;border-radius:0 8px 8px 0;padding:12px 16px;margin-bottom:14px">'
         +'<span style="font-weight:700;color:#1a8c4e">✅ Dentro do orçamento</span>'
-        +'<span style="font-size:11px;color:var(--ht);margin-left:12px">Prazo: Fab '+mesesFab+' meses · Mon '+mesesMon+' meses · Custo total projetado: R$ '+_planBRL(Math.round(gastoProjetado))+'</span>'
-        +'</div>';
+        +'<span style="font-size:11px;color:var(--ht);margin-left:12px">Fab: '+mesesFab+' meses ('+st.caldFab+' cald + '+st.soldFab+' sold) · Mon: '+(mesesMon>0?mesesMon:0)+' meses ('+st.caldMon+' cald + '+st.soldMon+' sold) · Prazo total: '+prazoTotal+' meses</span></div>';
     }
   }
 
-  // ── Tabela mês a mês ──
-  if (custoTotal <= 0) {
-    tbl.innerHTML = orcamento + '<div style="color:var(--hmu);font-size:11px;padding:8px 0">Defina recursos e produção para ver o fluxo.</div>';
+  // ── Fluxo mês a mês (montagem inicia mês 2) ──
+  if (custoFab <= 0 && custoMon <= 0) {
+    tbl.innerHTML = orc + '<div style="color:var(--hmu);font-size:11px;padding:8px 0">Defina recursos para ver o fluxo.</div>';
     return;
   }
 
-  var mesesFab = custoFab>0 ? Math.ceil(vlFab/custoFab) : 0;
-  var mesesMon = custoMon>0 ? Math.ceil(vlMon/custoMon) : 0;
-  var maxMeses = Math.max(mesesFab, mesesMon, 1);
+  var mesesFab = custoFab > 0 ? Math.ceil(vlFab / custoFab) : 0;
+  var mesesMon = custoMon > 0 ? Math.ceil(vlMon / custoMon) : 0;
+  var maxMeses = Math.max(mesesFab, mesesMon + 1, 1); // +1 porque mon começa no mês 2
 
   var fluxo = '<table style="width:100%;border-collapse:collapse;border-radius:8px;overflow:hidden">'
     +'<thead><tr style="background:#0B3D91;color:#fff">'
-    +'<th style="padding:10px 12px;font-size:11px;text-align:center;width:50px">Mês</th>'
-    +'<th style="padding:10px 12px;font-size:11px;text-align:right">⚙️ Fabricação</th>'
-    +'<th style="padding:10px 12px;font-size:11px;text-align:right">🔧 Montagem</th>'
-    +'<th style="padding:10px 12px;font-size:11px;text-align:right;font-weight:700">Total no Mês</th>'
-    +'<th style="padding:10px 12px;font-size:11px;text-align:right;font-weight:700">Acumulado</th>'
-    +'<th style="padding:10px 12px;font-size:11px;text-align:right;font-weight:700">Saldo</th>'
-    +'<th style="padding:10px 12px;font-size:11px;text-align:center;width:120px">Consumo</th>'
-    +'</tr></thead><tbody>';
+    +'<th style="padding:10px 10px;font-size:11px;text-align:center;width:50px">Mês</th>'
+    +'<th style="padding:10px 10px;font-size:10px;text-align:center" colspan="2">⚙️ Fabricação</th>'
+    +'<th style="padding:10px 10px;font-size:10px;text-align:center" colspan="2">🔧 Montagem</th>'
+    +'<th style="padding:10px 10px;font-size:11px;text-align:right;font-weight:700">Total Mês</th>'
+    +'<th style="padding:10px 10px;font-size:11px;text-align:right;font-weight:700">Acumulado</th>'
+    +'<th style="padding:10px 10px;font-size:11px;text-align:right;font-weight:700">Saldo</th>'
+    +'<th style="padding:10px 10px;font-size:11px;text-align:center;width:100px">%</th>'
+    +'</tr>'
+    +'<tr style="background:#1a5fd1;color:rgba(255,255,255,.8)">'
+    +'<th></th>'
+    +'<th style="padding:4px 8px;font-size:9px">Gasto</th><th style="padding:4px 8px;font-size:9px">Saldo Fab</th>'
+    +'<th style="padding:4px 8px;font-size:9px">Gasto</th><th style="padding:4px 8px;font-size:9px">Saldo Mon</th>'
+    +'<th colspan="4"></th></tr>'
+    +'</thead><tbody>';
 
   var acumFab=0, acumMon=0;
   for (var mes=1; mes<=maxMeses; mes++) {
+    // Fab gasta desde mês 1
     var gFab = custoFab>0 && acumFab<vlFab ? Math.min(custoFab, vlFab-acumFab) : 0;
-    var gMon = custoMon>0 && acumMon<vlMon ? Math.min(custoMon, vlMon-acumMon) : 0;
+    // Mon gasta a partir do mês 2 (30 dias após fab)
+    var gMon = (mes >= 2 && custoMon>0 && acumMon<vlMon) ? Math.min(custoMon, vlMon-acumMon) : 0;
     if (gFab<0) gFab=0; if (gMon<0) gMon=0;
     acumFab+=gFab; acumMon+=gMon;
-    var gastoMes = gFab+gMon;
-    var acumTotal = acumFab+acumMon;
-    var saldo = orcExec - acumTotal;
-    var pct = orcExec>0 ? Math.round(acumTotal/orcExec*100) : 0;
-    var negativo = saldo < 0;
-    var bg = negativo ? '#fff0f0' : mes%2===0 ? '#f8fafd' : '#fff';
-
-    // Barra de progresso
-    var barColor = pct>100 ? 'var(--hd)' : pct>80 ? '#c07000' : '#1a8c4e';
-    var bar = '<div style="background:#e8eef7;border-radius:10px;height:20px;overflow:hidden;position:relative;min-width:100px">'
-      +'<div style="height:100%;width:'+Math.min(pct,100)+'%;background:'+barColor+';border-radius:10px;transition:width .3s"></div>'
-      +'<span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:'+(pct>50?'#fff':'var(--ht)')+'">'+pct+'%</span>'
-      +'</div>';
+    var gastoMes=gFab+gMon;
+    var acumTotal=acumFab+acumMon;
+    var saldoFab=vlFab-acumFab;
+    var saldoMon=vlMon-acumMon;
+    var saldo=orcExec-acumTotal;
+    var pct=orcExec>0?Math.round(acumTotal/orcExec*100):0;
+    var neg=saldo<0;
+    var bg=neg?'#fff0f0':mes%2===0?'#f8fafd':'#fff';
+    var barCol=pct>100?'var(--hd)':pct>80?'#c07000':'#1a8c4e';
 
     fluxo += '<tr style="background:'+bg+';border-bottom:1px solid #e8eef7">'
-      +'<td style="padding:10px 12px;text-align:center;font-size:14px;font-weight:800;color:var(--hb)">'+mes+'</td>'
-      +'<td style="padding:10px 12px;text-align:right;font-size:12px;color:'+(gFab>0?'var(--hb)':'var(--hmu)')+'">'+(gFab>0?'R$ '+_planBRL(Math.round(gFab)):'—')+'</td>'
-      +'<td style="padding:10px 12px;text-align:right;font-size:12px;color:'+(gMon>0?'var(--hb)':'var(--hmu)')+'">'+(gMon>0?'R$ '+_planBRL(Math.round(gMon)):'—')+'</td>'
-      +'<td style="padding:10px 12px;text-align:right;font-size:13px;font-weight:700;color:var(--hb)">R$ '+_planBRL(Math.round(gastoMes))+'</td>'
-      +'<td style="padding:10px 12px;text-align:right;font-size:12px;font-weight:600;color:var(--hb)">R$ '+_planBRL(Math.round(acumTotal))+'</td>'
-      +'<td style="padding:10px 12px;text-align:right;font-size:13px;font-weight:700;color:'+(negativo?'#fff':'#1a8c4e')+';'+(negativo?'background:var(--hd);border-radius:6px;padding:6px 12px':'')+'">R$ '+_planBRL(Math.abs(Math.round(saldo)))+(negativo?' ⛔':'')+'</td>'
-      +'<td style="padding:8px 12px">'+bar+'</td>'
+      +'<td style="padding:9px 10px;text-align:center;font-size:14px;font-weight:800;color:var(--hb)">'+mes+'</td>'
+      +'<td style="padding:9px 8px;text-align:right;font-size:11px;color:'+(gFab>0?'var(--hb)':'var(--hmu)')+'">'+(gFab>0?'R$ '+_planBRL(Math.round(gFab)):'—')+'</td>'
+      +'<td style="padding:9px 8px;text-align:right;font-size:10px;font-weight:600;color:'+(saldoFab<1?'var(--hmu)':'#1a8c4e')+'">R$ '+_planBRL(Math.round(Math.max(saldoFab,0)))+'</td>'
+      +'<td style="padding:9px 8px;text-align:right;font-size:11px;color:'+(gMon>0?'var(--hb)':'var(--hmu)')+'">'+(mes<2?'<span style=font-size:9px;color:var(--hmu)>Início mês 2</span>':(gMon>0?'R$ '+_planBRL(Math.round(gMon)):'—'))+'</td>'
+      +'<td style="padding:9px 8px;text-align:right;font-size:10px;font-weight:600;color:'+(mes<2?'var(--hmu)':saldoMon<1?'var(--hmu)':'#1a8c4e')+'">'+(mes<2?'—':'R$ '+_planBRL(Math.round(Math.max(saldoMon,0))))+'</td>'
+      +'<td style="padding:9px 10px;text-align:right;font-size:13px;font-weight:700;color:var(--hb)">R$ '+_planBRL(Math.round(gastoMes))+'</td>'
+      +'<td style="padding:9px 10px;text-align:right;font-size:12px;font-weight:600;color:var(--hb)">R$ '+_planBRL(Math.round(acumTotal))+'</td>'
+      +'<td style="padding:9px 10px;text-align:right;font-size:13px;font-weight:700;color:'+(neg?'#fff':'#1a8c4e')+';'+(neg?'background:var(--hd);border-radius:6px;padding:6px 10px':'')+'">R$ '+_planBRL(Math.abs(Math.round(saldo)))+(neg?' ⛔':'')+'</td>'
+      +'<td style="padding:6px 8px"><div style="background:#e8eef7;border-radius:10px;height:20px;overflow:hidden;position:relative;min-width:80px"><div style="height:100%;width:'+Math.min(pct,100)+'%;background:'+barCol+';border-radius:10px"></div><span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:'+(pct>50?'#fff':'var(--ht)')+'">'+pct+'%</span></div></td>'
       +'</tr>';
   }
-
-  // Linha final: Book
-  var saldoFinal = valor - acumFab - acumMon - vlBook;
+  // Book
+  var saldoFinal=valor-acumFab-acumMon-vlBook;
   fluxo += '<tr style="background:linear-gradient(90deg,#1a8c4e,#27ae60);color:#fff">'
     +'<td style="padding:12px;text-align:center;font-size:12px;font-weight:700">📚</td>'
-    +'<td colspan="2" style="padding:12px;font-size:12px;font-weight:600">Book — Entrega documentação</td>'
+    +'<td colspan="4" style="padding:12px;font-size:12px;font-weight:600">Book — Entrega documentação</td>'
     +'<td style="padding:12px;text-align:right;font-size:13px;font-weight:700">R$ '+_planBRL(Math.round(vlBook))+'</td>'
     +'<td style="padding:12px;text-align:right;font-size:12px;font-weight:600">R$ '+_planBRL(Math.round(acumFab+acumMon+vlBook))+'</td>'
     +'<td style="padding:12px;text-align:right;font-size:13px;font-weight:700">'+(saldoFinal<0?'⛔ -R$ '+_planBRL(Math.abs(Math.round(saldoFinal))):'R$ '+_planBRL(Math.round(saldoFinal)))+'</td>'
-    +'<td style="padding:8px 12px"><div style="background:rgba(255,255,255,.3);border-radius:10px;height:20px;position:relative"><div style="height:100%;width:100%;background:rgba(255,255,255,.6);border-radius:10px"></div><span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff">100%</span></div></td>'
-    +'</tr>';
+    +'<td style="padding:8px"><div style="background:rgba(255,255,255,.3);border-radius:10px;height:20px;position:relative"><div style="height:100%;width:100%;background:rgba(255,255,255,.6);border-radius:10px"></div><span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff">100%</span></div></td>'
+    +'</tr></tbody></table>';
 
-  fluxo += '</tbody></table>';
-
-  tbl.innerHTML = orcamento + alerta + fluxo;
+  tbl.innerHTML = orc + alerta + fluxo;
 }
 
 function renderPlanejamento(discTabs, bc) {
@@ -2430,16 +2429,6 @@ function renderPlanejamento(discTabs, bc) {
   // ── Seção Físico × Financeiro ──
   var finState = _planFinState || {};
 
-  function _finRecRows(scope, recs) {
-    return (recs||[1]).map(function(r){
-      return '<div class="fin-linha fin-row-'+scope+'" style="display:flex;align-items:center;gap:6px;margin-bottom:5px">'
-        +'<input type="number" min="1" value="'+r+'" style="width:55px;padding:4px 6px;border:1px solid var(--hbr);border-radius:6px;font-size:11px;text-align:center" onchange="planUpdateFin()">'
-        +'<span style="font-size:9px;color:var(--hmu)">rec.</span>'
-        +'<button onclick="this.parentElement.remove();planUpdateFin()" style="background:#fdecea;border:1px solid #e0c8c8;color:var(--hd);border-radius:4px;padding:2px 6px;cursor:pointer;font-size:9px">✕</button>'
-        +'</div>';
-    }).join('');
-  }
-
   var finSection = '<div style="margin:0 16px 16px;background:#fff;border:1px solid #d0d8e8;border-radius:12px;overflow:hidden">'
     +'<div style="background:linear-gradient(100deg,#071d4a,#0B3D91);padding:12px 18px;color:#fff;font-size:13px;font-weight:700">💰 Controle Físico × Financeiro</div>'
     +'<div style="padding:16px 18px">'
@@ -2447,37 +2436,41 @@ function renderPlanejamento(discTabs, bc) {
     +'<div style="margin-bottom:16px;max-width:300px"><label class="mats-add-lbl">Valor Global do Projeto (R$)</label>'
     +'<input id="fin-valor" type="text" inputmode="numeric" class="mats-add-inp" style="font-size:15px;font-weight:700" placeholder="Ex: 300.000" value="'+(finState.valor?_planBRL(finState.valor):'')+'" oninput="_planMaskBRL(this)" onchange="planUpdateFin()" onblur="planUpdateFin()">'
     +'<div style="font-size:9px;color:var(--hmu);margin-top:4px">30% Fabricação · 50% Montagem · 20% Book</div></div>'
-    // 3 escopos lado a lado
+    // Fab e Mon lado a lado
     +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:16px">'
-    // Fabricação 30%
-    +'<div style="background:#f0f4fb;border:1px solid #d0d8e8;border-radius:10px;padding:12px">'
-    +'<div style="font-size:11px;font-weight:700;color:#0B3D91;margin-bottom:8px">⚙️ Fabricação (30%)'+(finState.valor?' — <span style="font-weight:400">R$ '+_planBRL(finState.valor*0.3)+'</span>':'')+'</div>'
-    +'<label class="mats-add-lbl">Prod. Mensal/Recurso (R$)</label>'
-    +'<input id="fin-prod-fab" type="text" inputmode="numeric" class="mats-add-inp" style="margin-bottom:8px" placeholder="Ex: 15.000" value="'+(finState.prodFab?_planBRL(finState.prodFab):'')+'" oninput="_planMaskBRL(this)" onchange="planUpdateFin()" onblur="planUpdateFin()">'
-    +'<label class="mats-add-lbl">Recursos</label>'
-    +'<div id="fin-wrap-fab">'+_finRecRows('fab', finState.recFab||[4])+'</div>'
-    +'<button onclick="planAddRec(\'fab\')" style="font-size:10px;padding:3px 10px;border-radius:5px;border:1px solid #0B3D91;color:#0B3D91;background:#fff;cursor:pointer">+ Recurso</button>'
+    // ── Fabricação ──
+    +'<div style="background:#f0f4fb;border:1px solid #d0d8e8;border-radius:10px;padding:14px">'
+    +'<div style="font-size:12px;font-weight:700;color:#0B3D91;margin-bottom:12px">⚙️ Fabricação (30%)'+(finState.valor?' — R$ '+_planBRL(finState.valor*0.3):'')+'</div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">'
+    +'<div><label class="mats-add-lbl">Prod./Caldeireiro (R$)</label><input id="fin-pcald-fab" type="text" inputmode="numeric" class="mats-add-inp" placeholder="15.000" value="'+(finState.prodCaldFab?_planBRL(finState.prodCaldFab):'')+'" oninput="_planMaskBRL(this)" onchange="planUpdateFin()" onblur="planUpdateFin()"></div>'
+    +'<div><label class="mats-add-lbl">Prod./Soldador (R$)</label><input id="fin-psold-fab" type="text" inputmode="numeric" class="mats-add-inp" placeholder="15.000" value="'+(finState.prodSoldFab?_planBRL(finState.prodSoldFab):'')+'" oninput="_planMaskBRL(this)" onchange="planUpdateFin()" onblur="planUpdateFin()"></div>'
     +'</div>'
-    // Montagem 50%
-    +'<div style="background:#e8f8fd;border:1px solid #b0ddf0;border-radius:10px;padding:12px">'
-    +'<div style="font-size:11px;font-weight:700;color:#0077b6;margin-bottom:8px">🔧 Montagem (50%)'+(finState.valor?' — <span style="font-weight:400">R$ '+_planBRL(finState.valor*0.5)+'</span>':'')+'</div>'
-    +'<label class="mats-add-lbl">Prod. Mensal/Recurso (R$)</label>'
-    +'<input id="fin-prod-mon" type="text" inputmode="numeric" class="mats-add-inp" style="margin-bottom:8px" placeholder="Ex: 15.000" value="'+(finState.prodMon?_planBRL(finState.prodMon):'')+'" oninput="_planMaskBRL(this)" onchange="planUpdateFin()" onblur="planUpdateFin()">'
-    +'<label class="mats-add-lbl">Recursos</label>'
-    +'<div id="fin-wrap-mon">'+_finRecRows('mon', finState.recMon||[4])+'</div>'
-    +'<button onclick="planAddRec(\'mon\')" style="font-size:10px;padding:3px 10px;border-radius:5px;border:1px solid #0077b6;color:#0077b6;background:#fff;cursor:pointer">+ Recurso</button>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
+    +'<div><label class="mats-add-lbl">Qtd Caldeireiros</label><input id="fin-cald-fab" type="number" min="0" class="mats-add-inp" style="text-align:center" value="'+(finState.caldFab||'')+'" onchange="planUpdateFin()"></div>'
+    +'<div><label class="mats-add-lbl">Qtd Soldadores</label><input id="fin-sold-fab" type="number" min="0" class="mats-add-inp" style="text-align:center" value="'+(finState.soldFab||'')+'" onchange="planUpdateFin()"></div>'
+    +'</div></div>'
+    // ── Montagem ──
+    +'<div style="background:#e8f8fd;border:1px solid #b0ddf0;border-radius:10px;padding:14px">'
+    +'<div style="font-size:12px;font-weight:700;color:#0077b6;margin-bottom:4px">🔧 Montagem (50%)'+(finState.valor?' — R$ '+_planBRL(finState.valor*0.5):'')+'</div>'
+    +'<div style="font-size:9px;color:var(--hmu);margin-bottom:10px">Início: 30 dias após fabricação</div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">'
+    +'<div><label class="mats-add-lbl">Prod./Caldeireiro (R$)</label><input id="fin-pcald-mon" type="text" inputmode="numeric" class="mats-add-inp" placeholder="15.000" value="'+(finState.prodCaldMon?_planBRL(finState.prodCaldMon):'')+'" oninput="_planMaskBRL(this)" onchange="planUpdateFin()" onblur="planUpdateFin()"></div>'
+    +'<div><label class="mats-add-lbl">Prod./Soldador (R$)</label><input id="fin-psold-mon" type="text" inputmode="numeric" class="mats-add-inp" placeholder="15.000" value="'+(finState.prodSoldMon?_planBRL(finState.prodSoldMon):'')+'" oninput="_planMaskBRL(this)" onchange="planUpdateFin()" onblur="planUpdateFin()"></div>'
     +'</div>'
-    // Book 20% — sem recursos, medido na entrega final
-    +'<div style="background:#edf7ed;border:1px solid #a5d6a7;border-radius:10px;padding:12px">'
-    +'<div style="font-size:11px;font-weight:700;color:#1a8c4e;margin-bottom:8px">📚 Book (20%)'+(finState.valor?' — <span style="font-weight:400">R$ '+_planBRL(finState.valor*0.2)+'</span>':'')+'</div>'
-    +'<div style="font-size:10px;color:var(--hmu);line-height:1.5">Documentação técnica.<br>Medido na entrega total do projeto.<br>Sem alocação de recurso mensal.</div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
+    +'<div><label class="mats-add-lbl">Qtd Caldeireiros</label><input id="fin-cald-mon" type="number" min="0" class="mats-add-inp" style="text-align:center" value="'+(finState.caldMon||'')+'" onchange="planUpdateFin()"></div>'
+    +'<div><label class="mats-add-lbl">Qtd Soldadores</label><input id="fin-sold-mon" type="number" min="0" class="mats-add-inp" style="text-align:center" value="'+(finState.soldMon||'')+'" onchange="planUpdateFin()"></div>'
+    +'</div></div>'
+    // ── Book ──
+    +'<div style="background:#edf7ed;border:1px solid #a5d6a7;border-radius:10px;padding:14px">'
+    +'<div style="font-size:12px;font-weight:700;color:#1a8c4e;margin-bottom:8px">📚 Book (20%)'+(finState.valor?' — R$ '+_planBRL(finState.valor*0.2):'')+'</div>'
+    +'<div style="font-size:10px;color:var(--hmu);line-height:1.5">Documentação técnica.<br>Medido na entrega total.<br>Sem alocação de recurso.</div>'
     +'</div>'
     +'</div>'
     +'<div id="fin-result-table"></div>'
     +'</div></div>';
 
-
-    document.getElementById('view-isos').innerHTML = bc + discTabs + header + finSection + '</div>';
+  document.getElementById('view-isos').innerHTML = bc + discTabs + header + finSection + '</div>';
   _planRefreshTotals();
   _planRenderFinTable();
 }
