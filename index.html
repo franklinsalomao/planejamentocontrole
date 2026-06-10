@@ -2104,169 +2104,253 @@ function renderDashboard(discTabs, bc) {
 
 /* ════════════ PLANEJAMENTO DE FABRICAÇÃO ════════════ */
 const PROD_INDEX = {"AC|SCH 40|1/2\"": 0.85, "AC|SCH 40|3/4\"": 0.93, "AC|SCH 40|1\"": 1.0, "AC|SCH 40|1 1/4\"": 1.09, "AC|SCH 40|1 1/2\"": 1.1, "AC|SCH 40|2\"": 1.2, "AC|SCH 40|2 1/2\"": 1.43, "AC|SCH 40|3\"": 1.5, "AC|SCH 40|4\"": 1.85, "AC|SCH 40|5\"": 2.12, "AC|SCH 40|6\"": 2.47, "AC|SCH 40|8\"": 3.05, "AC|SCH 40|10\"": 6.5, "AC|SCH 40|12\"": 4.65, "AC|SCH 40|14\"": 5.5, "AC|SCH 40|16\"": 6.6, "AC|SCH 40|18\"": 7.5, "AC|SCH 40|20\"": 8.4, "AC|SCH 40|22\"": 9.14, "AC|SCH 40|24\"": 10.1, "AC|SCH 40|26\"": 12.1, "AC|SCH 40|28\"": 13.8, "AC|SCH 40|30\"": 15.0, "AC GALV.|DIN 2440|1/2\"": 0.85, "AC GALV.|DIN 2440|3/4\"": 0.93, "AC GALV.|DIN 2440|1\"": 1.0, "AC GALV.|DIN 2440|1 1/4\"": 1.09, "AC GALV.|DIN 2440|1 1/2\"": 1.1, "AC GALV.|DIN 2440|2\"": 1.2, "AC GALV.|DIN 2440|2 1/2\"": 1.43, "AC GALV.|DIN 2440|3\"": 1.5, "AC GALV.|DIN 2440|4\"": 1.85, "AC GALV.|DIN 2440|5\"": 2.12, "AC GALV.|DIN 2440|6\"": 2.4, "AC GALV.|DIN 2440|8\"": 3.05, "INOX|10S|1/2\"": 1.3, "INOX|10S|3/4\"": 1.42, "INOX|10S|1\"": 1.53, "INOX|10S|1 1/4\"": 1.67, "INOX|10S|1 1/2\"": 1.68, "INOX|10S|2\"": 1.83, "INOX|10S|2 1/2\"": 2.19, "INOX|10S|3\"": 2.29, "INOX|10S|4\"": 2.84, "INOX|10S|5\"": 3.24, "INOX|10S|6\"": 3.67, "INOX|10S|8\"": 4.66, "INOX|10S|10\"": 5.9, "INOX|10S|12\"": 7.12, "INOX|10S|14\"": 8.42, "INOX|10S|16\"": 10.09, "INOX|10S|18\"": 11.52, "INOX|10S|20\"": 12.85, "INOX|10S|22\"": 13.95, "INOX|10S|24\"": 15.45, "INOX|10S|26\"": 18.51, "INOX|10S|28\"": 21.11, "INOX|10S|30\"": 22.95, "AC|SCH 80|1/2\"": 1.15, "AC|SCH 80|3/4\"": 1.29, "AC|SCH 80|1\"": 1.36, "AC|SCH 80|1 1/4\"": 1.52, "AC|SCH 80|1 1/2\"": 1.54, "AC|SCH 80|2\"": 1.74, "AC|SCH 80|2 1/2\"": 1.99, "AC|SCH 80|3\"": 2.15, "AC|SCH 80|4\"": 2.7, "AC|SCH 80|5\"": 3.3, "AC|SCH 80|6\"": 3.8, "AC|SCH 80|8\"": 4.89, "AC|SCH 80|10\"": 6.45, "AC|SCH 80|12\"": 8.09, "AC|SCH 80|14\"": 9.79, "AC|SCH 80|16\"": 11.49, "AC|SCH 80|18\"": 12.89, "AC|SCH 80|20\"": 15.02, "AC|SCH 80|22\"": 16.74, "AC|SCH 80|24\"": 18.46, "AC|SCH 80|26\"": 22.1, "AC|SCH 80|28\"": 25.2, "AC|SCH 80|30\"": 27.4, "INOX|40S|1/2\"": 1.45, "INOX|40S|3/4\"": 1.58, "INOX|40S|1\"": 1.7, "INOX|40S|1 1/4\"": 1.85, "INOX|40S|1 1/2\"": 1.87, "INOX|40S|2\"": 2.03, "INOX|40S|2 1/2\"": 2.43, "INOX|40S|3\"": 2.55, "INOX|40S|4\"": 3.15, "INOX|40S|5\"": 3.6, "INOX|40S|6\"": 4.08, "INOX|40S|8\"": 5.18, "INOX|40S|10\"": 6.55, "INOX|40S|12\"": 7.91, "INOX|40S|14\"": 9.35, "INOX|40S|16\"": 11.22, "INOX|40S|18\"": 12.8, "INOX|40S|20\"": 14.28, "INOX|40S|22\"": 15.54, "INOX|40S|24\"": 17.17, "INOX|40S|26\"": 20.57, "INOX|40S|28\"": 23.46, "INOX|40S|30\"": 25.5, "ALU|10S|6\"": 10.0, "ALU|10S|10\"": 14.0, "ALU|10S|12\"": 15.54, "ALU|10S|20\"": 18.0};
-const PLAN_HORAS_DIA = 6.5; // horas produtivas por recurso/dia
-let _planRecursos = {}; // { isoNum: nRecursos }
+const PLAN_HORAS_DIA = 6.5;
+const PLAN_DIAS_MES  = 22;
+// Índice de referência: ISO 01642 — 56,5m / 139Hh / equipe 3 (2 caldeireiros + 1 soldador)
+const PLAN_IDX_REF   = 139 / 56.5; // 2.460 Hh/m
+let _planRecursos = {};
+let _planFinState  = null; // { valor, prodRec, recursos[] }
+const PLAN_SK_REC  = 'hyd_plan_recursos';
+const PLAN_SK_FIN  = 'hyd_plan_financeiro';
 
-function _planLoadRecursos() {
-  try { var v = LS.getItem('hyd_plan_recursos'); if (v) _planRecursos = JSON.parse(v) || {}; } catch(e) { _planRecursos = {}; }
+function _planLoad() {
+  try { var v = LS.getItem(PLAN_SK_REC); if (v) _planRecursos = JSON.parse(v)||{}; } catch(e){ _planRecursos={}; }
+  try { var v2= LS.getItem(PLAN_SK_FIN); if (v2) _planFinState = JSON.parse(v2)||null; } catch(e){ _planFinState=null; }
 }
-function _planSaveRecursos() {
-  try { LS.setItem('hyd_plan_recursos', JSON.stringify(_planRecursos)); } catch(e) {}
-  if (window.storage) { try { window.storage.set('hyd_plan_recursos', JSON.stringify(_planRecursos), false); } catch(e){} }
+function _planSaveRec() {
+  try { LS.setItem(PLAN_SK_REC, JSON.stringify(_planRecursos)); } catch(e){}
+  if (window.storage) { try { window.storage.set(PLAN_SK_REC, JSON.stringify(_planRecursos), false); } catch(e){} }
+}
+function _planSaveFin() {
+  try { LS.setItem(PLAN_SK_FIN, JSON.stringify(_planFinState)); } catch(e){}
+  if (window.storage) { try { window.storage.set(PLAN_SK_FIN, JSON.stringify(_planFinState), false); } catch(e){} }
 }
 
-// Normaliza material da descrição -> AC | AC GALV. | INOX | ALU
 function _planMaterial(desc) {
-  var d = (desc || '').toUpperCase();
+  var d = (desc||'').toUpperCase();
   if (/GALV/.test(d)) return 'AC GALV.';
   if (/INOX|AISI|304|316|A312|A790/.test(d)) return 'INOX';
   if (/\bALU|ALUM/.test(d)) return 'ALU';
-  return 'AC'; // aço carbono padrão
+  return 'AC';
 }
-// Normaliza SCH da descrição -> SCH 40 | SCH 80 | 10S | 40S | DIN 2440
 function _planSch(desc) {
-  var d = (desc || '').toUpperCase();
+  var d = (desc||'').toUpperCase();
   if (/SCH\s*80|S80|\b80\b/.test(d)) return 'SCH 80';
   if (/SCH\s*40|S40|\b40\b/.test(d)) return 'SCH 40';
   if (/10S/.test(d)) return '10S';
   if (/40S/.test(d)) return '40S';
   if (/DIN\s*2440/.test(d)) return 'DIN 2440';
-  return 'SCH 40'; // padrão
+  return 'SCH 40';
 }
-// Normaliza diâmetro -> usa polegadas como no índice
 function _planDiam(diam) {
-  var d = String(diam || '').replace(/"/g, '').trim();
-  // Pega só a primeira parte (ex "8 x 6" -> "8", "6x6" -> "6")
-  d = d.split(/x/i)[0].trim();
-  // converte decimais comuns
-  var map = { '0.5':'1/2', '0.75':'3/4', '0.875':'7/8', '0.625':'5/8' };
-  if (map[d]) d = map[d];
-  return d + '"';
+  var d = String(diam||'').replace(/"/g,'').trim().split(/x/i)[0].trim();
+  var m = {'0.5':'1/2','0.75':'3/4','0.875':'7/8','0.625':'5/8'};
+  return (m[d]||d)+'"';
 }
-// Extrai metragem de quant (ex "36,6m" -> 36.6; "0.2m" -> 0.2; "5" -> 0 se não for metro)
 function _planMetros(quant) {
-  var q = String(quant || '').toLowerCase().replace(',', '.');
-  if (q.indexOf('m') === -1) return 0; // só conta itens em metros (tubos)
-  var n = parseFloat(q.replace(/[^0-9.]/g, ''));
+  var q = String(quant||'').toLowerCase().replace(',','.');
+  if (q.indexOf('m')===-1) return 0;
+  var n = parseFloat(q.replace(/[^0-9.]/g,''));
   return Number.isFinite(n) ? n : 0;
 }
-
-// Calcula Hh total de fabricação de um isométrico (soma dos tubos)
 function _planHhIso(isoNum) {
-  var mats = (typeof matsCtrl !== 'undefined' ? matsCtrl : []).filter(function(m){
-    return (m.iso || '').trim() === isoNum && (m.classificacao || '') === 'fabricacao';
+  var mats = (typeof matsCtrl!=='undefined'?matsCtrl:[]).filter(function(m){
+    return (m.iso||'').trim()===isoNum && (m.classificacao||'')==='fabricacao';
   });
-  var totalHh = 0, totalM = 0, detalhes = [];
+  var totalHh=0, totalM=0, detalhes=[];
   mats.forEach(function(m){
-    var metros = _planMetros(m.quant);
-    if (metros <= 0) return; // só tubos com metragem
-    var mat = _planMaterial(m.descricao);
-    var sch = _planSch(m.descricao);
-    var dia = _planDiam(m.diam);
-    var key = mat + '|' + sch + '|' + dia;
-    var hhm = PROD_INDEX[key];
-    if (hhm == null) {
-      // tenta material AC como fallback
-      hhm = PROD_INDEX['AC|' + sch + '|' + dia];
-    }
-    if (hhm == null) return;
-    var hh = hhm * metros;
-    totalHh += hh;
-    totalM += metros;
-    detalhes.push({ desc: m.descricao, mat: mat, sch: sch, dia: dia, metros: metros, hhm: hhm, hh: hh });
+    var metros = _planMetros(m.quant); if (metros<=0) return;
+    var mat=_planMaterial(m.descricao), sch=_planSch(m.descricao), dia=_planDiam(m.diam);
+    var key=mat+'|'+sch+'|'+dia;
+    var hhm=PROD_INDEX[key]||PROD_INDEX['AC|'+sch+'|'+dia];
+    if (hhm==null) return;
+    var hh=hhm*metros;
+    totalHh+=hh; totalM+=metros;
+    detalhes.push({mat:mat,sch:sch,dia:dia,metros:metros,hhm:hhm,hh:hh});
   });
-  return { hh: totalHh, metros: totalM, detalhes: detalhes };
+  return {hh:totalHh, metros:totalM, detalhes:detalhes};
 }
+function _planSafeId(s){ return String(s).replace(/[^a-zA-Z0-9]/g,'_'); }
 
+function planSetByDataset(el) {
+  var sid = el.getAttribute('data-iso');
+  if (!sid) return;
+  // find isoNum by safe id
+  var list = currentProjId ? projIsos(currentProjId) : isos;
+  var iso = list.find(function(e){ return _planSafeId(e.num) === sid; });
+  if (!iso) return;
+  planSetRecurso(iso.num, el.value);
+}
 function planSetRecurso(isoNum, val) {
-  var n = parseInt(val) || 0;
-  if (n <= 0) delete _planRecursos[isoNum]; else _planRecursos[isoNum] = n;
-  _planSaveRecursos();
+  var n=parseInt(val)||0;
+  if (n<=0) delete _planRecursos[isoNum]; else _planRecursos[isoNum]=n;
+  _planSaveRec();
+  var hhData=_planHhIso(isoNum);
+  var rec=_planRecursos[isoNum]||1;
+  var dias=hhData.hh>0?(hhData.hh/(rec*PLAN_HORAS_DIA)):0;
+  var cell=document.getElementById('plan-prazo-'+_planSafeId(isoNum));
+  if (cell) cell.textContent=dias>0?dias.toFixed(1)+' dias':'—';
   _planRefreshTotals();
-  // atualiza só a linha
-  var hhData = _planHhIso(isoNum);
-  var rec = _planRecursos[isoNum] || 1;
-  var dias = hhData.hh > 0 ? (hhData.hh / (rec * PLAN_HORAS_DIA)) : 0;
-  var cell = document.getElementById('plan-prazo-' + _planSafeId(isoNum));
-  if (cell) cell.textContent = dias > 0 ? dias.toFixed(1) + ' dias' : '—';
 }
-
-function _planSafeId(s) { return String(s).replace(/[^a-zA-Z0-9]/g, '_'); }
 
 function _planRefreshTotals() {
-  var list = currentProjId ? projIsos(currentProjId) : isos;
-  var totalHh = 0, maxDias = 0, somaDias = 0, comRecurso = 0, totalRec = 0;
+  var list=currentProjId?projIsos(currentProjId):isos;
+  var totalHh=0, maxDias=0, somaDias=0, totalRec=0;
   list.forEach(function(e){
-    var hhData = _planHhIso(e.num);
-    if (hhData.hh <= 0) return;
-    totalHh += hhData.hh;
-    var rec = _planRecursos[e.num] || 1;
-    totalRec += (_planRecursos[e.num] || 0);
-    var dias = hhData.hh / (rec * PLAN_HORAS_DIA);
-    somaDias += dias;
-    if (dias > maxDias) maxDias = dias;
-    comRecurso++;
+    var d=_planHhIso(e.num); if (d.hh<=0) return;
+    totalHh+=d.hh;
+    var rec=_planRecursos[e.num]||1;
+    totalRec+=(_planRecursos[e.num]||0);
+    var dias=d.hh/(rec*PLAN_HORAS_DIA);
+    somaDias+=dias; if (dias>maxDias) maxDias=dias;
   });
-  var elHh = document.getElementById('plan-tot-hh'); if (elHh) elHh.textContent = Math.round(totalHh) + ' Hh';
-  var elPar = document.getElementById('plan-tot-paralelo'); if (elPar) elPar.textContent = maxDias > 0 ? maxDias.toFixed(1) + ' dias' : '—';
-  var elSeq = document.getElementById('plan-tot-seq'); if (elSeq) elSeq.textContent = somaDias > 0 ? somaDias.toFixed(1) + ' dias' : '—';
-  var elRec = document.getElementById('plan-tot-rec'); if (elRec) elRec.textContent = totalRec + ' rec';
+  var el=function(id,v){ var e=document.getElementById(id); if(e) e.textContent=v; };
+  el('plan-tot-hh', Math.round(totalHh)+' Hh');
+  el('plan-tot-paralelo', maxDias>0?maxDias.toFixed(1)+' dias':'—');
+  el('plan-tot-seq', somaDias>0?somaDias.toFixed(1)+' dias':'—');
+  el('plan-tot-rec', totalRec+' rec');
+}
+
+// ── Financeiro ──
+function planUpdateFin() {
+  var valor     = parseFloat((document.getElementById('fin-valor')||{}).value||'0')||0;
+  var prodRec   = parseFloat((document.getElementById('fin-prod-rec')||{}).value||'0')||0;
+  var wrap      = document.getElementById('fin-linhas-wrap'); if (!wrap) return;
+  var linhas    = wrap.querySelectorAll('.fin-linha');
+  var rows = [];
+  linhas.forEach(function(ln){
+    var rec = parseInt((ln.querySelector('input')||{}).value||'0')||0;
+    rows.push(rec);
+  });
+  _planFinState = { valor:valor, prodRec:prodRec, linhas:rows };
+  _planSaveFin();
+  _planRenderFinTable();
+}
+
+function planAddLinha() {
+  var wrap = document.getElementById('fin-linhas-wrap'); if (!wrap) return;
+  var ln = document.createElement('div');
+  ln.className = 'fin-linha';
+  ln.style.cssText = 'display:flex;align-items:center;gap:8px;margin-bottom:6px';
+  ln.innerHTML = '<input type="number" min="1" value="1" style="width:70px;padding:5px 8px;border:1px solid var(--hbr);border-radius:6px;font-size:12px" onchange="planUpdateFin()">'
+    + '<button onclick="this.parentElement.remove();planUpdateFin()" style="background:#fdecea;border:1px solid #e0c8c8;color:var(--hd);border-radius:5px;padding:3px 9px;cursor:pointer;font-size:11px">✕</button>';
+  wrap.appendChild(ln);
+  planUpdateFin();
+}
+
+function _planRenderFinTable() {
+  var tbl = document.getElementById('fin-result-table'); if (!tbl) return;
+  if (!_planFinState || !_planFinState.valor || !_planFinState.prodRec) {
+    tbl.innerHTML = '<div style="color:var(--hmu);font-size:11px;padding:10px 0">Preencha o Valor do Projeto e a Produção por Recurso.</div>';
+    return;
+  }
+  var valor=_planFinState.valor, prodRec=_planFinState.prodRec, rows=_planFinState.linhas||[];
+  if (!rows.length) { tbl.innerHTML='<div style="color:var(--hmu);font-size:11px;padding:10px 0">Adicione ao menos uma linha de recursos.</div>'; return; }
+  var html = '<table style="width:100%;border-collapse:collapse">'
+    + '<thead><tr style="background:linear-gradient(90deg,#071d4a,#0B3D91);color:#fff">'
+    + '<th style="padding:9px 12px;text-align:left;font-size:11px;border-radius:6px 0 0 0">Valor do Projeto</th>'
+    + '<th style="padding:9px 12px;text-align:center;font-size:11px">Produção Mensal<br>por Recurso</th>'
+    + '<th style="padding:9px 12px;text-align:center;font-size:11px">Recursos</th>'
+    + '<th style="padding:9px 12px;text-align:center;font-size:11px">Produção Mensal<br>da Equipe</th>'
+    + '<th style="padding:9px 12px;text-align:center;font-size:11px;border-radius:0 6px 0 0">Prazo Máximo</th>'
+    + '</tr></thead><tbody>';
+  rows.forEach(function(rec, i){
+    if (!rec) return;
+    var prodEquipe = rec * prodRec;
+    var prazoMeses = valor / prodEquipe;
+    var bg = i%2===0 ? '#fff' : '#f8fafd';
+    var prazoFmt = Number.isInteger(Math.round(prazoMeses*100)/100)
+      ? Math.round(prazoMeses) + ' meses'
+      : prazoMeses.toFixed(2).replace('.',',') + ' meses';
+    html += '<tr style="background:'+bg+';border-bottom:1px solid #e8eef7">'
+      + '<td style="padding:10px 12px;font-size:12px;font-weight:600;color:var(--hb)">R$ '+valor.toLocaleString('pt-BR')+'</td>'
+      + '<td style="padding:10px 12px;text-align:center;font-size:12px">R$ '+prodRec.toLocaleString('pt-BR')+'</td>'
+      + '<td style="padding:10px 12px;text-align:center;font-size:13px;font-weight:700;color:var(--hb)">'+rec+'</td>'
+      + '<td style="padding:10px 12px;text-align:center;font-size:12px;font-weight:600;color:#1a8c4e">R$ '+prodEquipe.toLocaleString('pt-BR')+'</td>'
+      + '<td style="padding:10px 12px;text-align:center;font-size:13px;font-weight:700;color:'+(prazoMeses<=3?'#1a8c4e':prazoMeses<=6?'#c07000':'var(--hd)')+'">'+prazoFmt+'</td>'
+      + '</tr>';
+  });
+  html += '</tbody></table>';
+  tbl.innerHTML = html;
 }
 
 function renderPlanejamento(discTabs, bc) {
-  _planLoadRecursos();
-  var proj = projects.find(function(p){ return p.id === currentProjId; });
+  _planLoad();
   var list = currentProjId ? projIsos(currentProjId) : isos;
 
-  // calcula linhas
-  var rows = [];
-  list.forEach(function(e){
-    var hhData = _planHhIso(e.num);
-    if (hhData.hh <= 0) return; // só mostra isos com tubos calculáveis
-    var rec = _planRecursos[e.num] || 1;
-    var dias = hhData.hh / (rec * PLAN_HORAS_DIA);
-    rows.push({ num: e.num, hh: hhData.hh, metros: hhData.metros, rec: _planRecursos[e.num] || '', dias: dias });
-  });
-  rows.sort(function(a,b){ return b.hh - a.hh; });
-
+  // ── Cabeçalho e totais físicos ──
   var header = '<div style="padding:16px 16px 8px">'
-    + '<div style="font-size:16px;font-weight:700;color:var(--hb)">🗓️ Planejamento de Fabricação</div>'
-    + '<div style="font-size:11px;color:var(--hmu);margin-top:2px">Prazo calculado pelos índices de produtividade (Hh/m) × metragem dos tubos. Base: ' + PLAN_HORAS_DIA + ' h/dia por recurso. Insira recursos para ajustar o prazo.</div>'
+    + '<div style="font-size:16px;font-weight:700;color:var(--hb)">🗓️ Planejamento — Físico × Financeiro</div>'
+    + '<div style="font-size:11px;color:var(--hmu);margin-top:2px">Índice de referência: ISO BK-BA01-04200-IS-20-01642 · 56,5 m / 139 Hh · equipe 2 caldeireiros + 1 soldador · <strong>2,46 Hh/m</strong>. Base de cálculo: '+PLAN_HORAS_DIA+' h produtivas/dia · '+PLAN_DIAS_MES+' dias úteis/mês.</div>'
     + '</div>';
 
   var totals = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;padding:0 16px 14px">'
     + '<div class="dash-tot dash-tot-blue"><div class="dash-tot-lbl">⏱️ Hh Total Fabricação</div><div class="dash-tot-val" id="plan-tot-hh">—</div></div>'
-    + '<div class="dash-tot dash-tot-cyan"><div class="dash-tot-lbl">📅 Prazo (paralelo)</div><div class="dash-tot-val" id="plan-tot-paralelo">—</div><div class="dash-tot-sub">maior prazo entre isos</div></div>'
-    + '<div class="dash-tot dash-tot-green"><div class="dash-tot-lbl">📆 Prazo (sequencial)</div><div class="dash-tot-val" id="plan-tot-seq">—</div><div class="dash-tot-sub">soma de todos</div></div>'
-    + '<div class="dash-tot" style="background:linear-gradient(135deg,#5e35b1,#7e57c2)"><div class="dash-tot-lbl">👷 Recursos alocados</div><div class="dash-tot-val" id="plan-tot-rec">—</div></div>'
+    + '<div class="dash-tot dash-tot-cyan"><div class="dash-tot-lbl">📅 Prazo Paralelo</div><div class="dash-tot-val" id="plan-tot-paralelo">—</div><div class="dash-tot-sub">maior prazo entre isos</div></div>'
+    + '<div class="dash-tot dash-tot-green"><div class="dash-tot-lbl">📆 Prazo Sequencial</div><div class="dash-tot-val" id="plan-tot-seq">—</div><div class="dash-tot-sub">soma de todos</div></div>'
+    + '<div class="dash-tot" style="background:linear-gradient(135deg,#5e35b1,#7e57c2)"><div class="dash-tot-lbl">👷 Recursos Alocados</div><div class="dash-tot-val" id="plan-tot-rec">—</div></div>'
     + '</div>';
 
-  var tbl;
+  // ── Seção Físico × Financeiro ──
+  var finState = _planFinState || {};
+  var finLinhas = finState.linhas || [4, 6, 10];
+  var finLinhasHtml = finLinhas.map(function(r){
+    return '<div class="fin-linha" style="display:flex;align-items:center;gap:8px;margin-bottom:6px">'
+      + '<input type="number" min="1" value="'+r+'" style="width:70px;padding:5px 8px;border:1px solid var(--hbr);border-radius:6px;font-size:12px" onchange="planUpdateFin()">'
+      + '<button onclick="this.parentElement.remove();planUpdateFin()" style="background:#fdecea;border:1px solid #e0c8c8;color:var(--hd);border-radius:5px;padding:3px 9px;cursor:pointer;font-size:11px">✕</button>'
+      + '</div>';
+  }).join('');
+
+  var finSection = '<div style="margin:0 16px 16px;background:#fff;border:1px solid #d0d8e8;border-radius:12px;overflow:hidden">'
+    + '<div style="background:linear-gradient(100deg,#071d4a,#0B3D91);padding:12px 18px;color:#fff;font-size:13px;font-weight:700">💰 Controle Físico × Financeiro</div>'
+    + '<div style="padding:16px 18px">'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:16px">'
+    + '<div><label class="mats-add-lbl">Valor do Projeto (R$)</label><input id="fin-valor" type="number" min="0" class="mats-add-inp" placeholder="Ex: 300000" value="'+(finState.valor||'')+'" oninput="planUpdateFin()"></div>'
+    + '<div><label class="mats-add-lbl">Produção Mensal por Recurso (R$)</label><input id="fin-prod-rec" type="number" min="0" class="mats-add-inp" placeholder="Ex: 15000" value="'+(finState.prodRec||'')+'" oninput="planUpdateFin()"></div>'
+    + '<div><label class="mats-add-lbl">Linhas de Recursos</label>'
+    + '<div id="fin-linhas-wrap">'+finLinhasHtml+'</div>'
+    + '<button onclick="planAddLinha()" style="margin-top:4px;font-size:11px;padding:4px 12px;border-radius:6px;border:1px solid var(--hbm);color:var(--hbm);background:#fff;cursor:pointer">+ Adicionar linha</button>'
+    + '</div></div>'
+    + '<div id="fin-result-table"></div>'
+    + '</div></div>';
+
+  // ── Tabela por isométrico ──
+  var rows = [];
+  list.forEach(function(e){
+    var d=_planHhIso(e.num); if (d.hh<=0) return;
+    var rec=_planRecursos[e.num]||1;
+    var dias=d.hh/(rec*PLAN_HORAS_DIA);
+    rows.push({num:e.num, hh:d.hh, metros:d.metros, rec:_planRecursos[e.num]||'', dias:dias});
+  });
+  rows.sort(function(a,b){ return b.hh-a.hh; });
+
+  var isoTbl;
   if (rows.length) {
-    var trs = rows.map(function(r){
-      var sid = _planSafeId(r.num);
+    var trs=rows.map(function(r){
+      var sid=_planSafeId(r.num);
       return '<tr>'
-        + '<td style="font-family:monospace;font-size:10px">' + r.num + '</td>'
-        + '<td style="text-align:center">' + r.metros.toFixed(1) + ' m</td>'
-        + '<td style="text-align:center;font-weight:600;color:var(--hb)">' + Math.round(r.hh) + ' Hh</td>'
-        + '<td style="text-align:center"><input type="number" min="0" step="1" value="' + r.rec + '" placeholder="1" onchange="planSetRecurso(\'' + r.num.replace(/'/g, "\\'") + '\',this.value)" style="width:60px;text-align:center;padding:4px 6px;border:1px solid var(--hbr);border-radius:6px;font-size:11px;background:#fff;outline:none"></td>'
-        + '<td style="text-align:center;font-weight:700;color:#1a8c4e" id="plan-prazo-' + sid + '">' + (r.dias > 0 ? r.dias.toFixed(1) + ' dias' : '—') + '</td>'
-        + '</tr>';
+        +'<td style="font-family:monospace;font-size:10px">'+r.num+'</td>'
+        +'<td style="text-align:center">'+r.metros.toFixed(1)+' m</td>'
+        +'<td style="text-align:center;font-weight:600;color:var(--hb)">'+Math.round(r.hh)+' Hh</td>'
+        +'<td style="text-align:center"><input type="number" min="0" step="1" value="'+r.rec+'" placeholder="1" data-iso="'+sid+'" onchange="planSetByDataset(this)" style="width:60px;text-align:center;padding:4px 6px;border:1px solid var(--hbr);border-radius:6px;font-size:11px;background:#fff;outline:none"></td>'
+        +'<td style="text-align:center;font-weight:700;color:#1a8c4e" id="plan-prazo-'+sid+'">'+(r.dias>0?r.dias.toFixed(1)+' dias':'—')+'</td>'
+        +'</tr>';
     }).join('');
-    tbl = '<div class="tbl-wrap" style="margin:0 16px 16px"><table id="plan-table" style="width:100%">'
-      + '<thead><tr>'
-      + '<th>Isométrico</th>'
-      + '<th style="text-align:center">Metragem</th>'
-      + '<th style="text-align:center">Hh Fabricação</th>'
-      + '<th style="text-align:center;min-width:80px">Recursos</th>'
-      + '<th style="text-align:center;min-width:90px">Prazo</th>'
-      + '</tr></thead><tbody>' + trs + '</tbody></table></div>';
+    isoTbl = '<div class="tbl-wrap" style="margin:0 16px 20px"><div style="font-size:12px;font-weight:700;color:var(--hb);margin-bottom:8px">📋 Prazo por Isométrico</div>'
+      +'<table style="width:100%"><thead><tr>'
+      +'<th>Isométrico</th>'
+      +'<th style="text-align:center">Metragem</th>'
+      +'<th style="text-align:center">Hh Fabricação</th>'
+      +'<th style="text-align:center;min-width:80px">Recursos</th>'
+      +'<th style="text-align:center;min-width:90px">Prazo</th>'
+      +'</tr></thead><tbody>'+trs+'</tbody></table></div>';
   } else {
-    tbl = '<div class="ph-panel"><div style="font-size:32px">📭</div><strong>Nenhum tubo calculável encontrado</strong><span style="font-size:11px">Cadastre materiais (tubos com metragem) nos isométricos para calcular o prazo.</span></div>';
+    isoTbl = '<div class="ph-panel" style="margin:0 16px 16px"><div style="font-size:32px">📭</div><strong>Nenhum tubo calculável encontrado</strong><span style="font-size:11px">Cadastre materiais (tubos com metragem) nos isométricos.</span></div>';
   }
 
-  document.getElementById('view-isos').innerHTML = bc + discTabs + header + totals + tbl + '</div>';
+  document.getElementById('view-isos').innerHTML = bc + discTabs + header + totals + finSection + isoTbl + '</div>';
   _planRefreshTotals();
+  _planRenderFinTable();
 }
 
 function renderIsoView() {
@@ -2296,39 +2380,7 @@ function renderIsoView() {
     <div class="sum-card"><div class="sum-lbl">Pintura</div><div class="sum-val" style="color:var(--hs)">${py}/${n}</div><div class="pbar"><div class="pbar-inner pb-py" style="width:${n ? Math.round(py / n * 100) : 0}%"></div></div></div>
   </div>`;
 
-  // ── Cards de % Fabricação / Montagem por Área ──
-  const areaStats = {};
-  listFabMon.forEach(e => {
-    const a = e.area || 'Sem área';
-    if (!areaStats[a]) areaStats[a] = { fabSum:0, monSum:0, count:0 };
-    areaStats[a].fabSum += fabPct(e);
-    areaStats[a].monSum += monPct(e);
-    areaStats[a].count++;
-  });
-  const areaKeys = Object.keys(areaStats).sort();
-  const areaCards = areaKeys.length ? `<div class="area-cards-wrap">
-    <div class="area-cards-title">📊 Avanço por Área</div>
-    <div class="area-cards-grid">
-    ${areaKeys.map(a => {
-      const st = areaStats[a];
-      const fpc = st.count ? Math.round(st.fabSum / st.count) : 0;
-      const mpc = st.count ? Math.round(st.monSum / st.count) : 0;
-      return `<div class="area-card">
-        <div class="area-card-hd"><span class="area-card-name">Área ${a}</span><span class="area-card-cnt">${st.count} folha${st.count!==1?'s':''}</span></div>
-        <div class="area-card-row">
-          <span class="area-card-lbl">⚙️ Fab</span>
-          <div class="area-card-bar"><div class="area-card-fill acf-fab" style="width:${fpc}%"></div></div>
-          <span class="area-card-pct" style="color:#0B3D91">${fpc}%</span>
-        </div>
-        <div class="area-card-row">
-          <span class="area-card-lbl">🔧 Mon</span>
-          <div class="area-card-bar"><div class="area-card-fill acf-mon" style="width:${mpc}%"></div></div>
-          <span class="area-card-pct" style="color:#00A8E8">${mpc}%</span>
-        </div>
-      </div>`;
-    }).join('')}
-    </div>
-  </div>` : '';
+  const areaCards = '';
 
   const areas = [...new Set(list.map(e => e.area).filter(Boolean))].sort();
   const fluids = [...new Set(list.map(e => _fluidoDaLinha(e.line)).filter(Boolean))].sort();
