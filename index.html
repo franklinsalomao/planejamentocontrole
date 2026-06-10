@@ -632,6 +632,7 @@ let currentView = 'projects', currentProjId = null;
 let currentDisc = 'caldeiraria', currentSubTab = 'isometricos';
 // Estado dos filtros de suporte (persiste entre re-renders)
 let _supSearch = '', _supArea = '', _supFab = '', _supPint = '', _supMon = '', _supSold = '';
+let isoFilterFab = '';
 // Unlock de status de suporte por sessão (reseta ao recarregar a página)
 let supUnlocked = false;
 let _ieSessionUnlocked = false; // sessão de avanço: não pede senha novamente
@@ -2019,6 +2020,8 @@ function renderIsoView() {
     <select id="f-paint" onchange="filterTable()"><option value="">Pintura</option><option>Pintado</option><option>Não Pintado</option></select>
     <select id="f-classif" onchange="filterTable()"><option value="">Classif.</option><option>Fabricação</option><option>Apenas Montagem</option><option>Referência</option><option>Desmontagem</option></select>
     <button class="btn-clr" onclick="clearFilters()">✕ Limpar</button>
+    <button id="btn-fc100" onclick="isoFilterFab=(isoFilterFab==='c100'?'':'c100');document.getElementById('btn-fc100').style.background=(isoFilterFab==='c100'?'#1a8c4e':'rgba(46,125,50,.08)');document.getElementById('btn-fc100').style.color=(isoFilterFab==='c100'?'#fff':'#1a8c4e');document.getElementById('btn-fc100').style.borderColor=(isoFilterFab==='c100'?'#1a8c4e':'#a5d6a7');if(isoFilterFab==='c100'){isoFilterFab='c100';var o=document.getElementById('btn-fpend');if(o){o.style.background='rgba(192,112,0,.08)';o.style.color='#c07000';o.style.borderColor='#ffe0a0';}}filterTable()" style="height:27px;padding:0 11px;font-size:10.5px;font-weight:700;border-radius:6px;border:1.5px solid #a5d6a7;background:rgba(46,125,50,.08);color:#1a8c4e;cursor:pointer;white-space:nowrap">✅ 100% Concluído</button>
+    <button id="btn-fpend" onclick="isoFilterFab=(isoFilterFab==='pend'?'':'pend');document.getElementById('btn-fpend').style.background=(isoFilterFab==='pend'?'#c07000':'rgba(192,112,0,.08)');document.getElementById('btn-fpend').style.color=(isoFilterFab==='pend'?'#fff':'#c07000');document.getElementById('btn-fpend').style.borderColor=(isoFilterFab==='pend'?'#c07000':'#ffe0a0');if(isoFilterFab==='pend'){var o=document.getElementById('btn-fc100');if(o){o.style.background='rgba(46,125,50,.08)';o.style.color='#1a8c4e';o.style.borderColor='#a5d6a7';}}filterTable()" style="height:27px;padding:0 11px;font-size:10.5px;font-weight:700;border-radius:6px;border:1.5px solid #ffe0a0;background:rgba(192,112,0,.08);color:#c07000;cursor:pointer;white-space:nowrap">⏳ Pendentes</button>
     <button class="btn-del-sel" id="btn-del-sel" style="display:none" onclick="reqAuth('del-selected','')">🗑️ Excluir selecionados (<span id="sel-count">0</span>)</button>
     <button id="btn-exp-sel" onclick="exportIsoSelectedPDF()" style="display:none;height:26px;padding:0 12px;font-size:11px;font-weight:700;color:#fff;background:linear-gradient(135deg,#0B3D91 0%,#00A8E8 100%);border:none;border-radius:6px;cursor:pointer;display:none;align-items:center;gap:5px;box-shadow:0 2px 8px rgba(0,120,200,.4)">📄 Exportar PDF (<span id="exp-sel-count">0</span>)</button>
     <span id="filter-count" style="font-size:10px;color:var(--hmu)"></span>
@@ -2119,6 +2122,13 @@ function filterTable() {
     if (fn && e.nr13 !== fn) return false;
     if (fp && e.paint !== fp) return false;
     if (fcl && (e.classif||'Fabricação') !== fcl) return false;
+    if (isoFilterFab) {
+      var fp = Math.round((e.fab&&e.fab.pre||0)*.30+(e.fab&&e.fab.sol||0)*.50+(e.fab&&e.fab.end||0)*.20);
+      var mp = Math.round((e.mon&&e.mon.pre||0)*.30+(e.mon&&e.mon.sol||0)*.50+(e.mon&&e.mon.end||0)*.20);
+      var total = Math.round((fp + mp) / 2);
+      if (isoFilterFab === 'c100'  && total < 100) return false;
+      if (isoFilterFab === 'pend'  && total >= 100) return false;
+    }
     return true;
   });
   const cnt = document.getElementById('filter-count');
@@ -2128,6 +2138,9 @@ function filterTable() {
 
 function clearFilters() {
   ['f-search', 'f-area', 'f-nr13', 'f-paint', 'f-classif'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  isoFilterFab = '';
+  var b1 = document.getElementById('btn-fc100'); if (b1) { b1.style.background='rgba(46,125,50,.08)'; b1.style.color='#1a8c4e'; b1.style.borderColor='#a5d6a7'; }
+  var b2 = document.getElementById('btn-fpend'); if (b2) { b2.style.background='rgba(192,112,0,.08)'; b2.style.color='#c07000'; b2.style.borderColor='#ffe0a0'; }
   filterTable();
 }
 
@@ -2287,27 +2300,28 @@ function openIEDirect(t, id) {
 function closeIE(t, id) { const p=document.getElementById(`ie-${t}-${id}`); if(p) p.classList.remove('open'); }
 async function saveIE(t, id) {
   const e = isos.find(x => x.id === id); if (!e) return;
+  // Lê TODOS os valores antes de fechar o painel
+  function gv(eid) { var el = document.getElementById(eid); return el ? el.value : ''; }
   if (t === 'fab') {
-    e.fab = { pre: clamp(document.getElementById(`ie-fp-${id}`).value), sol: clamp(document.getElementById(`ie-fs-${id}`).value), end: clamp(document.getElementById(`ie-fe-${id}`).value) };
-    e.fab_start = document.getElementById(`ie-fstart-${id}`).value;
-    e.fab_end = document.getElementById(`ie-fend-${id}`).value;
+    e.fab = { pre: clamp(gv('ie-fp-'+id)), sol: clamp(gv('ie-fs-'+id)), end: clamp(gv('ie-fe-'+id)) };
+    e.fab_start = gv('ie-fstart-'+id);
+    e.fab_end   = gv('ie-fend-'+id);
   } else if (t === 'th') {
-    e.mon.th = document.getElementById(`ie-th-s-${id}`).value;
-    e.th_date = document.getElementById(`ie-th-d-${id}`).value;
+    e.mon.th  = gv('ie-th-s-'+id);
+    e.th_date = gv('ie-th-d-'+id);
   } else if (t === 'trq') {
-    e.mon.trq = document.getElementById(`ie-trq-s-${id}`).value;
-    e.trq_date = document.getElementById(`ie-trq-d-${id}`).value;
+    e.mon.trq  = gv('ie-trq-s-'+id);
+    e.trq_date = gv('ie-trq-d-'+id);
   } else if (t === 'cl') {
-    e.classif = document.getElementById(`ie-cl-v-${id}`).value || 'Fabricação';
+    e.classif = gv('ie-cl-v-'+id) || 'Fabricação';
   } else {
-    e.mon = { pre: clamp(document.getElementById(`ie-mp-${id}`).value), sol: clamp(document.getElementById(`ie-ms-${id}`).value), end: clamp(document.getElementById(`ie-me-${id}`).value), th: e.mon.th, trq: e.mon.trq };
-    e.mon_start = document.getElementById(`ie-mstart-${id}`).value;
-    e.mon_end = document.getElementById(`ie-mend-${id}`).value;
+    e.mon = { pre: clamp(gv('ie-mp-'+id)), sol: clamp(gv('ie-ms-'+id)), end: clamp(gv('ie-me-'+id)), th: e.mon.th, trq: e.mon.trq };
+    e.mon_start = gv('ie-mstart-'+id);
+    e.mon_end   = gv('ie-mend-'+id);
   }
-  closeIE(t,id);
+  closeIE(t, id);
   await saveAll();
-  // Atualiza apenas as células afetadas sem re-renderizar a tabela toda
-  _refreshIsoRow(id);
+  renderIsoView();
 }
 document.addEventListener('click', () => { document.querySelectorAll('.ie-panel.open,.ie-panel-sm.open').forEach(p => p.classList.remove('open')); });
 async function togglePaint(id) { const e = isos.find(x => x.id === id); if (!e) return; e.paint = e.paint === 'Pintado' ? 'Não Pintado' : 'Pintado'; await saveAll(); renderIsoView(); }
