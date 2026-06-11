@@ -2281,6 +2281,9 @@ function planSaveReal(el) {
 }
 
 function planUpdateFin() {
+  try { _planUpdateFinImpl(); } catch(e) { alert('Erro: ' + e.message); console.error(e); }
+}
+function _planUpdateFinImpl() {
   var valor = _planParseBRL((document.getElementById('fin-valor')||{}).value||'0');
   // Fabricação
   var prodCaldFab = _planParseBRL((document.getElementById('fin-pcald-fab')||{}).value||'0');
@@ -2312,6 +2315,9 @@ function planUpdateFin() {
 
 
 function _planRenderFinTable() {
+  try { _planRenderFinTableImpl(); } catch(e) { var t=document.getElementById('fin-result-table'); if(t) t.innerHTML='<div style=color:red;padding:12px>Erro: '+e.message+'</div>'; console.error(e); }
+}
+function _planRenderFinTableImpl() {
   var tbl = document.getElementById('fin-result-table'); if (!tbl) return;
   var st = _planFinState || {};
   var valor = st.valor || 0;
