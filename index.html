@@ -2281,9 +2281,6 @@ function planSaveReal(el) {
 }
 
 function planUpdateFin() {
-  try { _planUpdateFinImpl(); } catch(e) { console.error('planUpdateFin:', e); }
-}
-function _planUpdateFinImpl() {
   var valor = _planParseBRL((document.getElementById('fin-valor')||{}).value||'0');
   // Fabricação
   var prodCaldFab = _planParseBRL((document.getElementById('fin-pcald-fab')||{}).value||'0');
@@ -2315,9 +2312,6 @@ function _planUpdateFinImpl() {
 
 
 function _planRenderFinTable() {
-  try { _planRenderFinTableImpl(); } catch(e) { var t=document.getElementById('fin-result-table'); if(t) t.innerHTML='<div style=color:red;padding:12px>Erro: '+e.message+'</div>'; console.error(e); }
-}
-function _planRenderFinTableImpl() {
   var tbl = document.getElementById('fin-result-table'); if (!tbl) return;
   var st = _planFinState || {};
   var valor = st.valor || 0;
@@ -2437,7 +2431,7 @@ function _planRenderFinTableImpl() {
     +'<td style="padding:12px;text-align:center;font-size:12px;font-weight:700">📚</td>'
     +'<td colspan="4" style="padding:12px;font-size:12px;font-weight:600">Book — Entrega documentação</td>'
     +'<td style="padding:12px;text-align:right;font-size:13px;font-weight:700">R$ '+_planBRL(Math.round(vlBook))+'</td>'
-    +'<td style="padding:12px;text-align:right;font-size:12px;font-weight:600">R$ '+_planBRL(Math.round(acumRealF+acumRealM+vlBook))+'</td>'
+    +'<td style="padding:12px;text-align:right;font-size:12px;font-weight:600">R$ '+_planBRL(Math.round(acumFab+acumMon+vlBook))+'</td>'
     +'<td style="padding:12px;text-align:right;font-size:13px;font-weight:700">'+(saldoFinal<0?'⛔ -R$ '+_planBRL(Math.abs(Math.round(saldoFinal))):'R$ '+_planBRL(Math.round(saldoFinal)))+'</td>'
     +'<td style="padding:8px"><div style="background:rgba(255,255,255,.3);border-radius:10px;height:20px;position:relative"><div style="height:100%;width:100%;background:rgba(255,255,255,.6);border-radius:10px"></div><span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff">100%</span></div></td>'
     +'</tr>'
