@@ -2485,7 +2485,7 @@ function _planRenderFinTable() {
       // Fab Desvio
       +'<td style="padding:8px 4px;text-align:right;font-size:9px;font-weight:600;color:'+desvCorFab+'">'+(rFabN>0?(desvFab>0?'+':'')+_planBRL(Math.round(desvFab)):'—')+'</td>'
       // Mon Previsto
-      +'<td style="padding:8px 6px;text-align:right;font-size:10px;color:var(--hmu)">'+(mes<2?'<span style=font-size:8px>Mês 2</span>':(gMon>0?'R$ '+_planBRL(Math.round(gMon)):'—'))+'</td>'
+      +'<td style="padding:8px 6px;text-align:right;font-size:10px;color:var(--hmu)">'+(mes<2?'<span style=\"font-size:8px\">Mês 2</span>':(gMon>0?'R$ '+_planBRL(Math.round(gMon)):'—'))+'</td>'
       // Mon Real (input)
       +'<td style="padding:4px 3px;text-align:center"><input type="text" inputmode="numeric" value="'+(rMon!==''?_planBRL(rMonN):'')+'" placeholder="—" data-mes="'+mes+'" data-scope="mon" onchange="planSaveReal(this)" onblur="planSaveReal(this)" oninput="_planMaskBRL(this)" style="width:80px;padding:4px 6px;border:1px solid '+(rMonN>0?'#0077b6':'var(--hbr)')+';border-radius:5px;font-size:10px;text-align:right;background:'+(rMonN>0?'#e8f8fd':'#fff')+';outline:none"></td>'
       // Mon Desvio
