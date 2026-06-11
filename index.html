@@ -2372,21 +2372,24 @@ function _planRenderFinTable() {
   var monOffset = 1; // Montagem inicia 30 dias (1 mês) após fabricação
   var maxMeses = Math.max(mesesFab, mesesMon + monOffset, 1);
 
-  var fluxo = '<table style="width:100%;border-collapse:collapse;border-radius:8px;overflow:hidden">'
-    +'<thead><tr style="background:#0B3D91;color:#fff">'
-    +'<th style="padding:8px 6px;font-size:10px;text-align:center;width:40px" rowspan=2>Mês</th>'
-    +'<th style="padding:8px 6px;font-size:10px;text-align:center" colspan=2>⚙️ Fabricação</th>'
-    +'<th style="padding:8px 6px;font-size:10px;text-align:center" colspan=2>🔧 Montagem</th>'
-    +'<th style="padding:8px 6px;font-size:10px;text-align:right" rowspan=2>Total Real</th>'
-    +'<th style="padding:8px 6px;font-size:10px;text-align:right" rowspan=2>Acumulado</th>'
-    +'<th style="padding:8px 6px;font-size:10px;text-align:right" rowspan=2>Saldo</th>'
-    +'<th style="padding:8px 6px;font-size:10px;text-align:center;width:90px" rowspan=2>%</th>'
-    +'</tr><tr style="background:#1a5fd1;color:rgba(255,255,255,.85)">'
-    +'<th style="padding:4px 6px;font-size:9px">Previsto</th>'
-    +'<th style="padding:4px 6px;font-size:9px">Real</th>'
-    +'<th style="padding:4px 6px;font-size:9px">Previsto</th>'
-    +'<th style="padding:4px 6px;font-size:9px">Real</th>'
-    +'</tr></thead><tbody>';
+  var fluxo = '<table style="width:100%;border-collapse:collapse;border-radius:10px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.1)">'
+    +'<thead>'
+    +'<tr style="background:linear-gradient(90deg,#071d4a 0%,#0B3D91 60%,#1a5fd1 100%);color:#fff">'
+    +'<th style="padding:12px 8px;font-size:11px;font-weight:700;text-align:center;width:44px;border-right:1px solid rgba(255,255,255,.1)" rowspan="2">MÊS</th>'
+    +'<th style="padding:10px 8px;font-size:11px;font-weight:700;text-align:center;border-right:1px solid rgba(255,255,255,.1);letter-spacing:.5px" colspan="2">⚙️ FABRICAÇÃO</th>'
+    +'<th style="padding:10px 8px;font-size:11px;font-weight:700;text-align:center;border-right:1px solid rgba(255,255,255,.1);letter-spacing:.5px" colspan="2">🔧 MONTAGEM</th>'
+    +'<th style="padding:10px 8px;font-size:11px;font-weight:700;text-align:center;border-right:1px solid rgba(255,255,255,.1);letter-spacing:.5px" rowspan="2">TOTAL<br>REAL</th>'
+    +'<th style="padding:10px 8px;font-size:11px;font-weight:700;text-align:center;border-right:1px solid rgba(255,255,255,.1);letter-spacing:.5px" rowspan="2">ACUMU-<br>LADO</th>'
+    +'<th style="padding:10px 8px;font-size:11px;font-weight:700;text-align:center;border-right:1px solid rgba(255,255,255,.1);letter-spacing:.5px" rowspan="2">SALDO</th>'
+    +'<th style="padding:10px 8px;font-size:11px;font-weight:700;text-align:center;letter-spacing:.5px;width:90px" rowspan="2">%</th>'
+    +'</tr>'
+    +'<tr style="background:linear-gradient(90deg,#0e3a8a,#1a5fd1);color:rgba(255,255,255,.9)">'
+    +'<th style="padding:6px 8px;font-size:9.5px;font-weight:600;text-align:center;border-right:1px solid rgba(255,255,255,.1);text-transform:uppercase;letter-spacing:.4px">Previsto</th>'
+    +'<th style="padding:6px 8px;font-size:9.5px;font-weight:600;text-align:center;border-right:1px solid rgba(255,255,255,.15);background:rgba(0,168,232,.25);text-transform:uppercase;letter-spacing:.4px">Real</th>'
+    +'<th style="padding:6px 8px;font-size:9.5px;font-weight:600;text-align:center;border-right:1px solid rgba(255,255,255,.1);text-transform:uppercase;letter-spacing:.4px">Previsto</th>'
+    +'<th style="padding:6px 8px;font-size:9.5px;font-weight:600;text-align:center;border-right:1px solid rgba(255,255,255,.1);background:rgba(0,168,232,.25);text-transform:uppercase;letter-spacing:.4px">Real</th>'
+    +'</tr>'
+    +'</thead><tbody>';
 
   var reais = (st.reais || {});
   var acumFab=0, acumMon=0, acumRF=0, acumRM=0;
