@@ -2117,6 +2117,25 @@ const PLAN_SK_FIN  = 'hyd_plan_financeiro';
 function _planLoad() {
   try { var v = LS.getItem(PLAN_SK_REC); if (v) _planRecursos = JSON.parse(v)||{}; } catch(e){ _planRecursos={}; }
   try { var v2= LS.getItem(PLAN_SK_FIN); if (v2) _planFinState = JSON.parse(v2)||null; } catch(e){ _planFinState=null; }
+  // Migração: formato antigo (prodFab/recFab) → novo (prodCaldFab/caldFab/soldFab)
+  if (_planFinState && _planFinState.prodFab && !_planFinState.prodCaldFab) {
+    var old = _planFinState;
+    var maxRecFab = (old.recFab||[]).length ? Math.max.apply(null, old.recFab) : 0;
+    var maxRecMon = (old.recMon||[]).length ? Math.max.apply(null, old.recMon) : 0;
+    _planFinState = {
+      valor: old.valor || 0,
+      prodCaldFab: old.prodFab || 0,
+      prodSoldFab: old.prodFab || 0,
+      caldFab: Math.ceil(maxRecFab * 0.67),
+      soldFab: Math.floor(maxRecFab * 0.33) || (maxRecFab > 0 ? 1 : 0),
+      prodCaldMon: old.prodMon || old.prodFab || 0,
+      prodSoldMon: old.prodMon || old.prodFab || 0,
+      caldMon: Math.ceil(maxRecMon * 0.6),
+      soldMon: Math.floor(maxRecMon * 0.4) || (maxRecMon > 0 ? 1 : 0),
+      reais: old.reais || {}
+    };
+    _planSaveFin();
+  }
 }
 function _planSaveRec() {
   try { LS.setItem(PLAN_SK_REC, JSON.stringify(_planRecursos)); } catch(e){}
