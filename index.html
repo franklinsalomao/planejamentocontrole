@@ -2305,7 +2305,7 @@ function planAddRec(scope) {
 function planSaveReal(el) {
   var mes = parseInt(el.getAttribute('data-mes'));
   var scope = el.getAttribute('data-scope');
-  var val = _planParseBRL(el.value || '0');
+  var val = (scope==='pct_fab'||scope==='pct_mon') ? Math.min(100,Math.max(0,parseFloat(el.value)||0)) : _planParseBRL(el.value||'0');
   if (!_planFinState) _planFinState = {};
   if (!_planFinState.reais) _planFinState.reais = {};
   if (!_planFinState.reais[mes]) _planFinState.reais[mes] = {};
@@ -2376,8 +2376,8 @@ function _planRenderFinTable() {
     +'<thead>'
     +'<tr style="background:linear-gradient(90deg,#071d4a 0%,#0B3D91 60%,#1a5fd1 100%);color:#fff">'
     +'<th style="padding:12px 8px;font-size:11px;font-weight:700;text-align:center;width:44px;border-right:1px solid rgba(255,255,255,.1)" rowspan="2">MÊS</th>'
-    +'<th style="padding:10px 8px;font-size:11px;font-weight:700;text-align:center;border-right:1px solid rgba(255,255,255,.1);letter-spacing:.5px" colspan="2">⚙️ FABRICAÇÃO</th>'
-    +'<th style="padding:10px 8px;font-size:11px;font-weight:700;text-align:center;border-right:1px solid rgba(255,255,255,.1);letter-spacing:.5px" colspan="2">🔧 MONTAGEM</th>'
+    +'<th style="padding:10px 8px;font-size:11px;font-weight:700;text-align:center;border-right:1px solid rgba(255,255,255,.1);letter-spacing:.5px" colspan="3">⚙️ FABRICAÇÃO</th>'
+    +'<th style="padding:10px 8px;font-size:11px;font-weight:700;text-align:center;border-right:1px solid rgba(255,255,255,.1);letter-spacing:.5px" colspan="3">🔧 MONTAGEM</th>'
     +'<th style="padding:10px 8px;font-size:11px;font-weight:700;text-align:center;border-right:1px solid rgba(255,255,255,.1);letter-spacing:.5px" rowspan="2">TOTAL<br>REAL</th>'
     +'<th style="padding:10px 8px;font-size:11px;font-weight:700;text-align:center;border-right:1px solid rgba(255,255,255,.1);letter-spacing:.5px" rowspan="2">ACUMU-<br>LADO</th>'
     +'<th style="padding:10px 8px;font-size:11px;font-weight:700;text-align:center;border-right:1px solid rgba(255,255,255,.1);letter-spacing:.5px" rowspan="2">SALDO</th>'
@@ -2386,6 +2386,8 @@ function _planRenderFinTable() {
     +'<tr style="background:linear-gradient(90deg,#0e3a8a,#1a5fd1);color:rgba(255,255,255,.9)">'
     +'<th style="padding:6px 8px;font-size:9.5px;font-weight:600;text-align:center;border-right:1px solid rgba(255,255,255,.1);text-transform:uppercase;letter-spacing:.4px">Previsto</th>'
     +'<th style="padding:6px 8px;font-size:9.5px;font-weight:600;text-align:center;border-right:1px solid rgba(255,255,255,.15);background:rgba(0,168,232,.25);text-transform:uppercase;letter-spacing:.4px">Real</th>'
+    +'<th style="padding:6px 6px;font-size:9px;font-weight:600;text-align:center;border-right:1px solid rgba(255,255,255,.1);background:rgba(26,140,78,.25);text-transform:uppercase;letter-spacing:.4px">% Físico</th>'
+    +'<th style="padding:6px 6px;font-size:9px;font-weight:600;text-align:center;border-right:1px solid rgba(255,255,255,.15);background:rgba(26,140,78,.25);text-transform:uppercase;letter-spacing:.4px">% Físico</th>'
     +'<th style="padding:6px 8px;font-size:9.5px;font-weight:600;text-align:center;border-right:1px solid rgba(255,255,255,.1);text-transform:uppercase;letter-spacing:.4px">Previsto</th>'
     +'<th style="padding:6px 8px;font-size:9.5px;font-weight:600;text-align:center;border-right:1px solid rgba(255,255,255,.1);background:rgba(0,168,232,.25);text-transform:uppercase;letter-spacing:.4px">Real</th>'
     +'</tr>'
@@ -2427,8 +2429,16 @@ function _planRenderFinTable() {
       +'<td style="padding:8px 6px;text-align:center;font-size:14px;font-weight:800;color:var(--hb)">'+mes+'</td>'
       +'<td style="padding:8px 6px;text-align:right;font-size:10px;color:#888">'+(gFab>0?'R$ '+_planBRL(Math.round(gFab)):'—')+'</td>'
       +'<td style="padding:3px 2px"><input type="text" inputmode="numeric" value="'+(rF>0?_planBRL(rF):'')+'" placeholder="—" data-mes="'+mes+'" data-scope="fab" oninput="_planMaskBRL(this)" onchange="planSaveReal(this)" style="width:78px;padding:4px 5px;border:1px solid '+(rF>0?'#0B3D91':'#ccc')+';border-radius:5px;font-size:10px;text-align:right;background:'+(rF>0?'#f0f4fb':'#fff')+';outline:none"></td>'
+      +'<td style="padding:3px 2px">'
+      +'<input type="number" min="0" max="100" value="'+(rm.pct_fab>0?rm.pct_fab:'')+'placeholder="%" data-mes="'+mes+'" data-scope="pct_fab" onchange="planSaveReal(this)" style="width:52px;padding:4px 4px;border:1px solid '+(rm.pct_fab>0?'#1a8c4e':'#ccc')+';border-radius:5px;font-size:10px;text-align:center;outline:none;background:'+(rm.pct_fab>0?'#edf7ed':'#fff')+';">'
+      +'<span style="font-size:9px;color:#1a8c4e">%</span>'
+      +'</td>'
       +'<td style="padding:8px 6px;text-align:right;font-size:10px;color:#888">'+(mes<=monOffset?'<span style="font-size:9px;color:#aaa">Início mês 2</span>':(gMon>0?'R$ '+_planBRL(Math.round(gMon)):'—'))+'</td>'
       +'<td style="padding:3px 2px"><input type="text" inputmode="numeric" value="'+(rM>0?_planBRL(rM):'')+'" placeholder="—" data-mes="'+mes+'" data-scope="mon" oninput="_planMaskBRL(this)" onchange="planSaveReal(this)" style="width:78px;padding:4px 5px;border:1px solid '+(rM>0?'#0077b6':'#ccc')+';border-radius:5px;font-size:10px;text-align:right;background:'+(rM>0?'#e8f8fd':'#fff')+';outline:none"></td>'
+      +'<td style="padding:3px 2px">'
+      +'<input type="number" min="0" max="100" value="'+(rm.pct_mon>0?rm.pct_mon:'')+'placeholder="%" data-mes="'+mes+'" data-scope="pct_mon" onchange="planSaveReal(this)" style="width:52px;padding:4px 4px;border:1px solid '+(rm.pct_mon>0?'#1a8c4e':'#ccc')+';border-radius:5px;font-size:10px;text-align:center;outline:none;background:'+(rm.pct_mon>0?'#edf7ed':'#fff')+';">'
+      +'<span style="font-size:9px;color:#1a8c4e">%</span>'
+      +'</td>'
       +'<td style="padding:8px 6px;text-align:right;font-size:11px;font-weight:700;color:var(--hb)">'+(acumReal>0?'R$ '+_planBRL(Math.round(acumReal)):'—')+'</td>'
       +'<td style="padding:8px 6px;text-align:right;font-size:11px;font-weight:600">R$ '+_planBRL(Math.round(acumReal))+'</td>'
       +'<td style="padding:8px 6px;text-align:right;font-size:11px;font-weight:700;color:'+(negR?'#fff':'#1a8c4e')+';'+(negR?'background:var(--hd);border-radius:5px;padding:4px 8px':'')+'">R$ '+_planBRL(Math.abs(Math.round(saldoReal)))+(negR?' ⛔':'')+'</td>'
@@ -2440,7 +2450,7 @@ function _planRenderFinTable() {
   var saldoFinal = valor - acumFab - acumMon - vlBook;
   fluxo += '<tr style="background:linear-gradient(90deg,#1a8c4e,#27ae60);color:#fff">'
     +'<td style="padding:12px;text-align:center;font-size:12px;font-weight:700">📚</td>'
-    +'<td colspan="4" style="padding:12px;font-size:12px;font-weight:600">Book — Entrega documentação</td>'
+    +'<td colspan="6" style="padding:12px;font-size:12px;font-weight:600">Book — Entrega documentação</td>'
     +'<td style="padding:12px;text-align:right;font-size:13px;font-weight:700">R$ '+_planBRL(Math.round(vlBook))+'</td>'
     +'<td style="padding:12px;text-align:right;font-size:12px;font-weight:600">R$ '+_planBRL(Math.round(acumFab+acumMon+vlBook))+'</td>'
     +'<td style="padding:12px;text-align:right;font-size:13px;font-weight:700">'+(saldoFinal<0?'⛔ -R$ '+_planBRL(Math.abs(Math.round(saldoFinal))):'R$ '+_planBRL(Math.round(saldoFinal)))+'</td>'
