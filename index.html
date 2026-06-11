@@ -2593,7 +2593,8 @@ function renderPlanejamento(discTabs, bc) {
     +'<div style="font-size:10px;color:var(--hmu);line-height:1.5">Documentação técnica.<br>Medido na entrega total.<br>Sem alocação de recurso.</div>'
     +'</div>'
     +'</div>'
-    +'<div id="fin-result-table"></div>'
+    +'<div style="margin:16px 0 12px;text-align:center"><button onclick="planUpdateFin()" style="padding:10px 40px;font-size:14px;font-weight:700;color:#fff;background:linear-gradient(135deg,#0B3D91,#1a5fd1);border:none;border-radius:8px;cursor:pointer;box-shadow:0 3px 12px rgba(11,61,145,.3)">📊 Calcular</button></div>'
++'<div id="fin-result-table"></div>'
     +'</div></div>';
 
   document.getElementById('view-isos').innerHTML = bc + discTabs + header + finSection + '</div>';
