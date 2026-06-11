@@ -2213,8 +2213,8 @@ function _planRefreshTotals() {
   var list = currentProjId ? projIsos(currentProjId) : isos;
   var st = _planFinState || {};
   // Recursos do dimensionamento financeiro
-  var recFab  = (st.recFab  || []).length ? Math.max.apply(null, st.recFab)  : 0;
-  var recMon  = (st.recMon  || []).length ? Math.max.apply(null, st.recMon)  : 0;
+  var recFab  = (st.recFab  || []).reduce(function(a,b){return a+(parseInt(b)||0);},0);
+  var recMon  = (st.recMon  || []).reduce(function(a,b){return a+(parseInt(b)||0);},0);
 
   var totalHhFab = 0, totalHhMon = 0;
   list.forEach(function(e){
@@ -2322,9 +2322,9 @@ function _planRenderFinTable() {
   var vlFab=valor*0.30, vlMon=valor*0.50, vlBook=valor*0.20;
   var prodFab=st.prodFab||0, prodMon=st.prodMon||0;
   var recFab=st.recFab||[], recMon=st.recMon||[];
-  var maxRecFab=recFab.length?Math.max.apply(null,recFab):0;
-  var maxRecMon=recMon.length?Math.max.apply(null,recMon):0;
-  var custoFab=maxRecFab*prodFab, custoMon=maxRecMon*prodMon;
+  var totalRecFab=recFab.reduce(function(a,b){return a+(parseInt(b)||0);},0);
+  var totalRecMon=recMon.reduce(function(a,b){return a+(parseInt(b)||0);},0);
+  var custoFab=totalRecFab*prodFab, custoMon=totalRecMon*prodMon;
   var custoTotal=custoFab+custoMon;
   var orcExec=vlFab+vlMon; // orçamento executável (sem book)
 
@@ -2466,16 +2466,16 @@ function renderPlanejamento(discTabs, bc) {
   // ── Cards de Hh ──
   var finState = _planFinState || {};
   var _hhHtml = '';
-  var _maxRF = (finState.recFab||[]).length ? Math.max.apply(null,finState.recFab) : 0;
-  var _maxRM = (finState.recMon||[]).length ? Math.max.apply(null,finState.recMon) : 0;
-  if (_maxRF > 0 || _maxRM > 0) {
+  var _sumRF = (finState.recFab||[]).reduce(function(a,b){return a+(parseInt(b)||0);},0);
+  var _sumRM = (finState.recMon||[]).reduce(function(a,b){return a+(parseInt(b)||0);},0);
+  if (_sumRF > 0 || _sumRM > 0) {
     var _pF = finState.prodFab||0, _pM = finState.prodMon||0;
-    var _cF = _maxRF * _pF, _cM = _maxRM * _pM;
+    var _cF = _sumRF * _pF, _cM = _sumRM * _pM;
     var _vF = (finState.valor||0)*0.3, _vM = (finState.valor||0)*0.5;
     var _mF = _cF>0 ? Math.ceil(_vF/_cF) : 0;
     var _mM = _cM>0 ? Math.ceil(_vM/_cM) : 0;
-    var _caldF = Math.ceil(_maxRF*0.67), _soldF = _maxRF - _caldF;
-    var _caldM = Math.ceil(_maxRM*0.6),  _soldM = _maxRM - _caldM;
+    var _caldF = Math.ceil(_sumRF*0.67), _soldF = _sumRF - _caldF;
+    var _caldM = Math.ceil(_sumRM*0.6),  _soldM = _sumRM - _caldM;
     var _hCF = _caldF * PLAN_HORAS_FAB * PLAN_DIAS_MES * _mF;
     var _hSF = _soldF * PLAN_HORAS_FAB * PLAN_DIAS_MES * _mF;
     var _hCM = _caldM * PLAN_HORAS_MON * PLAN_DIAS_MES * _mM;
