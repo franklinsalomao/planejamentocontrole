@@ -1222,9 +1222,9 @@ function sincronizarPlanilha() {
 const DISC_TABS = {
   caldeiraria: { label:'🔧 Caldeiraria', subs:['dashboard','isometricos','suportes','materiais','planejamento'],
     labels:['Dashboard','Controle de Isométricos','Controle de Suportes','Controle de Materiais','Planejamento'] },
-  eletrica: { label:'⚡ Elétrica', subs:['cabos-el','sup-el','encam-el','dt-el','equip-el'],
+  eletrica: { label:'⚡ Elétrica', subs:['cabos-el','sup-el','encam-el','dt-el','equip-el','planejamento'],
     labels:['Controle de Cabos','Controle de Suportes','Controle de Encaminhamento','Controle DT','Controle de Equipamentos'] },
-  instr: { label:'🔬 Instrumentação', subs:['cabos-ins','encam-ins','instrumentos','equip-ins','interlig'],
+  instr: { label:'🔬 Instrumentação', subs:['cabos-ins','encam-ins','instrumentos','equip-ins','interlig','planejamento'],
     labels:['Controle de Cabos','Controle de Encaminhamento','Controle de Instrumentos','Controle de Equipamentos','Controle de Interligação'] }
 };
 function setDisc(d) {
@@ -2111,20 +2111,20 @@ const PLAN_DIAS_MES  = 22;
 const PLAN_IDX_REF   = 139 / 56.5; // 2.460 Hh/m
 let _planRecursos = {};
 let _planFinState  = null; // { valor, prodRec, recursos[] }
-const PLAN_SK_REC  = 'hyd_plan_recursos';
-const PLAN_SK_FIN  = 'hyd_plan_financeiro';
+function _planSkRec(){ return 'hyd_plan_rec_'+(currentProjId||'g')+'_'+(currentDisc||'cal'); }
+function _planSkFin(){ return 'hyd_plan_fin_'+(currentProjId||'g')+'_'+(currentDisc||'cal'); }
 
 function _planLoad() {
-  try { var v = LS.getItem(PLAN_SK_REC); if (v) _planRecursos = JSON.parse(v)||{}; } catch(e){ _planRecursos={}; }
-  try { var v2= LS.getItem(PLAN_SK_FIN); if (v2) _planFinState = JSON.parse(v2)||null; } catch(e){ _planFinState=null; }
+  try { var v = LS.getItem(_planSkRec()); if (v) _planRecursos = JSON.parse(v)||{}; } catch(e){ _planRecursos={}; }
+  try { var v2= LS.getItem(_planSkFin()); if (v2) _planFinState = JSON.parse(v2)||null; } catch(e){ _planFinState=null; }
 }
 function _planSaveRec() {
-  try { LS.setItem(PLAN_SK_REC, JSON.stringify(_planRecursos)); } catch(e){}
-  if (window.storage) { try { window.storage.set(PLAN_SK_REC, JSON.stringify(_planRecursos), false); } catch(e){} }
+  try { LS.setItem(_planSkRec(), JSON.stringify(_planRecursos)); } catch(e){}
+  if (window.storage) { try { window.storage.set(_planSkRec(), JSON.stringify(_planRecursos), false); } catch(e){} }
 }
 function _planSaveFin() {
-  try { LS.setItem(PLAN_SK_FIN, JSON.stringify(_planFinState)); } catch(e){}
-  if (window.storage) { try { window.storage.set(PLAN_SK_FIN, JSON.stringify(_planFinState), false); } catch(e){} }
+  try { LS.setItem(_planSkFin(), JSON.stringify(_planFinState)); } catch(e){}
+  if (window.storage) { try { window.storage.set(_planSkFin(), JSON.stringify(_planFinState), false); } catch(e){} }
 }
 
 function _planMaterial(desc) {
@@ -2537,8 +2537,10 @@ function renderPlanejamento(discTabs, bc) {
   var list = currentProjId ? projIsos(currentProjId) : isos;
 
   // ── Cabeçalho e totais físicos ──
+  var _discLabel = {'caldeiraria':'🔧 Caldeiraria','eletrica':'⚡ Elétrica','instr':'🔬 Instrumentação'}[currentDisc] || currentDisc;
   var header = '<div style="padding:16px 16px 8px">'
     + '<div style="font-size:16px;font-weight:700;color:var(--hb)">🗓️ Planejamento — Físico × Financeiro</div>'
+    + '<div style="font-size:11px;color:var(--hmu);margin-top:2px">'+_discLabel+' · '+(currentProjId?(projects.find(function(p){return p.id===currentProjId;})||{name:'Projeto'}).name:'Todos os projetos')+'</div>'
     + '</div>';
 
   var totals = '';
@@ -2742,7 +2744,7 @@ function renderIsoView() {
     renderDashboard(discTabs, bc); return;
   }
 
-  if (currentDisc === 'caldeiraria' && currentSubTab === 'planejamento') {
+  if (currentSubTab === 'planejamento') {
     renderPlanejamento(discTabs, bc); return;
   }
 
