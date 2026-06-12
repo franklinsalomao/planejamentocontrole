@@ -2436,10 +2436,9 @@ function _planRenderFinTable() {
 
     var acumPrev = acumFab + acumMon;
     var acumReal = acumRF + acumRM;
-    var saldoReal = orcDisp - acumReal;   // Saldo real = (Valor - Book) - gasto real
-    var deficitReal = acumReal > orcDisp ? acumReal - orcDisp : 0; // Déficit real acumulado
-    var pctPrev = orcDisp>0 ? Math.round(acumPrev/orcDisp*100) : 0;
-    var pctReal = orcDisp>0 ? Math.round(acumReal/orcDisp*100) : 0;
+    var saldoReal = orcExec - acumReal;
+    var pctPrev = orcExec>0 ? Math.round(acumPrev/orcExec*100) : 0;
+    var pctReal = orcExec>0 ? Math.round(acumReal/orcExec*100) : 0;
     var negR = saldoReal < 0;
 
     var bg = negR ? '#fff0f0' : mes%2===0 ? '#f8fafd' : '#fff';
@@ -2478,34 +2477,19 @@ function _planRenderFinTable() {
       // Total Previsto
       +'<td style="padding:7px 6px;text-align:right;font-size:10px;font-weight:600;color:#0B3D91;border-right:1px solid #e8eef7">R$ '+_planBRL(Math.round(acumPrev))+'</td>'
       // Total Real
-      +'<td style="padding:7px 6px;text-align:right;font-size:11px;font-weight:700;color:'+(negR?'#fff':'#1a8c4e')+';'+(negR?'background:var(--hd);border-radius:5px':'')+'">'
-      +(negR
-        ? '⛔ Déficit R$ '+_planBRL(Math.round(deficitReal))
-        : 'R$ '+_planBRL(Math.round(acumReal)))
-      +'</td>'
+      +'<td style="padding:7px 6px;text-align:right;font-size:11px;font-weight:700;color:'+(negR?'#fff':'#1a8c4e')+';'+(negR?'background:var(--hd);border-radius:5px':'')+'">R$ '+_planBRL(Math.abs(Math.round(acumReal)))+(negR?' ⛔':'')+'</td>'
       // Barra dual
       +'<td style="padding:4px 6px">'+dualBar+'</td>'
       +(function(){
         // Saldo restante do orçamento executável com base no real
-        var saldoR = orcDisp - acumReal; // Saldo = (Valor - Book) - real
+        var saldoR = orcExec - acumReal;
         var taxaMensal = acumReal > 0 ? acumReal / mes : custoTotal;
         var mesesRestantes = taxaMensal > 0 ? Math.ceil(saldoR / taxaMensal) : '?';
         var mesFim = typeof mesesRestantes === 'number' ? mes + mesesRestantes : '?';
-        var saldoColor = saldoR < 0 ? 'var(--hd)' : saldoR < orcDisp*0.2 ? '#c07000' : '#1a8c4e';
+        var saldoColor = saldoR < 0 ? 'var(--hd)' : saldoR < orcExec*0.2 ? '#c07000' : '#1a8c4e';
         return '<td style="padding:6px 6px;text-align:right;font-size:10px;font-weight:700;color:'+saldoColor+';background:#fffce8;border-right:1px solid #ede">'+(acumReal>0?'R$ '+_planBRL(Math.round(saldoR)):'—')+'</td>'
           +'<td style="padding:6px 6px;text-align:center;font-size:10px;font-weight:700;background:#fffce8;color:#7a5c00">'+(acumReal>0?'Mês '+mesFim:'—')+'</td>';
       }())
-      +'</tr>';
-  }
-
-  // Linha de déficit real (se houver)
-  var deficitRealTotal = acumRF + acumRM > orcDisp ? (acumRF + acumRM) - orcDisp : 0;
-  if (deficitRealTotal > 0) {
-    fluxo += '<tr style="background:#fdecea;border-top:2px solid var(--hd)">'
-      +'<td style="padding:10px 8px;text-align:center;font-size:13px">⛔</td>'
-      +'<td colspan="8" style="padding:10px 8px;font-size:12px;font-weight:700;color:var(--hd)">DÉFICIT REAL ACUMULADO</td>'
-      +'<td style="padding:10px 8px;text-align:right;font-size:14px;font-weight:800;color:var(--hd)">R$ '+_planBRL(Math.round(deficitRealTotal))+'</td>'
-      +'<td colspan="2"></td>'
       +'</tr>';
   }
 
