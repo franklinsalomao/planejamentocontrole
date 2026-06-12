@@ -2286,8 +2286,12 @@ function planUpdateFin() {
   _planFinState = { valor:valor, prodFab:prodFab, prodMon:prodMon,
     recFab:recFab, recMon:recMon, reais:_prevR };
   _planSaveFin();
-  _planRenderFinTable();
-  _planRefreshTotals();
+  if (typeof currentSubTab !== 'undefined' && currentSubTab === 'planejamento') {
+    renderIsoView(); // Re-render page to update Hh cards
+  } else {
+    _planRenderFinTable();
+    _planRefreshTotals();
+  }
 }
 
 function planAddRec(scope) {
@@ -2525,32 +2529,64 @@ function renderPlanejamento(discTabs, bc) {
     var _vF = (finState.valor||0)*0.3, _vM = (finState.valor||0)*0.5;
     var _mF = _cF>0 ? Math.ceil(_vF/_cF) : 0;
     var _mM = _cM>0 ? Math.ceil(_vM/_cM) : 0;
-    var _caldF = Math.ceil(_sumRF*0.67), _soldF = _sumRF - _caldF;
-    var _caldM = Math.ceil(_sumRM*0.6),  _soldM = _sumRM - _caldM;
-    var _hCF = _caldF * PLAN_HORAS_FAB * PLAN_DIAS_MES * _mF;
-    var _hSF = _soldF * PLAN_HORAS_FAB * PLAN_DIAS_MES * _mF;
-    var _hCM = _caldM * PLAN_HORAS_MON * PLAN_DIAS_MES * _mM;
-    var _hSM = _soldM * PLAN_HORAS_MON * PLAN_DIAS_MES * _mM;
-    var _hTF = _hCF+_hSF, _hTM = _hCM+_hSM, _hG = _hTF+_hTM;
+    // Use actual resource lines: each line is a team (caldeireiro or soldador)
+    // Show per-line Hh, not artificial split
+    var _recsFab = finState.recFab||[];
+    var _recsMon = finState.recMon||[];
+    var _hTF = _recsFab.reduce(function(s,r){return s+(parseInt(r)||0)*PLAN_HORAS_FAB*PLAN_DIAS_MES*_mF;},0);
+    var _hTM = _recsMon.reduce(function(s,r){return s+(parseInt(r)||0)*PLAN_HORAS_MON*PLAN_DIAS_MES*_mM;},0);
+    var _hG = _hTF + _hTM;
     function _b(n){return n?Number(n).toLocaleString('pt-BR'):'0';}
+    // Build per-line rows for Fab
+    var _fabRows = _recsFab.map(function(r,i){
+      var hh = (parseInt(r)||0) * PLAN_HORAS_FAB * PLAN_DIAS_MES * _mF;
+      return '<div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0;border-bottom:1px solid #eef">'
+        +'<span style="font-size:10px;color:#555">Equipe '+(i+1)+' ('+r+' rec)</span>'
+        +'<span style="font-size:13px;font-weight:700;color:#0B3D91">'+_b(Math.round(hh))+' Hh</span>'
+        +'</div>';
+    }).join('');
+    var _monRows = _recsMon.map(function(r,i){
+      var hh = (parseInt(r)||0) * PLAN_HORAS_MON * PLAN_DIAS_MES * _mM;
+      return '<div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0;border-bottom:1px solid #eef">'
+        +'<span style="font-size:10px;color:#555">Equipe '+(i+1)+' ('+r+' rec)</span>'
+        +'<span style="font-size:13px;font-weight:700;color:#0077b6">'+_b(Math.round(hh))+' Hh</span>'
+        +'</div>';
+    }).join('');
+
     _hhHtml = '<div style="padding:0 16px 14px"><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">'
+      // Fab card
       +'<div style="background:#fff;border:1px solid #d0d8e8;border-radius:10px;padding:14px 16px;border-left:4px solid #0B3D91">'
-      +'<div style="font-size:11px;font-weight:700;color:#0B3D91;margin-bottom:10px">Hh Fabricacao <span style="font-weight:400;color:#888">('+_mF+(_mF===1?' mes':' meses')+' x 8h x 22d)</span></div>'
-      +'<div style="display:flex;gap:20px;margin-bottom:8px">'
-      +'<div><div style="font-size:9px;color:#888">CALDEIREIROS ('+_caldF+')</div><div style="font-size:22px;font-weight:800;color:#0B3D91">'+_b(Math.round(_hCF))+' Hh</div></div>'
-      +'<div><div style="font-size:9px;color:#888">SOLDADORES ('+_soldF+')</div><div style="font-size:22px;font-weight:800;color:#0B3D91">'+_b(Math.round(_hSF))+' Hh</div></div>'
-      +'</div><div style="border-top:1px solid #e8eef7;padding-top:6px;font-size:12px;font-weight:700">Total Fab: '+_b(Math.round(_hTF))+' Hh</div></div>'
+      +'<div style="font-size:11px;font-weight:700;color:#0B3D91;margin-bottom:10px">⚙️ Hh Fabricação <span style="font-weight:400;color:#888">('+_mF+(_mF===1?' mês':' meses')+' × 8h × 22d)</span></div>'
+      +_fabRows
+      +'<div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;padding-top:8px;border-top:2px solid #e8eef7">'
+      +'<span style="font-size:11px;font-weight:700;color:var(--hb)">Total Fab</span>'
+      +'<span style="font-size:16px;font-weight:800;color:#0B3D91">'+_b(Math.round(_hTF))+' Hh</span>'
+      +'</div></div>'
+      // Mon card
       +'<div style="background:#fff;border:1px solid #b0ddf0;border-radius:10px;padding:14px 16px;border-left:4px solid #00A8E8">'
-      +'<div style="font-size:11px;font-weight:700;color:#0077b6;margin-bottom:10px">Hh Montagem <span style="font-weight:400;color:#888">('+_mM+(_mM===1?' mes':' meses')+' x 6,5h x 22d)</span></div>'
-      +'<div style="display:flex;gap:20px;margin-bottom:8px">'
-      +'<div><div style="font-size:9px;color:#888">CALDEIREIROS ('+_caldM+')</div><div style="font-size:22px;font-weight:800;color:#0077b6">'+_b(Math.round(_hCM))+' Hh</div></div>'
-      +'<div><div style="font-size:9px;color:#888">SOLDADORES ('+_soldM+')</div><div style="font-size:22px;font-weight:800;color:#0077b6">'+_b(Math.round(_hSM))+' Hh</div></div>'
-      +'</div><div style="border-top:1px solid #e8eef7;padding-top:6px;font-size:12px;font-weight:700">Total Mon: '+_b(Math.round(_hTM))+' Hh</div></div>'
+      +'<div style="font-size:11px;font-weight:700;color:#0077b6;margin-bottom:10px">🔧 Hh Montagem <span style="font-weight:400;color:#888">('+_mM+(_mM===1?' mês':' meses')+' × 6,5h × 22d)</span></div>'
+      +_monRows
+      +'<div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;padding-top:8px;border-top:2px solid #e8eef7">'
+      +'<span style="font-size:11px;font-weight:700;color:var(--hb)">Total Mon</span>'
+      +'<span style="font-size:16px;font-weight:800;color:#0077b6">'+_b(Math.round(_hTM))+' Hh</span>'
+      +'</div></div>'
+      // Total card
       +'<div style="background:linear-gradient(135deg,#071d4a,#0B3D91);border-radius:10px;padding:14px 16px;color:#fff;display:flex;flex-direction:column;justify-content:center">'
-      +'<div style="font-size:11px;opacity:.8;margin-bottom:8px">Hh Total do Projeto</div>'
+      +'<div style="font-size:11px;opacity:.8;margin-bottom:8px">📊 Hh Total do Projeto</div>'
       +'<div style="font-size:28px;font-weight:800">'+_b(Math.round(_hG))+' Hh</div>'
-      +'<div style="margin-top:8px;font-size:10px;opacity:.7">Fab: '+_b(Math.round(_hTF))+' ('+Math.round(_hG>0?_hTF/_hG*100:0)+'%) Mon: '+_b(Math.round(_hTM))+' ('+Math.round(_hG>0?_hTM/_hG*100:0)+'%)</div>'
-      +'</div></div></div>';
+      +'<div style="margin-top:10px;display:flex;gap:8px">'
+      +'<div style="background:rgba(255,255,255,.15);border-radius:6px;padding:5px 10px;text-align:center">'
+      +'<div style="font-size:9px;opacity:.7">Fabricação</div>'
+      +'<div style="font-size:13px;font-weight:700">'+_b(Math.round(_hTF))+' Hh</div>'
+      +'<div style="font-size:9px;opacity:.6">'+Math.round(_hG>0?_hTF/_hG*100:0)+'%</div>'
+      +'</div>'
+      +'<div style="background:rgba(255,255,255,.15);border-radius:6px;padding:5px 10px;text-align:center">'
+      +'<div style="font-size:9px;opacity:.7">Montagem</div>'
+      +'<div style="font-size:13px;font-weight:700">'+_b(Math.round(_hTM))+' Hh</div>'
+      +'<div style="font-size:9px;opacity:.6">'+Math.round(_hG>0?_hTM/_hG*100:0)+'%</div>'
+      +'</div>'
+      +'</div></div>'
+      +'</div></div>';
   }
 
   // ── Seção Físico × Financeiro ──
