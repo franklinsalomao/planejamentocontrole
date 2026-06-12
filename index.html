@@ -2381,6 +2381,7 @@ function _planRenderFinTable() {
     +'<th style="padding:10px 8px;font-size:10px;font-weight:700;text-align:center;border-right:1px solid rgba(255,255,255,.15);letter-spacing:.5px" colspan="4">⚙️ FABRICAÇÃO</th>'
     +'<th style="padding:10px 8px;font-size:10px;font-weight:700;text-align:center;border-right:1px solid rgba(255,255,255,.15);letter-spacing:.5px" colspan="4">🔧 MONTAGEM</th>'
     +'<th style="padding:10px 8px;font-size:10px;font-weight:700;text-align:center;border-right:1px solid rgba(255,255,255,.1);letter-spacing:.5px" colspan="2">TOTAL</th>'
+    +'<th style="padding:10px 8px;font-size:10px;font-weight:700;text-align:center;letter-spacing:.5px;background:rgba(255,200,0,.18)" colspan="2" rowspan="2">📈 PROJEÇÃO</th>'
     +'<th style="padding:10px 8px;font-size:10px;font-weight:700;text-align:center;width:80px;letter-spacing:.5px" rowspan="3">CONSUMO</th>'
     +'</tr>'
     +'<tr style="background:linear-gradient(90deg,#0e3a8a,#1a5fd1);color:rgba(255,255,255,.9)">'
@@ -2402,6 +2403,8 @@ function _planRenderFinTable() {
     +'<th style="padding:4px 5px;text-align:center;border-right:1px solid rgba(255,255,255,.15);background:rgba(0,168,232,.15)">%</th>'
     +'<th style="padding:4px 5px;text-align:center;border-right:1px solid rgba(255,255,255,.1)">R$</th>'
     +'<th style="padding:4px 5px;text-align:center;border-right:1px solid rgba(255,255,255,.1);background:rgba(0,168,232,.15)">R$</th>'
+    +'<th style="padding:4px 5px;text-align:center;border-right:1px solid rgba(255,255,255,.1);background:rgba(255,200,0,.15)">Saldo</th>'
+    +'<th style="padding:4px 5px;text-align:center;background:rgba(255,200,0,.15)">Término</th>'
     +'</tr>'
     +'</thead><tbody>';
 
@@ -2472,6 +2475,16 @@ function _planRenderFinTable() {
       +'<td style="padding:7px 6px;text-align:right;font-size:11px;font-weight:700;color:'+(negR?'#fff':'#1a8c4e')+';'+(negR?'background:var(--hd);border-radius:5px':'')+'">R$ '+_planBRL(Math.abs(Math.round(acumReal)))+(negR?' ⛔':'')+'</td>'
       // Barra dual
       +'<td style="padding:4px 6px">'+dualBar+'</td>'
+      +(function(){
+        // Saldo restante do orçamento executável com base no real
+        var saldoR = orcExec - acumReal;
+        var taxaMensal = acumReal > 0 ? acumReal / mes : custoTotal;
+        var mesesRestantes = taxaMensal > 0 ? Math.ceil(saldoR / taxaMensal) : '?';
+        var mesFim = typeof mesesRestantes === 'number' ? mes + mesesRestantes : '?';
+        var saldoColor = saldoR < 0 ? 'var(--hd)' : saldoR < orcExec*0.2 ? '#c07000' : '#1a8c4e';
+        return '<td style="padding:6px 6px;text-align:right;font-size:10px;font-weight:700;color:'+saldoColor+';background:#fffce8;border-right:1px solid #ede">'+(acumReal>0?'R$ '+_planBRL(Math.round(saldoR)):'—')+'</td>'
+          +'<td style="padding:6px 6px;text-align:center;font-size:10px;font-weight:700;background:#fffce8;color:#7a5c00">'+(acumReal>0?'Mês '+mesFim:'—')+'</td>';
+      }())
       +'</tr>';
   }
 
@@ -2479,7 +2492,7 @@ function _planRenderFinTable() {
   var saldoFinal = valor - acumFab - acumMon - vlBook;
   fluxo += '<tr style="background:linear-gradient(90deg,#1a8c4e,#27ae60);color:#fff">'
     +'<td style="padding:10px 8px;text-align:center;font-size:13px;font-weight:700">📚</td>'
-    +'<td colspan="8" style="padding:10px 8px;font-size:12px;font-weight:600">Book — Entrega documentação</td>'
+    +'<td colspan="10" style="padding:10px 8px;font-size:12px;font-weight:600">Book — Entrega documentação</td>'
     +'<td style="padding:10px 8px;text-align:right;font-size:13px;font-weight:700">R$ '+_planBRL(Math.round(vlBook))+'</td>'
     +'<td style="padding:4px 8px"><div style="background:rgba(255,255,255,.3);border-radius:8px;height:22px;position:relative"><div style="height:100%;width:100%;background:rgba(255,255,255,.6);border-radius:8px"></div><span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#fff">100%</span></div></td>'
     +'</tr>';
