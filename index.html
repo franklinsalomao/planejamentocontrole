@@ -2324,14 +2324,15 @@ function _planRenderFinTable() {
   if (!valor) { tbl.innerHTML = '<div style="color:var(--hmu);font-size:11px;padding:8px 0">Preencha o Valor do Projeto para calcular.</div>'; return; }
 
   var vlFab=valor*0.30, vlMon=valor*0.50, vlBook=valor*0.20;
+  var vlMonTotal=vlMon+vlBook; // Book faz parte da Montagem
   var prodFab=st.prodFab||0, prodMon=st.prodMon||0;
   var recFab=st.recFab||[], recMon=st.recMon||[];
   var totalRecFab=recFab.reduce(function(a,b){return a+(parseInt(b)||0);},0);
   var totalRecMon=recMon.reduce(function(a,b){return a+(parseInt(b)||0);},0);
   var custoFab=totalRecFab*prodFab, custoMon=totalRecMon*prodMon;
   var custoTotal=custoFab+custoMon;
-  var orcExec=vlFab+vlMon; // orçamento executável (sem book)
-  var orcDisp=valor-vlBook; // = vlFab+vlMon — explicitando subtração do Book
+  var orcExec=valor; // Orçamento total
+  var orcDisp=valor; // Book incluso na montagem
 
   // ── Painel de orçamento ──
   var orcamento = '<div style="background:linear-gradient(135deg,#071d4a,#0B3D91);border-radius:10px;padding:16px 20px;color:#fff;margin-bottom:16px">'
@@ -2339,31 +2340,54 @@ function _planRenderFinTable() {
     +'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px">'
     +'<div><div style="font-size:9px;opacity:.7;text-transform:uppercase;letter-spacing:.5px">Valor Global</div><div style="font-size:20px;font-weight:800;margin-top:2px">R$ '+_planBRL(valor)+'</div></div>'
     +'<div style="border-left:1px solid rgba(255,255,255,.2);padding-left:14px"><div style="font-size:9px;opacity:.7;text-transform:uppercase">⚙️ Fabricação (30%)</div><div style="font-size:16px;font-weight:700;margin-top:2px">R$ '+_planBRL(vlFab)+'</div><div style="font-size:10px;opacity:.7">'+totalRecFab+' rec × R$ '+_planBRL(prodFab)+' = R$ '+_planBRL(custoFab)+'/mês</div></div>'
-    +'<div style="border-left:1px solid rgba(255,255,255,.2);padding-left:14px"><div style="font-size:9px;opacity:.7;text-transform:uppercase">🔧 Montagem (50%)</div><div style="font-size:16px;font-weight:700;margin-top:2px">R$ '+_planBRL(vlMon)+'</div><div style="font-size:10px;opacity:.7">'+totalRecMon+' rec × R$ '+_planBRL(prodMon)+' = R$ '+_planBRL(custoMon)+'/mês</div></div>'
-    +'<div style="border-left:1px solid rgba(255,255,255,.2);padding-left:14px"><div style="font-size:9px;opacity:.7;text-transform:uppercase">📚 Book (20%)</div><div style="font-size:16px;font-weight:700;margin-top:2px">R$ '+_planBRL(vlBook)+'</div><div style="font-size:10px;opacity:.7">Entrega final</div></div>'
+    +'<div style="border-left:1px solid rgba(255,255,255,.2);padding-left:14px"><div style="font-size:9px;opacity:.7;text-transform:uppercase">🔧 Montagem + Book (70%)</div><div style="font-size:16px;font-weight:700;margin-top:2px">R$ '+_planBRL(vlMonTotal)+'</div><div style="font-size:10px;opacity:.7">'+totalRecMon+' rec × R$ '+_planBRL(prodMon)+' = R$ '+_planBRL(custoMon)+'/mês</div></div>'
+    +'<div style="border-left:1px solid rgba(255,255,255,.2);padding-left:14px"><div style="font-size:9px;opacity:.7;text-transform:uppercase">📚 Book (20%)</div><div style="font-size:16px;font-weight:700;margin-top:2px">R$ '+_planBRL(vlBook)+'</div><div style="font-size:10px;opacity:.7;color:rgba(255,220,100,.9)">Incluso na Montagem</div></div>'
     +'</div></div>';
 
-  // ── Alerta ──
+  // ── Análise de Viabilidade ──
   var alerta = '';
   if (custoTotal > 0) {
-    var mesesViavel = Math.floor(orcDisp / custoTotal);
-    var mesesFab = custoFab>0 ? Math.ceil(vlFab/custoFab) : 0;
-    var mesesMon = custoMon>0 ? Math.ceil(vlMon/custoMon) : 0;
-    var monOffset = 1;
-    var prazoMaior = Math.max(mesesFab, mesesMon + monOffset);
-    var gastoProjetado = custoFab*mesesFab + custoMon*mesesMon;
-    if (gastoProjetado > orcDisp * 1.01) {
-      var deficit = gastoProjetado - orcDisp;
-      alerta = '<div style="background:#fdecea;border-left:4px solid var(--hd);border-radius:0 8px 8px 0;padding:12px 16px;margin-bottom:14px">'
-        +'<span style="font-weight:700;color:var(--hd)">⛔ Projeção de Déficit: R$ '+_planBRL(Math.round(deficit))+'</span>'
-        +'<span style="font-size:11px;color:var(--ht);margin-left:12px">Custo mensal R$ '+_planBRL(custoTotal)+' × '+prazoMaior+' meses > Orçamento disponível R$ '+_planBRL(Math.round(orcDisp))+' (R$ '+_planBRL(valor)+' − Book R$ '+_planBRL(Math.round(vlBook))+'). Reduza recursos.</span>'
-        +'</div>';
-    } else {
-      alerta = '<div style="background:#edf7ed;border-left:4px solid #1a8c4e;border-radius:0 8px 8px 0;padding:12px 16px;margin-bottom:14px">'
-        +'<span style="font-weight:700;color:#1a8c4e">✅ Dentro do orçamento</span>'
-        +'<span style="font-size:11px;color:var(--ht);margin-left:12px">Disponivel: R$ '+_planBRL(Math.round(orcDisp))+' (Valor - Book) | Fab: '+mesesFab+' meses · Mon: inicia mês 2, dura '+mesesMon+' meses (término mês '+(mesesMon+monOffset)+') · Prazo total: '+(mesesFab>mesesMon+1?mesesFab:mesesMon+1)+' meses · Custo: R$ '+_planBRL(Math.round(gastoProjetado))+'</span>'
-        +'</div>';
-    }
+    var monOffset = 1; // Montagem inicia 30 dias (1 mês) após fabricação
+    var mesesFabA = custoFab>0 ? Math.ceil(vlFab/custoFab) : 0;
+    var mesesMonA = custoMon>0 ? Math.ceil(vlMonTotal/custoMon) : 0; // Book incluso
+    var prazoTotal = Math.max(mesesFabA, mesesMonA + monOffset);
+    // Custo real por período: mês 1 só fab, meses 2+ fab+mon
+    var gastoFab = Math.min(vlFab, mesesFabA * custoFab);
+    var gastoMon = Math.min(vlMonTotal, mesesMonA * custoMon);
+    var gastoTotal = gastoFab + gastoMon;
+    var lucro = valor - gastoTotal;
+    var pctLucro = valor>0 ? (lucro/valor*100).toFixed(1) : 0;
+    var viavel = gastoTotal <= valor * 1.001;
+    var corV = viavel ? '#1a8c4e' : 'var(--hd)';
+    var bgV  = viavel ? 'linear-gradient(135deg,#1a8c4e,#27ae60)' : 'linear-gradient(135deg,#c0392b,var(--hd))';
+
+    alerta = '<div style="border-radius:12px;overflow:hidden;margin-bottom:16px;box-shadow:0 4px 16px rgba(0,0,0,.12)">'
+      // Header com resultado
+      +'<div style="background:'+bgV+';padding:14px 20px;color:#fff;display:flex;align-items:center;justify-content:space-between">'
+      +'<div>'
+      +'<div style="font-size:13px;font-weight:800;letter-spacing:.3px">'+(viavel?'✅ PROJETO VIÁVEL':'⛔ PROJEÇÃO DE DÉFICIT')+'</div>'
+      +'<div style="font-size:11px;opacity:.85;margin-top:2px">Montagem inclui Book (20%) · Mês 1: só Fab · Mês 2+: Fab + Mon</div>'
+      +'</div>'
+      +'<div style="text-align:right">'
+      +'<div style="font-size:24px;font-weight:800">'+(viavel?'Lucro':'Prejuízo')+' R$ '+_planBRL(Math.abs(Math.round(lucro)))+'</div>'
+      +'<div style="font-size:13px;opacity:.85">'+pctLucro+'% do valor do projeto</div>'
+      +'</div>'
+      +'</div>'
+      // Grid de detalhes
+      +'<div style="display:grid;grid-template-columns:repeat(5,1fr);background:#f8fafd;border:1px solid #d0d8e8;border-top:none">'
+      +'<div style="padding:12px 14px;border-right:1px solid #e8eef7"><div style="font-size:9px;color:#888;text-transform:uppercase;margin-bottom:4px">Valor Contrato</div><div style="font-size:15px;font-weight:700;color:var(--hb)">R$ '+_planBRL(valor)+'</div></div>'
+      +'<div style="padding:12px 14px;border-right:1px solid #e8eef7"><div style="font-size:9px;color:#888;text-transform:uppercase;margin-bottom:4px">Custo Fab</div><div style="font-size:15px;font-weight:700;color:#0B3D91">R$ '+_planBRL(Math.round(gastoFab))+'</div><div style="font-size:9px;color:#aaa">'+totalRecFab+' rec × R$ '+_planBRL(prodFab)+' × '+mesesFabA+' meses</div></div>'
+      +'<div style="padding:12px 14px;border-right:1px solid #e8eef7"><div style="font-size:9px;color:#888;text-transform:uppercase;margin-bottom:4px">Custo Mon + Book</div><div style="font-size:15px;font-weight:700;color:#0077b6">R$ '+_planBRL(Math.round(gastoMon))+'</div><div style="font-size:9px;color:#aaa">'+totalRecMon+' rec × R$ '+_planBRL(prodMon)+' × '+mesesMonA+' meses</div></div>'
+      +'<div style="padding:12px 14px;border-right:1px solid #e8eef7"><div style="font-size:9px;color:#888;text-transform:uppercase;margin-bottom:4px">Prazo Total</div><div style="font-size:15px;font-weight:700;color:var(--hb)">'+prazoTotal+' '+(prazoTotal===1?'mês':'meses')+'</div><div style="font-size:9px;color:#aaa">Fab até mês '+mesesFabA+' · Mon: mês 2 ao '+(mesesMonA+monOffset)+'</div></div>'
+      +'<div style="padding:12px 14px"><div style="font-size:9px;color:#888;text-transform:uppercase;margin-bottom:4px">Margem</div><div style="font-size:15px;font-weight:700;color:'+corV+'">'+pctLucro+'%</div><div style="font-size:9px;color:#aaa">'+(viavel?'Lucro':'Déficit')+' R$ '+_planBRL(Math.abs(Math.round(lucro)))+'</div></div>'
+      +'</div>'
+      // Recomendação
+      +'<div style="padding:10px 18px;background:'+(viavel?'#d4edda':'#f8d7da')+';border:1px solid '+(viavel?'#c3e6cb':'#f5c6cb')+';border-top:none;font-size:11px;color:'+(viavel?'#155724':'#721c24')+'">'
+      +(viavel
+        ? '💡 Para lucro de <strong>R$ '+_planBRL(Math.round(lucro))+'</strong>: Fabricação com <strong>'+totalRecFab+' recursos</strong> em <strong>'+mesesFabA+' meses</strong> (R$ '+_planBRL(custoFab)+'/mês) · Montagem com <strong>'+totalRecMon+' recursos</strong> em <strong>'+mesesMonA+' meses</strong> iniciando no mês 2 (R$ '+_planBRL(custoMon)+'/mês).'
+        : '💡 Para equilibrar: Fab precisa de no máx <strong>'+(custoFab>0?Math.floor(vlFab/mesesFabA/prodFab):0)+' recursos</strong> ou prazo mín <strong>'+(custoFab>0?Math.ceil(vlFab/custoFab):0)+' meses</strong>. Mon precisa de no máx <strong>'+(custoMon>0?Math.floor(vlMonTotal/mesesMonA/prodMon):0)+' recursos</strong> ou prazo mín <strong>'+(custoMon>0?Math.ceil(vlMonTotal/custoMon):0)+' meses</strong>.'
+      )
+      +'</div></div>';
   }
 
   // ── Tabela mês a mês ──
@@ -2373,8 +2397,8 @@ function _planRenderFinTable() {
   }
 
   var mesesFab = custoFab>0 ? Math.ceil(vlFab/custoFab) : 0;
-  var mesesMon = custoMon>0 ? Math.ceil(vlMon/custoMon) : 0;
-  var monOffset = 1; // Montagem inicia 30 dias (1 mês) após fabricação
+  var mesesMon = custoMon>0 ? Math.ceil(vlMonTotal/custoMon) : 0; // Book incluso
+  var monOffset = 1;
   var maxMeses = Math.max(mesesFab, mesesMon + monOffset, 1);
 
   // ── Tabela mês a mês ──
@@ -2419,13 +2443,13 @@ function _planRenderFinTable() {
 
   for (var mes=1; mes<=maxMeses; mes++) {
     var gFab = custoFab>0 && acumFab<vlFab ? Math.min(custoFab, vlFab-acumFab) : 0;
-    var gMon = (mes>monOffset && custoMon>0 && acumMon<vlMon) ? Math.min(custoMon, vlMon-acumMon) : 0;
+    var gMon = (mes>monOffset && custoMon>0 && acumMon<vlMonTotal) ? Math.min(custoMon, vlMonTotal-acumMon) : 0;
     if (gFab<0) gFab=0; if (gMon<0) gMon=0;
     acumFab+=gFab; acumMon+=gMon;
 
     // Previsto % do escopo
     var pFabPct = vlFab>0 ? Math.round(gFab/vlFab*100) : 0;
-    var pMonPct = vlMon>0 ? Math.round(gMon/vlMon*100) : 0;
+    var pMonPct = vlMonTotal>0 ? Math.round(gMon/vlMonTotal*100) : 0;
     acumPrevFabPct += pFabPct;
     acumPrevMonPct += pMonPct;
 
