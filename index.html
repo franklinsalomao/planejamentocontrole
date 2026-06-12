@@ -1067,6 +1067,7 @@ function goView(v, pid) {
     }
     // Reseta lastTemplate ao trocar de projeto — evita vazamento de dados entre projetos
     if (currentProjId !== prevProj) {
+      _planFinState = null; _planRecursos = {}; // reset so _planLoad picks up per-project data
       const _projSrc = currentProjId ? isos.find(x => x.projId === currentProjId && x.fluid) : null;
       lastTemplate = _projSrc
         ? { fluid: _projSrc.fluid||'', nr13: _projSrc.nr13||'Sim', iso_term: _projSrc.iso_term||'',
@@ -2111,20 +2112,20 @@ const PLAN_DIAS_MES  = 22;
 const PLAN_IDX_REF   = 139 / 56.5; // 2.460 Hh/m
 let _planRecursos = {};
 let _planFinState  = null; // { valor, prodRec, recursos[] }
-const PLAN_SK_REC  = 'hyd_plan_recursos';
-const PLAN_SK_FIN  = 'hyd_plan_financeiro';
+function _planSkRec(){ return 'hyd_plan_rec_'+(currentProjId||'global'); }
+function _planSkFin(){ return 'hyd_plan_fin_'+(currentProjId||'global'); }
 
 function _planLoad() {
-  try { var v = LS.getItem(PLAN_SK_REC); if (v) _planRecursos = JSON.parse(v)||{}; } catch(e){ _planRecursos={}; }
-  try { var v2= LS.getItem(PLAN_SK_FIN); if (v2) _planFinState = JSON.parse(v2)||null; } catch(e){ _planFinState=null; }
+  try { var v = LS.getItem(_planSkRec()); if (v) _planRecursos = JSON.parse(v)||{}; } catch(e){ _planRecursos={}; }
+  try { var v2= LS.getItem(_planSkFin()); if (v2) _planFinState = JSON.parse(v2)||null; } catch(e){ _planFinState=null; }
 }
 function _planSaveRec() {
-  try { LS.setItem(PLAN_SK_REC, JSON.stringify(_planRecursos)); } catch(e){}
-  if (window.storage) { try { window.storage.set(PLAN_SK_REC, JSON.stringify(_planRecursos), false); } catch(e){} }
+  try { LS.setItem(_planSkRec(), JSON.stringify(_planRecursos)); } catch(e){}
+  if (window.storage) { try { window.storage.set(_planSkRec(), JSON.stringify(_planRecursos), false); } catch(e){} }
 }
 function _planSaveFin() {
-  try { LS.setItem(PLAN_SK_FIN, JSON.stringify(_planFinState)); } catch(e){}
-  if (window.storage) { try { window.storage.set(PLAN_SK_FIN, JSON.stringify(_planFinState), false); } catch(e){} }
+  try { LS.setItem(_planSkFin(), JSON.stringify(_planFinState)); } catch(e){}
+  if (window.storage) { try { window.storage.set(_planSkFin(), JSON.stringify(_planFinState), false); } catch(e){} }
 }
 
 function _planMaterial(desc) {
