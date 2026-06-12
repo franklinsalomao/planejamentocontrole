@@ -2372,95 +2372,123 @@ function _planRenderFinTable() {
   var monOffset = 1; // Montagem inicia 30 dias (1 mês) após fabricação
   var maxMeses = Math.max(mesesFab, mesesMon + monOffset, 1);
 
-  var fluxo = '<table style="width:100%;border-collapse:collapse;border-radius:10px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.1)">'
+  // ── Tabela mês a mês ──
+  var fluxo = '<div style="font-size:12px;font-weight:700;color:var(--hb);margin-bottom:8px">📊 Medição Previsto × Real — Mês a Mês</div>'
+    +'<table style="width:100%;border-collapse:collapse;border-radius:10px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.1)">'
     +'<thead>'
-    +'<tr style="background:linear-gradient(90deg,#071d4a 0%,#0B3D91 60%,#1a5fd1 100%);color:#fff">'
-    +'<th style="padding:12px 8px;font-size:11px;font-weight:700;text-align:center;width:44px;border-right:1px solid rgba(255,255,255,.1)" rowspan="2">MÊS</th>'
-    +'<th style="padding:10px 8px;font-size:11px;font-weight:700;text-align:center;border-right:1px solid rgba(255,255,255,.1);letter-spacing:.5px" colspan="3">⚙️ FABRICAÇÃO</th>'
-    +'<th style="padding:10px 8px;font-size:11px;font-weight:700;text-align:center;border-right:1px solid rgba(255,255,255,.1);letter-spacing:.5px" colspan="3">🔧 MONTAGEM</th>'
-    +'<th style="padding:10px 8px;font-size:11px;font-weight:700;text-align:center;border-right:1px solid rgba(255,255,255,.1);letter-spacing:.5px" rowspan="2">TOTAL<br>REAL</th>'
-    +'<th style="padding:10px 8px;font-size:11px;font-weight:700;text-align:center;border-right:1px solid rgba(255,255,255,.1);letter-spacing:.5px" rowspan="2">ACUMU-<br>LADO</th>'
-    +'<th style="padding:10px 8px;font-size:11px;font-weight:700;text-align:center;border-right:1px solid rgba(255,255,255,.1);letter-spacing:.5px" rowspan="2">SALDO</th>'
-    +'<th style="padding:10px 8px;font-size:11px;font-weight:700;text-align:center;letter-spacing:.5px;width:90px" rowspan="2">%</th>'
+    +'<tr style="background:linear-gradient(90deg,#071d4a 0%,#0B3D91 100%);color:#fff">'
+    +'<th style="padding:10px 8px;font-size:10px;font-weight:700;text-align:center;width:40px;border-right:1px solid rgba(255,255,255,.1)" rowspan="3">MÊS</th>'
+    +'<th style="padding:10px 8px;font-size:10px;font-weight:700;text-align:center;border-right:1px solid rgba(255,255,255,.15);letter-spacing:.5px" colspan="4">⚙️ FABRICAÇÃO</th>'
+    +'<th style="padding:10px 8px;font-size:10px;font-weight:700;text-align:center;border-right:1px solid rgba(255,255,255,.15);letter-spacing:.5px" colspan="4">🔧 MONTAGEM</th>'
+    +'<th style="padding:10px 8px;font-size:10px;font-weight:700;text-align:center;border-right:1px solid rgba(255,255,255,.1);letter-spacing:.5px" colspan="2">TOTAL</th>'
+    +'<th style="padding:10px 8px;font-size:10px;font-weight:700;text-align:center;width:80px;letter-spacing:.5px" rowspan="3">CONSUMO</th>'
     +'</tr>'
     +'<tr style="background:linear-gradient(90deg,#0e3a8a,#1a5fd1);color:rgba(255,255,255,.9)">'
-    +'<th style="padding:6px 8px;font-size:9.5px;font-weight:600;text-align:center;border-right:1px solid rgba(255,255,255,.1);text-transform:uppercase;letter-spacing:.4px">Previsto</th>'
-    +'<th style="padding:6px 8px;font-size:9.5px;font-weight:600;text-align:center;border-right:1px solid rgba(255,255,255,.15);background:rgba(0,168,232,.25);text-transform:uppercase;letter-spacing:.4px">Real</th>'
-    +'<th style="padding:6px 6px;font-size:9px;font-weight:600;text-align:center;border-right:1px solid rgba(255,255,255,.1);background:rgba(26,140,78,.25);text-transform:uppercase;letter-spacing:.4px">% Físico</th>'
-    +'<th style="padding:6px 6px;font-size:9px;font-weight:600;text-align:center;border-right:1px solid rgba(255,255,255,.15);background:rgba(26,140,78,.25);text-transform:uppercase;letter-spacing:.4px">% Físico</th>'
-    +'<th style="padding:6px 8px;font-size:9.5px;font-weight:600;text-align:center;border-right:1px solid rgba(255,255,255,.1);text-transform:uppercase;letter-spacing:.4px">Previsto</th>'
-    +'<th style="padding:6px 8px;font-size:9.5px;font-weight:600;text-align:center;border-right:1px solid rgba(255,255,255,.1);background:rgba(0,168,232,.25);text-transform:uppercase;letter-spacing:.4px">Real</th>'
+    +'<th style="padding:5px 6px;font-size:9px;text-align:center;border-right:1px solid rgba(255,255,255,.1)" colspan="2">Previsto</th>'
+    +'<th style="padding:5px 6px;font-size:9px;text-align:center;border-right:1px solid rgba(255,255,255,.15);background:rgba(0,168,232,.2)" colspan="2">Real</th>'
+    +'<th style="padding:5px 6px;font-size:9px;text-align:center;border-right:1px solid rgba(255,255,255,.1)" colspan="2">Previsto</th>'
+    +'<th style="padding:5px 6px;font-size:9px;text-align:center;border-right:1px solid rgba(255,255,255,.15);background:rgba(0,168,232,.2)" colspan="2">Real</th>'
+    +'<th style="padding:5px 6px;font-size:9px;text-align:center;border-right:1px solid rgba(255,255,255,.1)">Previsto</th>'
+    +'<th style="padding:5px 6px;font-size:9px;text-align:center;border-right:1px solid rgba(255,255,255,.1);background:rgba(0,168,232,.2)">Real</th>'
+    +'</tr>'
+    +'<tr style="background:#1450a3;color:rgba(255,255,255,.8);font-size:8.5px">'
+    +'<th style="padding:4px 5px;text-align:center;border-right:1px solid rgba(255,255,255,.1)">R$</th>'
+    +'<th style="padding:4px 5px;text-align:center;border-right:1px solid rgba(255,255,255,.1)">%</th>'
+    +'<th style="padding:4px 5px;text-align:center;border-right:1px solid rgba(255,255,255,.1);background:rgba(0,168,232,.15)">R$</th>'
+    +'<th style="padding:4px 5px;text-align:center;border-right:1px solid rgba(255,255,255,.15);background:rgba(0,168,232,.15)">%</th>'
+    +'<th style="padding:4px 5px;text-align:center;border-right:1px solid rgba(255,255,255,.1)">R$</th>'
+    +'<th style="padding:4px 5px;text-align:center;border-right:1px solid rgba(255,255,255,.1)">%</th>'
+    +'<th style="padding:4px 5px;text-align:center;border-right:1px solid rgba(255,255,255,.1);background:rgba(0,168,232,.15)">R$</th>'
+    +'<th style="padding:4px 5px;text-align:center;border-right:1px solid rgba(255,255,255,.15);background:rgba(0,168,232,.15)">%</th>'
+    +'<th style="padding:4px 5px;text-align:center;border-right:1px solid rgba(255,255,255,.1)">R$</th>'
+    +'<th style="padding:4px 5px;text-align:center;border-right:1px solid rgba(255,255,255,.1);background:rgba(0,168,232,.15)">R$</th>'
     +'</tr>'
     +'</thead><tbody>';
 
   var reais = (st.reais || {});
   var acumFab=0, acumMon=0, acumRF=0, acumRM=0;
+  var acumPrevFabPct=0, acumPrevMonPct=0;
+
   for (var mes=1; mes<=maxMeses; mes++) {
     var gFab = custoFab>0 && acumFab<vlFab ? Math.min(custoFab, vlFab-acumFab) : 0;
-    var gMon = (mes > monOffset && custoMon>0 && acumMon<vlMon) ? Math.min(custoMon, vlMon-acumMon) : 0;
+    var gMon = (mes>monOffset && custoMon>0 && acumMon<vlMon) ? Math.min(custoMon, vlMon-acumMon) : 0;
     if (gFab<0) gFab=0; if (gMon<0) gMon=0;
     acumFab+=gFab; acumMon+=gMon;
-    var gastoMes = gFab+gMon;
-    var acumTotal = acumFab+acumMon;
-    var saldo = orcExec - acumTotal;
-    var pct = orcExec>0 ? Math.round(acumTotal/orcExec*100) : 0;
-    var negativo = saldo < 0;
-    var bg = negativo ? '#fff0f0' : mes%2===0 ? '#f8fafd' : '#fff';
 
-    // Barra de progresso
-    var barColor = pct>100 ? 'var(--hd)' : pct>80 ? '#c07000' : '#1a8c4e';
-    var bar = '<div style="background:#e8eef7;border-radius:10px;height:20px;overflow:hidden;position:relative;min-width:100px">'
-      +'<div style="height:100%;width:'+Math.min(pct,100)+'%;background:'+barColor+';border-radius:10px;transition:width .3s"></div>'
-      +'<span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:'+(pct>50?'#fff':'var(--ht)')+'">'+pct+'%</span>'
-      +'</div>';
+    // Previsto % do escopo
+    var pFabPct = vlFab>0 ? Math.round(gFab/vlFab*100) : 0;
+    var pMonPct = vlMon>0 ? Math.round(gMon/vlMon*100) : 0;
+    acumPrevFabPct += pFabPct;
+    acumPrevMonPct += pMonPct;
 
     var rm = reais[mes] || {};
     var rF = rm.fab || 0, rM = rm.mon || 0;
+    var rFpct = rm.pct_fab || 0, rMpct = rm.pct_mon || 0;
     acumRF += rF; acumRM += rM;
+
+    var acumPrev = acumFab + acumMon;
     var acumReal = acumRF + acumRM;
     var saldoReal = orcExec - acumReal;
+    var pctPrev = orcExec>0 ? Math.round(acumPrev/orcExec*100) : 0;
     var pctReal = orcExec>0 ? Math.round(acumReal/orcExec*100) : 0;
     var negR = saldoReal < 0;
+
+    var bg = negR ? '#fff0f0' : mes%2===0 ? '#f8fafd' : '#fff';
     var barColR = pctReal>100?'var(--hd)':pctReal>80?'#c07000':'#1a8c4e';
-    var barR = '<div style="background:#e8eef7;border-radius:8px;height:18px;overflow:hidden;position:relative;min-width:80px">'
-      +'<div style="height:100%;width:'+Math.min(pctReal,100)+'%;background:'+barColR+';border-radius:8px"></div>'
-      +'<span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:'+(pctReal>45?'#fff':'#333')+'">'+pctReal+'%</span></div>';
+    var barColP = pctPrev>100?'var(--hd)':pctPrev>80?'#c07000':'#0B3D91';
+
+    // Mini double bar: previsto (azul) e real (ciano)
+    var dualBar = '<div style="position:relative;height:22px;background:#e8eef7;border-radius:8px;overflow:hidden;min-width:75px">'
+      +'<div style="position:absolute;left:0;top:0;height:100%;width:'+Math.min(pctPrev,100)+'%;background:#0B3D91;opacity:.35;border-radius:8px"></div>'
+      +'<div style="position:absolute;left:0;top:0;height:100%;width:'+Math.min(pctReal,100)+'%;background:'+barColR+';border-radius:8px;opacity:.85"></div>'
+      +'<span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:'+(pctReal>30?'#fff':'#333')+'">'
+      +(pctReal>0?pctReal+'%':'—')+'</span></div>';
+
+    var desvF = rF>0 ? rF-gFab : null;
+    var desvM = rM>0 ? rM-gMon : null;
+
     fluxo += '<tr style="background:'+bg+';border-bottom:1px solid #e8eef7">'
-      +'<td style="padding:8px 6px;text-align:center;font-size:14px;font-weight:800;color:var(--hb)">'+mes+'</td>'
-      +'<td style="padding:8px 6px;text-align:right;font-size:10px;color:#888">'+(gFab>0?'R$ '+_planBRL(Math.round(gFab)):'—')+'</td>'
-      +'<td style="padding:3px 2px"><input type="text" inputmode="numeric" value="'+(rF>0?_planBRL(rF):'')+'" placeholder="—" data-mes="'+mes+'" data-scope="fab" oninput="_planMaskBRL(this)" onchange="planSaveReal(this)" style="width:78px;padding:4px 5px;border:1px solid '+(rF>0?'#0B3D91':'#ccc')+';border-radius:5px;font-size:10px;text-align:right;background:'+(rF>0?'#f0f4fb':'#fff')+';outline:none"></td>'
-      +'<td style="padding:3px 2px">'
-      +'<input type="number" min="0" max="100" value="'+(rm.pct_fab>0?rm.pct_fab:'')+'placeholder="%" data-mes="'+mes+'" data-scope="pct_fab" onchange="planSaveReal(this)" style="width:52px;padding:4px 4px;border:1px solid '+(rm.pct_fab>0?'#1a8c4e':'#ccc')+';border-radius:5px;font-size:10px;text-align:center;outline:none;background:'+(rm.pct_fab>0?'#edf7ed':'#fff')+';">'
-      +'<span style="font-size:9px;color:#1a8c4e">%</span>'
-      +'</td>'
-      +'<td style="padding:8px 6px;text-align:right;font-size:10px;color:#888">'+(mes<=monOffset?'<span style="font-size:9px;color:#aaa">Início mês 2</span>':(gMon>0?'R$ '+_planBRL(Math.round(gMon)):'—'))+'</td>'
-      +'<td style="padding:3px 2px"><input type="text" inputmode="numeric" value="'+(rM>0?_planBRL(rM):'')+'" placeholder="—" data-mes="'+mes+'" data-scope="mon" oninput="_planMaskBRL(this)" onchange="planSaveReal(this)" style="width:78px;padding:4px 5px;border:1px solid '+(rM>0?'#0077b6':'#ccc')+';border-radius:5px;font-size:10px;text-align:right;background:'+(rM>0?'#e8f8fd':'#fff')+';outline:none"></td>'
-      +'<td style="padding:3px 2px">'
-      +'<input type="number" min="0" max="100" value="'+(rm.pct_mon>0?rm.pct_mon:'')+'placeholder="%" data-mes="'+mes+'" data-scope="pct_mon" onchange="planSaveReal(this)" style="width:52px;padding:4px 4px;border:1px solid '+(rm.pct_mon>0?'#1a8c4e':'#ccc')+';border-radius:5px;font-size:10px;text-align:center;outline:none;background:'+(rm.pct_mon>0?'#edf7ed':'#fff')+';">'
-      +'<span style="font-size:9px;color:#1a8c4e">%</span>'
-      +'</td>'
-      +'<td style="padding:8px 6px;text-align:right;font-size:11px;font-weight:700;color:var(--hb)">'+(acumReal>0?'R$ '+_planBRL(Math.round(acumReal)):'—')+'</td>'
-      +'<td style="padding:8px 6px;text-align:right;font-size:11px;font-weight:600">R$ '+_planBRL(Math.round(acumReal))+'</td>'
-      +'<td style="padding:8px 6px;text-align:right;font-size:11px;font-weight:700;color:'+(negR?'#fff':'#1a8c4e')+';'+(negR?'background:var(--hd);border-radius:5px;padding:4px 8px':'')+'">R$ '+_planBRL(Math.abs(Math.round(saldoReal)))+(negR?' ⛔':'')+'</td>'
-      +'<td style="padding:4px 6px">'+barR+'</td>'
+      // Mês
+      +'<td style="padding:8px 6px;text-align:center;font-size:14px;font-weight:800;color:var(--hb);border-right:1px solid #e8eef7">'+mes+'</td>'
+      // Fab Previsto R$
+      +'<td style="padding:7px 6px;text-align:right;font-size:10px;color:#555;border-right:1px solid #f0f0f0">'+(gFab>0?'R$ '+_planBRL(Math.round(gFab)):'—')+'</td>'
+      // Fab Previsto %
+      +'<td style="padding:7px 4px;text-align:center;font-size:10px;color:#0B3D91;font-weight:600;border-right:1px solid #e0e8f0">'+(pFabPct>0?pFabPct+'%':'—')+'</td>'
+      // Fab Real R$ (input)
+      +'<td style="padding:3px 2px;background:#f7fbff;border-right:1px solid #f0f0f0"><input type="text" inputmode="numeric" value="'+(rF>0?_planBRL(rF):'')+'" placeholder="—" data-mes="'+mes+'" data-scope="fab" oninput="_planMaskBRL(this)" onchange="planSaveReal(this)" style="width:80px;padding:4px 5px;border:1px solid '+(rF>0?'#0B3D91':'#dde')+';border-radius:5px;font-size:10px;text-align:right;background:'+(rF>0?'#e8f0fb':'#fff')+';outline:none;font-weight:'+(rF>0?'600':'400')+'"></td>'
+      // Fab Real %
+      +'<td style="padding:7px 4px;text-align:center;font-size:10px;font-weight:600;border-right:1px solid #dce8f0;background:#f7fbff;color:'+(desvF===null?'#aaa':desvF>0?'var(--hd)':'#1a8c4e')+'">'+(rFpct>0?rFpct+'%':(rF>0&&vlFab>0?Math.round(rF/vlFab*100)+'%':'—'))+'</td>'
+      // Mon Previsto R$
+      +'<td style="padding:7px 6px;text-align:right;font-size:10px;color:#555;border-right:1px solid #f0f0f0">'+(mes<=monOffset?'<span style="font-size:8px;color:#aaa">Mês '+(monOffset+1)+'</span>':(gMon>0?'R$ '+_planBRL(Math.round(gMon)):'—'))+'</td>'
+      // Mon Previsto %
+      +'<td style="padding:7px 4px;text-align:center;font-size:10px;color:#0077b6;font-weight:600;border-right:1px solid #e0e8f0">'+(pMonPct>0?pMonPct+'%':'—')+'</td>'
+      // Mon Real R$ (input)
+      +'<td style="padding:3px 2px;background:#f5fbff;border-right:1px solid #f0f0f0"><input type="text" inputmode="numeric" value="'+(rM>0?_planBRL(rM):'')+'" placeholder="—" data-mes="'+mes+'" data-scope="mon" oninput="_planMaskBRL(this)" onchange="planSaveReal(this)" style="width:80px;padding:4px 5px;border:1px solid '+(rM>0?'#0077b6':'#dde')+';border-radius:5px;font-size:10px;text-align:right;background:'+(rM>0?'#e3f4fc':'#fff')+';outline:none;font-weight:'+(rM>0?'600':'400')+'"></td>'
+      // Mon Real %
+      +'<td style="padding:7px 4px;text-align:center;font-size:10px;font-weight:600;border-right:1px solid #cde;background:#f5fbff;color:'+(desvM===null?'#aaa':desvM>0?'var(--hd)':'#1a8c4e')+'">'+(rMpct>0?rMpct+'%':(rM>0&&vlMon>0?Math.round(rM/vlMon*100)+'%':'—'))+'</td>'
+      // Total Previsto
+      +'<td style="padding:7px 6px;text-align:right;font-size:10px;font-weight:600;color:#0B3D91;border-right:1px solid #e8eef7">R$ '+_planBRL(Math.round(acumPrev))+'</td>'
+      // Total Real
+      +'<td style="padding:7px 6px;text-align:right;font-size:11px;font-weight:700;color:'+(negR?'#fff':'#1a8c4e')+';'+(negR?'background:var(--hd);border-radius:5px':'')+'">R$ '+_planBRL(Math.abs(Math.round(acumReal)))+(negR?' ⛔':'')+'</td>'
+      // Barra dual
+      +'<td style="padding:4px 6px">'+dualBar+'</td>'
       +'</tr>';
   }
 
-  // Linha final: Book
+  // Linha Book
   var saldoFinal = valor - acumFab - acumMon - vlBook;
   fluxo += '<tr style="background:linear-gradient(90deg,#1a8c4e,#27ae60);color:#fff">'
-    +'<td style="padding:12px;text-align:center;font-size:12px;font-weight:700">📚</td>'
-    +'<td colspan="6" style="padding:12px;font-size:12px;font-weight:600">Book — Entrega documentação</td>'
-    +'<td style="padding:12px;text-align:right;font-size:13px;font-weight:700">R$ '+_planBRL(Math.round(vlBook))+'</td>'
-    +'<td style="padding:12px;text-align:right;font-size:12px;font-weight:600">R$ '+_planBRL(Math.round(acumFab+acumMon+vlBook))+'</td>'
-    +'<td style="padding:12px;text-align:right;font-size:13px;font-weight:700">'+(saldoFinal<0?'⛔ -R$ '+_planBRL(Math.abs(Math.round(saldoFinal))):'R$ '+_planBRL(Math.round(saldoFinal)))+'</td>'
-    +'<td style="padding:8px 12px"><div style="background:rgba(255,255,255,.3);border-radius:10px;height:20px;position:relative"><div style="height:100%;width:100%;background:rgba(255,255,255,.6);border-radius:10px"></div><span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff">100%</span></div></td>'
+    +'<td style="padding:10px 8px;text-align:center;font-size:13px;font-weight:700">📚</td>'
+    +'<td colspan="8" style="padding:10px 8px;font-size:12px;font-weight:600">Book — Entrega documentação</td>'
+    +'<td style="padding:10px 8px;text-align:right;font-size:13px;font-weight:700">R$ '+_planBRL(Math.round(vlBook))+'</td>'
+    +'<td style="padding:4px 8px"><div style="background:rgba(255,255,255,.3);border-radius:8px;height:22px;position:relative"><div style="height:100%;width:100%;background:rgba(255,255,255,.6);border-radius:8px"></div><span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#fff">100%</span></div></td>'
     +'</tr>';
 
   fluxo += '</tbody></table>';
 
   tbl.innerHTML = orcamento + alerta + fluxo;
 }
+
 
 function renderPlanejamento(discTabs, bc) {
   _planLoad();
