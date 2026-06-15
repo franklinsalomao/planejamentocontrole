@@ -2913,7 +2913,7 @@ function filterTable() {
       var _fabP = Math.round((e.fab&&e.fab.pre||0)*.30+(e.fab&&e.fab.sol||0)*.50+(e.fab&&e.fab.end||0)*.20);
       var _monP = Math.round((e.mon&&e.mon.pre||0)*.30+(e.mon&&e.mon.sol||0)*.50+(e.mon&&e.mon.end||0)*.20);
       var _done;
-      if (_cls === 'Referência' || _cls === 'Desmontagem') {
+      if (['Referência','Desmontagem','Escopo cancelado','Hold'].includes(_cls)) {
         // Sem avanço aplicável — não entra em nenhum dos dois filtros
         _done = null;
       } else if (_cls === 'Apenas Montagem') {
@@ -3040,7 +3040,7 @@ function renderRows(list) {
     </td>
     <td><span class="badge ${e.paint === 'Pintado' ? 'b-py' : 'b-pn'}" style="cursor:pointer" onclick="togglePaint('${e.id}')" title="Clique para alternar">${e.paint || '—'}</span></td>
     <td style="position:relative">
-      ${((e.classif||'Fabricação')==='Referência' || (e.classif||'Fabricação')==='Desmontagem')
+      ${(['Referência','Desmontagem','Escopo cancelado','Hold'].includes(e.classif||'Fabricação'))
         ? '<span style="font-size:10px;color:#bbb;font-style:italic">—</span>'
         : `${progMiniMon(e.mon, e.id)}
       <div class="ie-panel" id="ie-mon-${e.id}" onclick="event.stopPropagation()">
@@ -3057,7 +3057,7 @@ function renderRows(list) {
     <td><input type="text" value="${e.tiein || ''}" placeholder="—" onchange="saveTieIn('${e.id}',this.value)" onclick="event.stopPropagation()" style="width:80px;padding:3px 6px;border:0.5px solid var(--hbr);border-radius:5px;font-size:10px;background:var(--hg);color:var(--ht);outline:none;text-align:center" title="Cadastrar TIE-INs"></td>
     <td>
       <div class="act-col">
-        <button class="btn-lupa" onclick="abrirMatsIso('${e.num}')" title="Ver materiais deste isométrico" style="${((e.classif||'Fabricação')==='Referência'||(e.classif||'Fabricação')==='Desmontagem')?'display:none':''}">🔍 Materiais</button>
+        <button class="btn-lupa" onclick="abrirMatsIso('${e.num}')" title="Ver materiais deste isométrico" style="${(['Referência','Desmontagem','Escopo cancelado','Hold'].includes(e.classif||'Fabricação'))?'display:none':''}">🔍 Materiais</button>
         <button class="btn-edit-sm" onclick="reqAuth('edit-iso','${e.id}')">✏️</button>
         <button class="btn-del-sm2" onclick="reqAuth('del-iso','${e.id}')">🗑️</button>
       </div>
