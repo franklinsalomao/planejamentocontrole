@@ -717,6 +717,9 @@ function _sbConnect(url, key) {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'hydrostec_kv' },
         async (payload) => {
           if (_sbIgnoreNextReload) return; // mudança feita por mim, ignora
+          // Só recarrega se a mudança veio de outra sessão (chave diferente das de planejamento)
+          const changedKey = payload && payload.new && payload.new.key;
+          if (changedKey && (changedKey.startsWith('hyd_plan_'))) return; // planejamento é local
           clearTimeout(_sbReloadTimeout);
           _sbReloadTimeout = setTimeout(async () => {
             await loadAll();
@@ -758,15 +761,20 @@ function _sbUpdateBadge() {
 
 /* ── CLOUD STORAGE com Supabase + fallback ── */
 async function storageGet(key) {
-  // 1. Supabase (equipe)
+  // Para dados de isométricos/projetos: localStorage é SEMPRE a fonte primária
+  // (evita que Supabase sobrescreva avanços salvos localmente)
+  const local = LS.getItem(key);
+  if (local && (key.startsWith('hy_iso') || key.startsWith('hy_proj') || key.startsWith('hy_sups') || key.startsWith('hy_mats'))) {
+    return local; // usa local direto, não consulta Supabase
+  }
+  // 1. Supabase (equipe) — para outras chaves
   if (_sb) {
     try {
       const { data, error } = await _sb.from('hydrostec_kv').select('value').eq('key', key).maybeSingle();
       if (!error && data) return data.value;
     } catch(e) { console.warn('[Supabase] get error:', key, e); }
   }
-  // 2. localStorage — fonte primária confiável (persiste entre sessões)
-  const local = LS.getItem(key);
+  // 2. localStorage — fallback
   if (local) return local;
   // 3. window.storage (Claude artifact) — fallback
   if (window.storage) {
@@ -783,7 +791,7 @@ async function storageSet(key, value) {
       await _sb.from('hydrostec_kv').upsert({ key, value, updated_at: new Date().toISOString() }, { onConflict: 'key' });
       _sbLastSync = new Date();
       _sbUpdateBadge();
-      setTimeout(() => { _sbIgnoreNextReload = false; }, 800);
+      setTimeout(() => { _sbIgnoreNextReload = false; }, 5000);
     } catch(e) {
       _sbIgnoreNextReload = false;
       console.warn('[Supabase] set error:', key, e);
