@@ -1153,8 +1153,10 @@ function renderProjects() {
       ${!list.length ? `<div class="no-proj">${projects.length ? 'Nenhum resultado.' : 'Nenhum projeto. Clique em Novo Projeto.'}</div>` : ''}
       ${list.map(p => {
         const pi = projIsos(p.id), n = pi.length;
-        const af = n ? Math.round(pi.reduce((s, e) => s + fabPct(e), 0) / n) : 0;
-        const am = n ? Math.round(pi.reduce((s, e) => s + monPct(e), 0) / n) : 0;
+        const piFab = pi.filter(e => !['Apenas Montagem','Desmontagem','Referência'].includes(e.classif||'Fabricação'));
+        const piMon = pi.filter(e => (e.classif||'Fabricação') !== 'Referência');
+        const af = piFab.length ? Math.round(piFab.reduce((s, e) => s + fabPct(e), 0) / piFab.length) : 0;
+        const am = piMon.length ? Math.round(piMon.reduce((s, e) => s + monPct(e), 0) / piMon.length) : 0;
         const isOpen = currentProjId === p.id;
         const openBtn = isOpen
           ? '<button class="proj-open-btn" style="background:linear-gradient(90deg,#666,#888)" onclick="currentProjId=null;renderProjects()">✕ Fechar</button>'
@@ -2696,8 +2698,10 @@ function renderIsoView() {
   const n = list.length;
   const listFabMon = list.filter(e => (e.classif||'Fabricação') !== 'Referência' && (e.classif||'Fabricação') !== 'Desmontagem');
   const nfm = listFabMon.length;
-  const af = nfm ? Math.round(listFabMon.reduce((s, e) => s + fabPct(e), 0) / nfm) : 0;
-  const am = nfm ? Math.round(listFabMon.reduce((s, e) => s + monPct(e), 0) / nfm) : 0;
+  const listFabOnly = listFabMon.filter(e => !['Apenas Montagem','Desmontagem','Referência'].includes(e.classif||'Fabricação'));
+  const listMonOnly = listFabMon.filter(e => (e.classif||'Fabricação') !== 'Referência');
+  const af = listFabOnly.length ? Math.round(listFabOnly.reduce((s, e) => s + fabPct(e), 0) / listFabOnly.length) : 0;
+  const am = listMonOnly.length ? Math.round(listMonOnly.reduce((s, e) => s + monPct(e), 0) / listMonOnly.length) : 0;
   const py = list.filter(e => e.paint === 'Pintado').length;
 
 
@@ -2956,8 +2960,8 @@ function renderRows(list) {
       </div>
     </td>
     <td style="position:relative">
-      ${((e.classif||'Fabricação')==='Referência' || (e.classif||'Fabricação')==='Desmontagem')
-        ? '<span style="font-size:10px;color:#bbb;font-style:italic">—</span>'
+      ${((e.classif||'Fabricação')==='Referência' || (e.classif||'Fabricação')==='Desmontagem' || (e.classif||'Fabricação')==='Apenas Montagem')
+        ? '<span style="font-size:10px;color:#bbb;font-style:italic">N/A</span>'
         : `${progMiniFab(e.fab, e.id)}
       <div class="ie-panel" id="ie-fab-${e.id}" onclick="event.stopPropagation()">
         <div class="ie-ttl">🔧 Fabricação</div>
