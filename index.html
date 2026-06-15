@@ -2055,14 +2055,19 @@ function renderDashboard(discTabs, bc) {
   const proj = projects.find(p => p.id === currentProjId);
   const list = currentProjId ? projIsos(currentProjId) : isos;
   const listFabMon = list.filter(e => (e.classif||'Fabricação') !== 'Referência' && (e.classif||'Fabricação') !== 'Desmontagem');
+  const listFabD   = listFabMon.filter(e => !['Apenas Montagem','Desmontagem','Referência'].includes(e.classif||'Fabricação'));
 
-  // Totais gerais
-  const nfm = listFabMon.length;
-  const listFabD = listFabMon.filter(e => !['Apenas Montagem','Desmontagem','Referência'].includes(e.classif||'Fabricação'));
+  const nTotal = list.length;
   const afG = listFabD.length ? Math.round(listFabD.reduce((s,e)=>s+fabPct(e),0)/listFabD.length) : 0;
-  const amG = nfm ? Math.round(listFabMon.reduce((s,e)=>s+monPct(e),0)/nfm) : 0;
+  const amG = listFabMon.length ? Math.round(listFabMon.reduce((s,e)=>s+monPct(e),0)/listFabMon.length) : 0;
+  const nConcluidas = listFabMon.filter(e => {
+    const isFab = !['Apenas Montagem','Desmontagem','Referência'].includes(e.classif||'Fabricação');
+    return (!isFab || fabPct(e) >= 100) && monPct(e) >= 100;
+  }).length;
+  const nPintado = list.filter(e => e.paint === 'Pintado').length;
+  const pctConcl = nTotal ? Math.round(nConcluidas/nTotal*100) : 0;
 
-  // Stats por área
+  // Area stats
   const areaStats = {};
   listFabMon.forEach(e => {
     const a = e.area || 'Sem área';
@@ -2075,622 +2080,102 @@ function renderDashboard(discTabs, bc) {
     if ((!isFab || fabPct(e) >= 100) && monPct(e) >= 100) areaStats[a].done++;
   });
   const areaKeys = Object.keys(areaStats).sort();
+  const projName = proj ? proj.name : 'Geral';
+  const hoje = new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'short',year:'numeric'});
 
-  const header = `<div style="padding:16px 16px 8px">
-    <div style="font-size:16px;font-weight:700;color:var(--hb)">📊 Dashboard — Avanço por Área</div>
-    <div style="font-size:11px;color:var(--hmu);margin-top:2px">Clique em uma área para ver seus isométricos</div>
+  // ── KPI bar ──
+  const kpiBar = `<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:0;background:#fff;border-bottom:2px solid #e8eef7">
+    ${[
+      {lbl:'⚙️ Fabricação', val: afG+'%', color:'#0B3D91', bar: afG, sub: listFabD.length+' isos'},
+      {lbl:'🔧 Montagem',   val: amG+'%', color:'#0077b6', bar: amG, sub: listFabMon.length+' isos'},
+      {lbl:'✅ Concluídos', val: nConcluidas+'/'+nTotal, color:'#1a8c4e', bar: pctConcl, sub: pctConcl+'% do total'},
+      {lbl:'🎨 Pintura',    val: nPintado+'/'+nTotal,    color:'#7b1fa2', bar: nTotal?Math.round(nPintado/nTotal*100):0, sub: (nTotal?Math.round(nPintado/nTotal*100):0)+'%'},
+      {lbl:'📐 Áreas',      val: areaKeys.length, color:'#e65100', bar: 100, sub: nTotal+' folhas'},
+    ].map((k,i) => `<div style="padding:16px 18px;${i<4?'border-right:1px solid #e8eef7':''};cursor:default">
+      <div style="font-size:10px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">${k.lbl}</div>
+      <div style="font-size:26px;font-weight:800;color:${k.color};line-height:1">${k.val}</div>
+      <div style="font-size:10px;color:#aaa;margin:3px 0 8px">${k.sub}</div>
+      <div style="height:4px;background:#f0f4fb;border-radius:2px;overflow:hidden">
+        <div style="height:100%;width:${Math.min(k.bar,100)}%;background:${k.color};border-radius:2px;transition:width .5s"></div>
+      </div>
+    </div>`).join('')}
   </div>`;
 
-  const totals = `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;padding:0 16px 14px">
-    <div class="dash-tot dash-tot-blue">
-      <div class="dash-tot-lbl">⚙️ Fabricação Geral</div>
-      <div class="dash-tot-val">${afG}%</div>
-      <div class="dash-tot-bar"><div style="width:${afG}%;height:100%;background:#fff;border-radius:4px;opacity:.85"></div></div>
-    </div>
-    <div class="dash-tot dash-tot-cyan">
-      <div class="dash-tot-lbl">🔧 Montagem Geral</div>
-      <div class="dash-tot-val">${amG}%</div>
-      <div class="dash-tot-bar"><div style="width:${amG}%;height:100%;background:#fff;border-radius:4px;opacity:.85"></div></div>
-    </div>
-    <div class="dash-tot dash-tot-green">
-      <div class="dash-tot-lbl">📐 Total de Folhas</div>
-      <div class="dash-tot-val">${list.length}</div>
-      <div class="dash-tot-sub">${areaKeys.length} área${areaKeys.length!==1?'s':''}</div>
+  // ── Area table ──
+  const areaRows = areaKeys.map(a => {
+    const st = areaStats[a];
+    const fpc = st.fabCount ? Math.round(st.fabSum/st.fabCount) : 0;
+    const mpc = st.monCount ? Math.round(st.monSum/st.monCount) : 0;
+    const concl = st.done;
+    const pctD = st.count ? Math.round(concl/st.count*100) : 0;
+    const fabClr = fpc>=100?'#1a8c4e':fpc>=70?'#c07000':'#0B3D91';
+    const monClr = mpc>=100?'#1a8c4e':mpc>=70?'#c07000':'#0077b6';
+    const statusClr = pctD>=100?'#1a8c4e':pctD>=70?'#c07000':'var(--hd)';
+    const statusLbl = pctD>=100?'✅ Concluída':pctD>=70?'⏳ Avançada':'🔵 Em andamento';
+    const escA = String(a).replace(/'/g, "\'");
+    return `<tr onclick="dashGoToArea('${escA}')" style="cursor:pointer;border-bottom:1px solid #f0f4fb" onmouseover="this.style.background='#f8fafd'" onmouseout="this.style.background=''">
+      <td style="padding:10px 16px;font-size:13px;font-weight:700;color:var(--hb)">Área ${a}</td>
+      <td style="padding:10px 12px;text-align:center;font-size:12px;color:#555">${st.count}</td>
+      <td style="padding:10px 12px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <div style="flex:1;height:8px;background:#e8eef7;border-radius:4px;overflow:hidden;min-width:60px">
+            <div style="height:100%;width:${fpc}%;background:${fabClr};border-radius:4px;transition:width .4s"></div>
+          </div>
+          <span style="font-size:12px;font-weight:700;color:${fabClr};min-width:36px;text-align:right">${fpc}%</span>
+        </div>
+      </td>
+      <td style="padding:10px 12px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <div style="flex:1;height:8px;background:#e8eef7;border-radius:4px;overflow:hidden;min-width:60px">
+            <div style="height:100%;width:${mpc}%;background:${monClr};border-radius:4px;transition:width .4s"></div>
+          </div>
+          <span style="font-size:12px;font-weight:700;color:${monClr};min-width:36px;text-align:right">${mpc}%</span>
+        </div>
+      </td>
+      <td style="padding:10px 12px;text-align:center">
+        <div style="display:inline-flex;align-items:center;gap:5px">
+          <div style="height:8px;width:${Math.max(pctD,4)}px;max-width:60px;background:${statusClr};border-radius:4px;opacity:.7"></div>
+          <span style="font-size:11px;font-weight:600;color:${statusClr}">${concl}/${st.count}</span>
+        </div>
+      </td>
+      <td style="padding:10px 16px;text-align:right">
+        <span style="font-size:10px;font-weight:600;color:${statusClr};background:${statusClr}18;padding:3px 10px;border-radius:20px">${statusLbl}</span>
+      </td>
+    </tr>`;
+  }).join('');
+
+  const areaTable = areaKeys.length ? `
+    <div style="padding:0 16px 20px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div style="font-size:13px;font-weight:700;color:var(--hb)">Avanço por Área</div>
+        <div style="font-size:10px;color:#aaa">Clique em uma área para ver os isométricos</div>
+      </div>
+      <div style="background:#fff;border:1px solid #e8eef7;border-radius:10px;overflow:hidden;box-shadow:0 1px 6px rgba(0,0,0,.05)">
+        <table style="width:100%;border-collapse:collapse">
+          <thead>
+            <tr style="background:#f8fafd;border-bottom:2px solid #e8eef7">
+              <th style="padding:9px 16px;text-align:left;font-size:10px;color:#888;font-weight:600;text-transform:uppercase;letter-spacing:.4px">Área</th>
+              <th style="padding:9px 12px;text-align:center;font-size:10px;color:#888;font-weight:600;text-transform:uppercase;letter-spacing:.4px">Folhas</th>
+              <th style="padding:9px 12px;text-align:left;font-size:10px;color:#888;font-weight:600;text-transform:uppercase;letter-spacing:.4px">⚙️ Fabricação</th>
+              <th style="padding:9px 12px;text-align:left;font-size:10px;color:#888;font-weight:600;text-transform:uppercase;letter-spacing:.4px">🔧 Montagem</th>
+              <th style="padding:9px 12px;text-align:center;font-size:10px;color:#888;font-weight:600;text-transform:uppercase;letter-spacing:.4px">Concluídas</th>
+              <th style="padding:9px 16px;text-align:right;font-size:10px;color:#888;font-weight:600;text-transform:uppercase;letter-spacing:.4px">Status</th>
+            </tr>
+          </thead>
+          <tbody>${areaRows}</tbody>
+        </table>
+      </div>
+    </div>` : `<div class="ph-panel"><div style="font-size:32px">📭</div><strong>Nenhum isométrico cadastrado</strong></div>`;
+
+  // ── Header ──
+  const header = `<div style="padding:14px 16px 0;display:flex;align-items:center;justify-content:space-between">
+    <div>
+      <div style="font-size:15px;font-weight:700;color:var(--hb)">${projName} — Dashboard de Avanço</div>
+      <div style="font-size:10px;color:#aaa;margin-top:2px">Atualizado em ${hoje} · Clique em uma área para detalhar</div>
     </div>
   </div>`;
 
-  const cards = areaKeys.length ? `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px;padding:0 16px 20px">
-    ${areaKeys.map(a => {
-      const st = areaStats[a];
-      const fpc = st.fabCount ? Math.round(st.fabSum/st.fabCount) : 0;
-      const mpc = st.monCount ? Math.round(st.monSum/st.monCount) : 0;
-      const escA = String(a).replace(/'/g, "\\'");
-      return `<div class="dash-card" onclick="dashGoToArea('${escA}')" title="Ver isométricos da Área ${a}">
-        <div class="dash-card-top">
-          <div class="dash-card-name">Área ${a}</div>
-          <div class="dash-card-arrow">→</div>
-        </div>
-        <div class="dash-card-cnt">${st.count} folha${st.count!==1?'s':''} · ${st.done} concluída${st.done!==1?'s':''}</div>
-        <div class="dash-card-row">
-          <span class="dash-card-rlbl">⚙️ Fabricação</span><span class="dash-card-rpct" style="color:#0B3D91">${fpc}%</span>
-        </div>
-        <div class="dash-card-bar"><div class="dash-card-fill acf-fab" style="width:${fpc}%"></div></div>
-        <div class="dash-card-row" style="margin-top:8px">
-          <span class="dash-card-rlbl">🔧 Montagem</span><span class="dash-card-rpct" style="color:#00A8E8">${mpc}%</span>
-        </div>
-        <div class="dash-card-bar"><div class="dash-card-fill acf-mon" style="width:${mpc}%"></div></div>
-      </div>`;
-    }).join('')}
-  </div>` : `<div class="ph-panel"><div style="font-size:32px">📭</div><strong>Nenhum isométrico cadastrado</strong></div>`;
-
-  document.getElementById('view-isos').innerHTML = bc + discTabs + header + totals + cards + '</div>';
-}
-
-
-/* ════════════ PLANEJAMENTO DE FABRICAÇÃO ════════════ */
-const PROD_INDEX = {"AC|SCH 40|1/2\"": 0.85, "AC|SCH 40|3/4\"": 0.93, "AC|SCH 40|1\"": 1.0, "AC|SCH 40|1 1/4\"": 1.09, "AC|SCH 40|1 1/2\"": 1.1, "AC|SCH 40|2\"": 1.2, "AC|SCH 40|2 1/2\"": 1.43, "AC|SCH 40|3\"": 1.5, "AC|SCH 40|4\"": 1.85, "AC|SCH 40|5\"": 2.12, "AC|SCH 40|6\"": 2.47, "AC|SCH 40|8\"": 3.05, "AC|SCH 40|10\"": 6.5, "AC|SCH 40|12\"": 4.65, "AC|SCH 40|14\"": 5.5, "AC|SCH 40|16\"": 6.6, "AC|SCH 40|18\"": 7.5, "AC|SCH 40|20\"": 8.4, "AC|SCH 40|22\"": 9.14, "AC|SCH 40|24\"": 10.1, "AC|SCH 40|26\"": 12.1, "AC|SCH 40|28\"": 13.8, "AC|SCH 40|30\"": 15.0, "AC GALV.|DIN 2440|1/2\"": 0.85, "AC GALV.|DIN 2440|3/4\"": 0.93, "AC GALV.|DIN 2440|1\"": 1.0, "AC GALV.|DIN 2440|1 1/4\"": 1.09, "AC GALV.|DIN 2440|1 1/2\"": 1.1, "AC GALV.|DIN 2440|2\"": 1.2, "AC GALV.|DIN 2440|2 1/2\"": 1.43, "AC GALV.|DIN 2440|3\"": 1.5, "AC GALV.|DIN 2440|4\"": 1.85, "AC GALV.|DIN 2440|5\"": 2.12, "AC GALV.|DIN 2440|6\"": 2.4, "AC GALV.|DIN 2440|8\"": 3.05, "INOX|10S|1/2\"": 1.3, "INOX|10S|3/4\"": 1.42, "INOX|10S|1\"": 1.53, "INOX|10S|1 1/4\"": 1.67, "INOX|10S|1 1/2\"": 1.68, "INOX|10S|2\"": 1.83, "INOX|10S|2 1/2\"": 2.19, "INOX|10S|3\"": 2.29, "INOX|10S|4\"": 2.84, "INOX|10S|5\"": 3.24, "INOX|10S|6\"": 3.67, "INOX|10S|8\"": 4.66, "INOX|10S|10\"": 5.9, "INOX|10S|12\"": 7.12, "INOX|10S|14\"": 8.42, "INOX|10S|16\"": 10.09, "INOX|10S|18\"": 11.52, "INOX|10S|20\"": 12.85, "INOX|10S|22\"": 13.95, "INOX|10S|24\"": 15.45, "INOX|10S|26\"": 18.51, "INOX|10S|28\"": 21.11, "INOX|10S|30\"": 22.95, "AC|SCH 80|1/2\"": 1.15, "AC|SCH 80|3/4\"": 1.29, "AC|SCH 80|1\"": 1.36, "AC|SCH 80|1 1/4\"": 1.52, "AC|SCH 80|1 1/2\"": 1.54, "AC|SCH 80|2\"": 1.74, "AC|SCH 80|2 1/2\"": 1.99, "AC|SCH 80|3\"": 2.15, "AC|SCH 80|4\"": 2.7, "AC|SCH 80|5\"": 3.3, "AC|SCH 80|6\"": 3.8, "AC|SCH 80|8\"": 4.89, "AC|SCH 80|10\"": 6.45, "AC|SCH 80|12\"": 8.09, "AC|SCH 80|14\"": 9.79, "AC|SCH 80|16\"": 11.49, "AC|SCH 80|18\"": 12.89, "AC|SCH 80|20\"": 15.02, "AC|SCH 80|22\"": 16.74, "AC|SCH 80|24\"": 18.46, "AC|SCH 80|26\"": 22.1, "AC|SCH 80|28\"": 25.2, "AC|SCH 80|30\"": 27.4, "INOX|40S|1/2\"": 1.45, "INOX|40S|3/4\"": 1.58, "INOX|40S|1\"": 1.7, "INOX|40S|1 1/4\"": 1.85, "INOX|40S|1 1/2\"": 1.87, "INOX|40S|2\"": 2.03, "INOX|40S|2 1/2\"": 2.43, "INOX|40S|3\"": 2.55, "INOX|40S|4\"": 3.15, "INOX|40S|5\"": 3.6, "INOX|40S|6\"": 4.08, "INOX|40S|8\"": 5.18, "INOX|40S|10\"": 6.55, "INOX|40S|12\"": 7.91, "INOX|40S|14\"": 9.35, "INOX|40S|16\"": 11.22, "INOX|40S|18\"": 12.8, "INOX|40S|20\"": 14.28, "INOX|40S|22\"": 15.54, "INOX|40S|24\"": 17.17, "INOX|40S|26\"": 20.57, "INOX|40S|28\"": 23.46, "INOX|40S|30\"": 25.5, "ALU|10S|6\"": 10.0, "ALU|10S|10\"": 14.0, "ALU|10S|12\"": 15.54, "ALU|10S|20\"": 18.0};
-const PLAN_HORAS_FAB = 8;   // horas produtivas/dia na fabricação
-const PLAN_HORAS_MON = 6.5; // horas produtivas/dia na montagem
-const PLAN_DIAS_MES  = 22;
-// Índice de referência: ISO 01642 — 56,5m / 139Hh / equipe 3 (2 caldeireiros + 1 soldador)
-const PLAN_IDX_REF   = 139 / 56.5; // 2.460 Hh/m
-let _planRecursos = {};
-let _planFinState  = null; // { valor, prodRec, recursos[] }
-function _planSkRec(){ return 'hyd_plan_rec_'+(currentProjId||'global'); }
-function _planSkFin(){ return 'hyd_plan_fin_'+(currentProjId||'global'); }
-
-function _planLoad() {
-  try { var v = LS.getItem(_planSkRec()); if (v) _planRecursos = JSON.parse(v)||{}; } catch(e){ _planRecursos={}; }
-  try { var v2= LS.getItem(_planSkFin()); if (v2) _planFinState = JSON.parse(v2)||null; } catch(e){ _planFinState=null; }
-}
-function _planSaveRec() {
-  try { LS.setItem(_planSkRec(), JSON.stringify(_planRecursos)); } catch(e){}
-  if (window.storage) { try { window.storage.set(_planSkRec(), JSON.stringify(_planRecursos), false); } catch(e){} }
-}
-function _planSaveFin() {
-  try { LS.setItem(_planSkFin(), JSON.stringify(_planFinState)); } catch(e){}
-  if (window.storage) { try { window.storage.set(_planSkFin(), JSON.stringify(_planFinState), false); } catch(e){} }
-}
-
-function _planMaterial(desc) {
-  var d = (desc||'').toUpperCase();
-  if (/GALV/.test(d)) return 'AC GALV.';
-  if (/INOX|AISI|304|316|A312|A790/.test(d)) return 'INOX';
-  if (/\bALU|ALUM/.test(d)) return 'ALU';
-  return 'AC';
-}
-function _planSch(desc) {
-  var d = (desc||'').toUpperCase();
-  if (/SCH\s*80|S80|\b80\b/.test(d)) return 'SCH 80';
-  if (/SCH\s*40|S40|\b40\b/.test(d)) return 'SCH 40';
-  if (/10S/.test(d)) return '10S';
-  if (/40S/.test(d)) return '40S';
-  if (/DIN\s*2440/.test(d)) return 'DIN 2440';
-  return 'SCH 40';
-}
-function _planDiam(diam) {
-  var d = String(diam||'').replace(/"/g,'').trim().split(/x/i)[0].trim();
-  var m = {'0.5':'1/2','0.75':'3/4','0.875':'7/8','0.625':'5/8'};
-  return (m[d]||d)+'"';
-}
-function _planMetros(quant) {
-  var q = String(quant||'').toLowerCase().replace(',','.');
-  if (q.indexOf('m')===-1) return 0;
-  var n = parseFloat(q.replace(/[^0-9.]/g,''));
-  return Number.isFinite(n) ? n : 0;
-}
-function _planHhIso(isoNum) {
-  var mats = (typeof matsCtrl!=='undefined'?matsCtrl:[]).filter(function(m){
-    return (m.iso||'').trim()===isoNum && (m.classificacao||'')==='fabricacao';
-  });
-  var totalHh=0, totalM=0, detalhes=[];
-  mats.forEach(function(m){
-    var metros = _planMetros(m.quant); if (metros<=0) return;
-    var mat=_planMaterial(m.descricao), sch=_planSch(m.descricao), dia=_planDiam(m.diam);
-    var key=mat+'|'+sch+'|'+dia;
-    var hhm=PROD_INDEX[key]||PROD_INDEX['AC|'+sch+'|'+dia];
-    if (hhm==null) return;
-    var hh=hhm*metros;
-    totalHh+=hh; totalM+=metros;
-    detalhes.push({mat:mat,sch:sch,dia:dia,metros:metros,hhm:hhm,hh:hh});
-  });
-  return {hh:totalHh, metros:totalM, detalhes:detalhes};
-}
-function _planHhIsoMon(isoNum) {
-  var mats = (typeof matsCtrl!=='undefined'?matsCtrl:[]).filter(function(m){
-    return (m.iso||'').trim()===isoNum && (m.classificacao||'')==='montagem';
-  });
-  var totalHh=0, totalM=0;
-  mats.forEach(function(m){
-    var metros = _planMetros(m.quant); if (metros<=0) return;
-    var mat=_planMaterial(m.descricao), sch=_planSch(m.descricao), dia=_planDiam(m.diam);
-    var key=mat+'|'+sch+'|'+dia;
-    var hhm=PROD_INDEX[key]||PROD_INDEX['AC|'+sch+'|'+dia];
-    if (hhm==null) return;
-    totalHh+=hhm*metros; totalM+=metros;
-  });
-  return {hh:totalHh, metros:totalM};
-}
-function _planSafeId(s){ return String(s).replace(/[^a-zA-Z0-9]/g,'_'); }
-
-function planSetByDataset(el) {
-  var sid = el.getAttribute('data-iso');
-  if (!sid) return;
-  // find isoNum by safe id
-  var list = currentProjId ? projIsos(currentProjId) : isos;
-  var iso = list.find(function(e){ return _planSafeId(e.num) === sid; });
-  if (!iso) return;
-  planSetRecurso(iso.num, el.value);
-}
-function planSetRecurso(isoNum, val) {
-  var n=parseInt(val)||0;
-  if (n<=0) delete _planRecursos[isoNum]; else _planRecursos[isoNum]=n;
-  _planSaveRec();
-  var hhData=_planHhIso(isoNum);
-  var rec=_planRecursos[isoNum]||1;
-  var dias=hhData.hh>0?(hhData.hh/(rec*PLAN_HORAS_FAB)):0;
-  var cell=document.getElementById('plan-prazo-'+_planSafeId(isoNum));
-  if (cell) cell.textContent=dias>0?dias.toFixed(1)+' dias':'—';
-  _planRefreshTotals();
-}
-
-function _planRefreshTotals() {
-  var list = currentProjId ? projIsos(currentProjId) : isos;
-  var st = _planFinState || {};
-  // Recursos do dimensionamento financeiro
-  var recFab  = (st.recFab  || []).reduce(function(a,b){return a+(parseInt(b)||0);},0);
-  var recMon  = (st.recMon  || []).reduce(function(a,b){return a+(parseInt(b)||0);},0);
-
-  var totalHhFab = 0, totalHhMon = 0;
-  list.forEach(function(e){
-    var df = _planHhIso(e.num);
-    var dm = _planHhIsoMon(e.num);
-    totalHhFab += df.hh;
-    totalHhMon += dm.hh;
-  });
-  var totalHh = totalHhFab + totalHhMon;
-
-  // Prazo com recursos dimensionados
-  var prazoFab = recFab > 0 && totalHhFab > 0 ? totalHhFab / (recFab * PLAN_HORAS_FAB) : 0;
-  var prazoMon = recMon > 0 && totalHhMon > 0 ? totalHhMon / (recMon * PLAN_HORAS_MON) : 0;
-  var prazoParalelo = Math.max(prazoFab, prazoMon);
-  var prazoSeq = prazoFab + prazoMon;
-
-  var el = function(id, v) { var e = document.getElementById(id); if (e) e.textContent = v; };
-  el('plan-tot-hh', Math.round(totalHhFab) + ' Hh (Fab) + ' + Math.round(totalHhMon) + ' Hh (Mon)');
-  el('plan-tot-paralelo', prazoParalelo > 0 ? Math.ceil(prazoParalelo) + ' dias' : 'Insira recursos');
-  el('plan-tot-seq', prazoSeq > 0 ? Math.ceil(prazoSeq) + ' dias' : '—');
-  el('plan-tot-rec', (recFab + recMon) + ' rec (Fab ' + recFab + ' + Mon ' + recMon + ')');
-}
-
-// ── Financeiro ──
-function _planBRL(n) {
-  if (!n) return '';
-  return Number(n).toLocaleString('pt-BR', {minimumFractionDigits:0, maximumFractionDigits:0});
-}
-function _planParseBRL(s) {
-  // Remove R$, spaces, dots (thousand sep), replace comma with dot
-  var clean = String(s).replace(/R\$\s*/g,'').replace(/\./g,'').replace(',','.').trim();
-  return parseFloat(clean) || 0;
-}
-function _planMaskBRL(el) {
-  // Strip non-digits
-  var raw = el.value.replace(/\D/g,'');
-  if (!raw) { el.value = ''; return; }
-  var n = parseInt(raw, 10);
-  el.value = n.toLocaleString('pt-BR');
-}
-function planMaskBrl(el) {
-  var raw = (el.value || '').replace(/\./g,'').replace(',','.').replace(/[^0-9.]/g,'');
-  var n = parseFloat(raw);
-  if (Number.isFinite(n) && n > 0) {
-    el.value = Math.round(n).toLocaleString('pt-BR');
-  }
-}
-// Prazo em meses com no máximo 2 casas, sem decimais desnecessários
-function _planFmtMeses(m) {
-  if (!Number.isFinite(m) || m <= 0) return '—';
-  var r = Math.ceil(m);
-  return r + (r === 1 ? ' mês' : ' meses');
-}
-
-function planUpdateFin() {
-  var valor   = _planParseBRL((document.getElementById('fin-valor')   ||{}).value||'0');
-  var prodFab = _planParseBRL((document.getElementById('fin-prod-fab')||{}).value||'0');
-  var prodMon = _planParseBRL((document.getElementById('fin-prod-mon')||{}).value||'0');
-  var prodBook= _planParseBRL((document.getElementById('fin-prod-book')||{}).value||'0');
-  function getRec(id) {
-    var el = document.getElementById(id); return el ? (parseInt(el.value)||0) : 0;
-  }
-  // Collect resource rows per scope
-  var recFab = [], recMon = [], recBook = [];
-  (document.querySelectorAll('.fin-row-fab input')||[]).forEach(function(el){ var v=parseInt(el.value)||0; if(v) recFab.push(v); });
-  (document.querySelectorAll('.fin-row-mon input')||[]).forEach(function(el){ var v=parseInt(el.value)||0; if(v) recMon.push(v); });
-  // Book sem recursos
-  var _prevR = (_planFinState||{}).reais||{};
-  _planFinState = { valor:valor, prodFab:prodFab, prodMon:prodMon,
-    recFab:recFab, recMon:recMon, reais:_prevR };
-  _planSaveFin();
-  if (typeof currentSubTab !== 'undefined' && currentSubTab === 'planejamento') {
-    renderIsoView(); // Re-render page to update Hh cards
-  } else {
-    _planRenderFinTable();
-    _planRefreshTotals();
-  }
-}
-
-function planAddRec(scope) {
-  var wrap = document.getElementById('fin-wrap-'+scope); if (!wrap) return;
-  var ln = document.createElement('div');
-  ln.className = 'fin-linha fin-row-'+scope;
-  ln.style.cssText = 'display:flex;align-items:center;gap:8px;margin-bottom:6px';
-  ln.innerHTML = '<input type="number" min="1" value="1" style="width:60px;padding:4px 8px;border:1px solid var(--hbr);border-radius:6px;font-size:12px" onchange="planUpdateFin()">'
-    + '<span style="font-size:10px;color:var(--hmu)">recursos</span>'
-    + '<button onclick="this.parentElement.remove();planUpdateFin()" style="background:#fdecea;border:1px solid #e0c8c8;color:var(--hd);border-radius:5px;padding:2px 8px;cursor:pointer;font-size:10px">✕</button>';
-  wrap.appendChild(ln);
-  planUpdateFin();
-}
-
-function planSaveReal(el) {
-  var mes = parseInt(el.getAttribute('data-mes'));
-  var scope = el.getAttribute('data-scope');
-  var val = (scope==='pct_fab'||scope==='pct_mon') ? Math.min(100,Math.max(0,parseFloat(el.value)||0)) : _planParseBRL(el.value||'0');
-  if (!_planFinState) _planFinState = {};
-  if (!_planFinState.reais) _planFinState.reais = {};
-  if (!_planFinState.reais[mes]) _planFinState.reais[mes] = {};
-  _planFinState.reais[mes][scope] = val > 0 ? val : 0;
-  _planSaveFin();
-}
-
-function _planRenderFinTable() {
-  var tbl = document.getElementById('fin-result-table'); if (!tbl) return;
-  var st = _planFinState || {};
-  var valor = st.valor || 0;
-  if (!valor) { tbl.innerHTML = '<div style="color:var(--hmu);font-size:11px;padding:8px 0">Preencha o Valor do Projeto para calcular.</div>'; return; }
-
-  var vlFab=valor*0.30, vlMon=valor*0.50, vlBook=valor*0.20;
-  var vlMonTotal=vlMon+vlBook; // Book faz parte da Montagem
-  var prodFab=st.prodFab||0, prodMon=st.prodMon||0;
-  var recFab=st.recFab||[], recMon=st.recMon||[];
-  var totalRecFab=recFab.reduce(function(a,b){return a+(parseInt(b)||0);},0);
-  var totalRecMon=recMon.reduce(function(a,b){return a+(parseInt(b)||0);},0);
-  var custoFab=totalRecFab*prodFab, custoMon=totalRecMon*prodMon;
-  var custoTotal=custoFab+custoMon;
-  var orcExec=valor; // Orçamento total
-  var orcDisp=valor; // Book incluso na montagem
-
-  // ── Painel de orçamento ──
-  var orcamento = '<div style="background:linear-gradient(135deg,#071d4a,#0B3D91);border-radius:10px;padding:16px 20px;color:#fff;margin-bottom:16px">'
-    +'<div style="font-size:14px;font-weight:700;margin-bottom:12px">💰 Orçamento do Projeto</div>'
-    +'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px">'
-    +'<div><div style="font-size:9px;opacity:.7;text-transform:uppercase;letter-spacing:.5px">Valor Global</div><div style="font-size:20px;font-weight:800;margin-top:2px">R$ '+_planBRL(valor)+'</div></div>'
-    +'<div style="border-left:1px solid rgba(255,255,255,.2);padding-left:14px"><div style="font-size:9px;opacity:.7;text-transform:uppercase">⚙️ Fabricação (30%)</div><div style="font-size:16px;font-weight:700;margin-top:2px">R$ '+_planBRL(vlFab)+'</div><div style="font-size:10px;opacity:.7">'+totalRecFab+' rec × R$ '+_planBRL(prodFab)+' = R$ '+_planBRL(custoFab)+'/mês</div></div>'
-    +'<div style="border-left:1px solid rgba(255,255,255,.2);padding-left:14px"><div style="font-size:9px;opacity:.7;text-transform:uppercase">🔧 Montagem + Book (70%)</div><div style="font-size:16px;font-weight:700;margin-top:2px">R$ '+_planBRL(vlMonTotal)+'</div><div style="font-size:10px;opacity:.7">'+totalRecMon+' rec × R$ '+_planBRL(prodMon)+' = R$ '+_planBRL(custoMon)+'/mês</div></div>'
-    +'<div style="border-left:1px solid rgba(255,255,255,.2);padding-left:14px"><div style="font-size:9px;opacity:.7;text-transform:uppercase">📚 Book (20%)</div><div style="font-size:16px;font-weight:700;margin-top:2px">R$ '+_planBRL(vlBook)+'</div><div style="font-size:10px;opacity:.7;color:rgba(255,220,100,.9)">Incluso na Montagem</div></div>'
-    +'</div></div>';
-
-  // ── Análise de Viabilidade ──
-  var alerta = '';
-  if (custoTotal > 0) {
-    var monOffset = 1; // Montagem inicia 30 dias (1 mês) após fabricação
-    var mesesFabA = custoFab>0 ? Math.ceil(vlFab/custoFab) : 0;
-    var mesesMonA = custoMon>0 ? Math.ceil(vlMonTotal/custoMon) : 0; // Book incluso
-    var prazoTotal = Math.max(mesesFabA, mesesMonA + monOffset);
-    // Custo real por período: mês 1 só fab, meses 2+ fab+mon
-    var gastoFab = Math.min(vlFab, mesesFabA * custoFab);
-    var gastoMon = Math.min(vlMonTotal, mesesMonA * custoMon);
-    var gastoTotal = gastoFab + gastoMon;
-    var lucro = valor - gastoTotal;
-    var pctLucro = valor>0 ? (lucro/valor*100).toFixed(1) : 0;
-    var viavel = gastoTotal <= valor * 1.001;
-    var corV = viavel ? '#1a8c4e' : 'var(--hd)';
-    var bgV  = viavel ? 'linear-gradient(135deg,#1a8c4e,#27ae60)' : 'linear-gradient(135deg,#c0392b,var(--hd))';
-
-    alerta = '<div style="border-radius:12px;overflow:hidden;margin-bottom:16px;box-shadow:0 4px 16px rgba(0,0,0,.12)">'
-      // Header com resultado
-      +'<div style="background:'+bgV+';padding:14px 20px;color:#fff;display:flex;align-items:center;justify-content:space-between">'
-      +'<div>'
-      +'<div style="font-size:13px;font-weight:800;letter-spacing:.3px">'+(viavel?'✅ PROJETO VIÁVEL':'⛔ PROJEÇÃO DE DÉFICIT')+'</div>'
-      +'<div style="font-size:11px;opacity:.85;margin-top:2px">Montagem inclui Book (20%) · Mês 1: só Fab · Mês 2+: Fab + Mon</div>'
-      +'</div>'
-      +'<div style="text-align:right">'
-      +'<div style="font-size:24px;font-weight:800">'+(viavel?'Lucro':'Prejuízo')+' R$ '+_planBRL(Math.abs(Math.round(lucro)))+'</div>'
-      +'<div style="font-size:13px;opacity:.85">'+pctLucro+'% do valor do projeto</div>'
-      +'</div>'
-      +'</div>'
-      // Grid de detalhes
-      +'<div style="display:grid;grid-template-columns:repeat(5,1fr);background:#f8fafd;border:1px solid #d0d8e8;border-top:none">'
-      +'<div style="padding:12px 14px;border-right:1px solid #e8eef7"><div style="font-size:9px;color:#888;text-transform:uppercase;margin-bottom:4px">Valor Contrato</div><div style="font-size:15px;font-weight:700;color:var(--hb)">R$ '+_planBRL(valor)+'</div></div>'
-      +'<div style="padding:12px 14px;border-right:1px solid #e8eef7"><div style="font-size:9px;color:#888;text-transform:uppercase;margin-bottom:4px">Custo Fab</div><div style="font-size:15px;font-weight:700;color:#0B3D91">R$ '+_planBRL(Math.round(gastoFab))+'</div><div style="font-size:9px;color:#aaa">'+totalRecFab+' rec × R$ '+_planBRL(prodFab)+' × '+mesesFabA+' meses</div></div>'
-      +'<div style="padding:12px 14px;border-right:1px solid #e8eef7"><div style="font-size:9px;color:#888;text-transform:uppercase;margin-bottom:4px">Custo Mon + Book</div><div style="font-size:15px;font-weight:700;color:#0077b6">R$ '+_planBRL(Math.round(gastoMon))+'</div><div style="font-size:9px;color:#aaa">'+totalRecMon+' rec × R$ '+_planBRL(prodMon)+' × '+mesesMonA+' meses</div></div>'
-      +'<div style="padding:12px 14px;border-right:1px solid #e8eef7"><div style="font-size:9px;color:#888;text-transform:uppercase;margin-bottom:4px">Prazo Total</div><div style="font-size:15px;font-weight:700;color:var(--hb)">'+prazoTotal+' '+(prazoTotal===1?'mês':'meses')+'</div><div style="font-size:9px;color:#aaa">Fab até mês '+mesesFabA+' · Mon: mês 2 ao '+(mesesMonA+monOffset)+'</div></div>'
-      +'<div style="padding:12px 14px"><div style="font-size:9px;color:#888;text-transform:uppercase;margin-bottom:4px">Margem</div><div style="font-size:15px;font-weight:700;color:'+corV+'">'+pctLucro+'%</div><div style="font-size:9px;color:#aaa">'+(viavel?'Lucro':'Déficit')+' R$ '+_planBRL(Math.abs(Math.round(lucro)))+'</div></div>'
-      +'</div>'
-      // Recomendação
-      +'<div style="padding:10px 18px;background:'+(viavel?'#d4edda':'#f8d7da')+';border:1px solid '+(viavel?'#c3e6cb':'#f5c6cb')+';border-top:none;font-size:11px;color:'+(viavel?'#155724':'#721c24')+'">'
-      +(viavel
-        ? '💡 Para lucro de <strong>R$ '+_planBRL(Math.round(lucro))+'</strong>: Fabricação com <strong>'+totalRecFab+' recursos</strong> em <strong>'+mesesFabA+' meses</strong> (R$ '+_planBRL(custoFab)+'/mês) · Montagem com <strong>'+totalRecMon+' recursos</strong> em <strong>'+mesesMonA+' meses</strong> iniciando no mês 2 (R$ '+_planBRL(custoMon)+'/mês).'
-        : '💡 Para equilibrar: Fab precisa de no máx <strong>'+(custoFab>0?Math.floor(vlFab/mesesFabA/prodFab):0)+' recursos</strong> ou prazo mín <strong>'+(custoFab>0?Math.ceil(vlFab/custoFab):0)+' meses</strong>. Mon precisa de no máx <strong>'+(custoMon>0?Math.floor(vlMonTotal/mesesMonA/prodMon):0)+' recursos</strong> ou prazo mín <strong>'+(custoMon>0?Math.ceil(vlMonTotal/custoMon):0)+' meses</strong>.'
-      )
-      +'</div></div>';
-  }
-
-  // ── Tabela mês a mês ──
-  if (custoTotal <= 0) {
-    tbl.innerHTML = orcamento + '<div style="color:var(--hmu);font-size:11px;padding:8px 0">Defina recursos e produção para ver o fluxo.</div>';
-    return;
-  }
-
-  var mesesFab = custoFab>0 ? Math.ceil(vlFab/custoFab) : 0;
-  var mesesMon = custoMon>0 ? Math.ceil(vlMonTotal/custoMon) : 0; // Book incluso
-  var monOffset = 1;
-  var maxMeses = Math.max(mesesFab, mesesMon + monOffset, 1);
-
-  // ── Tabela mês a mês ──
-  var fluxo = '<div style="font-size:12px;font-weight:700;color:var(--hb);margin-bottom:8px">📊 Medição Previsto × Real — Mês a Mês</div>'
-    +'<table style="width:100%;border-collapse:collapse;border-radius:10px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.1)">'
-    +'<thead>'
-    +'<tr style="background:linear-gradient(90deg,#071d4a 0%,#0B3D91 100%);color:#fff">'
-    +'<th style="padding:10px 8px;font-size:10px;font-weight:700;text-align:center;width:40px;border-right:1px solid rgba(255,255,255,.1)" rowspan="3">MÊS</th>'
-    +'<th style="padding:10px 8px;font-size:10px;font-weight:700;text-align:center;border-right:1px solid rgba(255,255,255,.15);letter-spacing:.5px" colspan="4">⚙️ FABRICAÇÃO</th>'
-    +'<th style="padding:10px 8px;font-size:10px;font-weight:700;text-align:center;border-right:1px solid rgba(255,255,255,.15);letter-spacing:.5px" colspan="4">🔧 MONTAGEM</th>'
-    +'<th style="padding:10px 8px;font-size:10px;font-weight:700;text-align:center;border-right:1px solid rgba(255,255,255,.1);letter-spacing:.5px" colspan="2">TOTAL</th>'
-    +'<th style="padding:10px 8px;font-size:10px;font-weight:700;text-align:center;letter-spacing:.5px;background:#e6a800;color:#1a1a00" colspan="2" rowspan="2">📈 PROJEÇÃO</th>'
-    +'<th style="padding:10px 8px;font-size:10px;font-weight:700;text-align:center;width:80px;letter-spacing:.5px" rowspan="3">CONSUMO</th>'
-    +'</tr>'
-    +'<tr style="background:linear-gradient(90deg,#0e3a8a,#1a5fd1);color:#fff">'
-    +'<th style="padding:5px 6px;font-size:9px;text-align:center;border-right:1px solid rgba(255,255,255,.1)" colspan="2">Previsto</th>'
-    +'<th style="padding:5px 6px;font-size:9px;text-align:center;border-right:1px solid rgba(255,255,255,.15);background:rgba(0,168,232,.35);color:#fff;font-weight:700" colspan="2">Real</th>'
-    +'<th style="padding:5px 6px;font-size:9px;text-align:center;border-right:1px solid rgba(255,255,255,.1)" colspan="2">Previsto</th>'
-    +'<th style="padding:5px 6px;font-size:9px;text-align:center;border-right:1px solid rgba(255,255,255,.15);background:rgba(0,168,232,.35);color:#fff;font-weight:700" colspan="2">Real</th>'
-    +'<th style="padding:5px 6px;font-size:9px;text-align:center;border-right:1px solid rgba(255,255,255,.1)">Previsto</th>'
-    +'<th style="padding:5px 6px;font-size:9px;text-align:center;border-right:1px solid rgba(255,255,255,.1);background:rgba(0,168,232,.2)">Real</th>'
-    +'</tr>'
-    +'<tr style="background:#1450a3;color:#fff;font-size:9px;font-weight:700">'
-    +'<th style="padding:4px 5px;text-align:center;border-right:1px solid rgba(255,255,255,.1)">R$</th>'
-    +'<th style="padding:4px 5px;text-align:center;border-right:1px solid rgba(255,255,255,.1)">%</th>'
-    +'<th style="padding:4px 5px;text-align:center;border-right:1px solid rgba(255,255,255,.1);background:rgba(0,140,200,.4);color:#fff">R$</th>'
-    +'<th style="padding:4px 5px;text-align:center;border-right:1px solid rgba(255,255,255,.15);background:rgba(0,140,200,.4);color:#fff">%</th>'
-    +'<th style="padding:4px 5px;text-align:center;border-right:1px solid rgba(255,255,255,.1)">R$</th>'
-    +'<th style="padding:4px 5px;text-align:center;border-right:1px solid rgba(255,255,255,.1)">%</th>'
-    +'<th style="padding:4px 5px;text-align:center;border-right:1px solid rgba(255,255,255,.1);background:rgba(0,140,200,.4);color:#fff">R$</th>'
-    +'<th style="padding:4px 5px;text-align:center;border-right:1px solid rgba(255,255,255,.15);background:rgba(0,140,200,.4);color:#fff">%</th>'
-    +'<th style="padding:4px 5px;text-align:center;border-right:1px solid rgba(255,255,255,.1)">R$</th>'
-    +'<th style="padding:4px 5px;text-align:center;border-right:1px solid rgba(255,255,255,.1);background:rgba(0,168,232,.15)">R$</th>'
-    +'<th style="padding:4px 5px;text-align:center;border-right:1px solid rgba(255,255,255,.1);background:#c98000;color:#fff">Saldo</th>'
-    +'<th style="padding:4px 5px;text-align:center;background:#c98000;color:#fff">Término</th>'
-    +'</tr>'
-    +'</thead><tbody>';
-
-  var reais = (st.reais || {});
-  var acumFab=0, acumMon=0, acumRF=0, acumRM=0;
-  var acumPrevFabPct=0, acumPrevMonPct=0;
-
-  for (var mes=1; mes<=maxMeses; mes++) {
-    var gFab = custoFab>0 && acumFab<vlFab ? Math.min(custoFab, vlFab-acumFab) : 0;
-    var gMon = (mes>monOffset && custoMon>0 && acumMon<vlMonTotal) ? Math.min(custoMon, vlMonTotal-acumMon) : 0;
-    if (gFab<0) gFab=0; if (gMon<0) gMon=0;
-    acumFab+=gFab; acumMon+=gMon;
-
-    // Previsto % do escopo
-    var pFabPct = vlFab>0 ? Math.round(gFab/vlFab*100) : 0;
-    var pMonPct = vlMonTotal>0 ? Math.round(gMon/vlMonTotal*100) : 0;
-    acumPrevFabPct += pFabPct;
-    acumPrevMonPct += pMonPct;
-
-    var rm = reais[mes] || {};
-    var rF = rm.fab || 0, rM = rm.mon || 0;
-    var rFpct = rm.pct_fab || 0, rMpct = rm.pct_mon || 0;
-    acumRF += rF; acumRM += rM;
-
-    var acumPrev = acumFab + acumMon;
-    var acumReal = acumRF + acumRM;
-    var saldoReal = orcExec - acumReal;
-    var pctPrev = orcExec>0 ? Math.round(acumPrev/orcExec*100) : 0;
-    var pctReal = orcExec>0 ? Math.round(acumReal/orcExec*100) : 0;
-    var negR = saldoReal < 0;
-
-    var bg = negR ? '#fff0f0' : mes%2===0 ? '#f8fafd' : '#fff';
-    var barColR = pctReal>100?'var(--hd)':pctReal>80?'#c07000':'#1a8c4e';
-    var barColP = pctPrev>100?'var(--hd)':pctPrev>80?'#c07000':'#0B3D91';
-
-    // Mini double bar: previsto (azul) e real (ciano)
-    var dualBar = '<div style="position:relative;height:22px;background:#e8eef7;border-radius:8px;overflow:hidden;min-width:75px">'
-      +'<div style="position:absolute;left:0;top:0;height:100%;width:'+Math.min(pctPrev,100)+'%;background:#0B3D91;opacity:.35;border-radius:8px"></div>'
-      +'<div style="position:absolute;left:0;top:0;height:100%;width:'+Math.min(pctReal,100)+'%;background:'+barColR+';border-radius:8px;opacity:.85"></div>'
-      +'<span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:'+(pctReal>30?'#fff':'#333')+'">'
-      +(pctReal>0?pctReal+'%':'—')+'</span></div>';
-
-    var desvF = rF>0 ? rF-gFab : null;
-    var desvM = rM>0 ? rM-gMon : null;
-
-    fluxo += '<tr style="background:'+bg+';border-bottom:1px solid #e8eef7">'
-      // Mês
-      +'<td style="padding:8px 6px;text-align:center;font-size:14px;font-weight:800;color:var(--hb);border-right:1px solid #e8eef7">'+mes+'</td>'
-      // Fab Previsto R$
-      +'<td style="padding:7px 6px;text-align:right;font-size:10px;color:#555;border-right:1px solid #f0f0f0">'+(gFab>0?'R$ '+_planBRL(Math.round(gFab)):'—')+'</td>'
-      // Fab Previsto %
-      +'<td style="padding:7px 4px;text-align:center;font-size:10px;color:#0B3D91;font-weight:600;border-right:1px solid #e0e8f0">'+(pFabPct>0?pFabPct+'%':'—')+'</td>'
-      // Fab Real R$ (input)
-      +'<td style="padding:3px 2px;background:#f7fbff;border-right:1px solid #f0f0f0"><input type="text" inputmode="numeric" value="'+(rF>0?_planBRL(rF):'')+'" placeholder="—" data-mes="'+mes+'" data-scope="fab" oninput="_planMaskBRL(this)" onchange="planSaveReal(this)" style="width:80px;padding:4px 5px;border:1px solid '+(rF>0?'#0B3D91':'#dde')+';border-radius:5px;font-size:10px;text-align:right;background:'+(rF>0?'#e8f0fb':'#fff')+';outline:none;font-weight:'+(rF>0?'600':'400')+'"></td>'
-      // Fab Real %
-      +'<td style="padding:7px 4px;text-align:center;font-size:10px;font-weight:600;border-right:1px solid #dce8f0;background:#f7fbff;color:'+(desvF===null?'#aaa':desvF>0?'var(--hd)':'#1a8c4e')+'">'+(rFpct>0?rFpct+'%':(rF>0&&vlFab>0?Math.round(rF/vlFab*100)+'%':'—'))+'</td>'
-      // Mon Previsto R$
-      +'<td style="padding:7px 6px;text-align:right;font-size:10px;color:#555;border-right:1px solid #f0f0f0">'+(mes<=monOffset?'<span style="font-size:8px;color:#aaa">Mês '+(monOffset+1)+'</span>':(gMon>0?'R$ '+_planBRL(Math.round(gMon)):'—'))+'</td>'
-      // Mon Previsto %
-      +'<td style="padding:7px 4px;text-align:center;font-size:10px;color:#0077b6;font-weight:600;border-right:1px solid #e0e8f0">'+(pMonPct>0?pMonPct+'%':'—')+'</td>'
-      // Mon Real R$ (input)
-      +'<td style="padding:3px 2px;background:#f5fbff;border-right:1px solid #f0f0f0"><input type="text" inputmode="numeric" value="'+(rM>0?_planBRL(rM):'')+'" placeholder="—" data-mes="'+mes+'" data-scope="mon" oninput="_planMaskBRL(this)" onchange="planSaveReal(this)" style="width:80px;padding:4px 5px;border:1px solid '+(rM>0?'#0077b6':'#dde')+';border-radius:5px;font-size:10px;text-align:right;background:'+(rM>0?'#e3f4fc':'#fff')+';outline:none;font-weight:'+(rM>0?'600':'400')+'"></td>'
-      // Mon Real %
-      +'<td style="padding:7px 4px;text-align:center;font-size:10px;font-weight:600;border-right:1px solid #cde;background:#f5fbff;color:'+(desvM===null?'#aaa':desvM>0?'var(--hd)':'#1a8c4e')+'">'+(rMpct>0?rMpct+'%':(rM>0&&vlMon>0?Math.round(rM/vlMon*100)+'%':'—'))+'</td>'
-      // Total Previsto
-      +'<td style="padding:7px 6px;text-align:right;font-size:10px;font-weight:600;color:#0B3D91;border-right:1px solid #e8eef7">R$ '+_planBRL(Math.round(acumPrev))+'</td>'
-      // Total Real
-      +'<td style="padding:7px 6px;text-align:right;font-size:11px;font-weight:700;color:'+(negR?'#fff':'#1a8c4e')+';'+(negR?'background:var(--hd);border-radius:5px':'')+'">R$ '+_planBRL(Math.abs(Math.round(acumReal)))+(negR?' ⛔':'')+'</td>'
-      // Barra dual
-      +'<td style="padding:4px 6px">'+dualBar+'</td>'
-      +(function(){
-        // Saldo restante do orçamento executável com base no real
-        var saldoR = orcExec - acumReal;
-        var taxaMensal = acumReal > 0 ? acumReal / mes : custoTotal;
-        var mesesRestantes = taxaMensal > 0 ? Math.ceil(saldoR / taxaMensal) : '?';
-        var mesFim = typeof mesesRestantes === 'number' ? mes + mesesRestantes : '?';
-        var saldoColor = saldoR < 0 ? 'var(--hd)' : saldoR < orcExec*0.2 ? '#c07000' : '#1a8c4e';
-        return '<td style="padding:6px 6px;text-align:right;font-size:10px;font-weight:700;color:'+saldoColor+';background:#fffce8;border-right:1px solid #ede">'+(acumReal>0?'R$ '+_planBRL(Math.round(saldoR)):'—')+'</td>'
-          +'<td style="padding:6px 6px;text-align:center;font-size:10px;font-weight:700;background:#fffce8;color:#7a5c00">'+(acumReal>0?'Mês '+mesFim:'—')+'</td>';
-      }())
-      +'</tr>';
-  }
-
-  // Linha Book
-  var saldoFinal = valor - acumFab - acumMon - vlBook;
-  fluxo += '<tr style="background:linear-gradient(90deg,#1a8c4e,#27ae60);color:#fff">'
-    +'<td style="padding:10px 8px;text-align:center;font-size:13px;font-weight:700">📚</td>'
-    +'<td colspan="10" style="padding:10px 8px;font-size:12px;font-weight:600">Book — Entrega documentação</td>'
-    +'<td style="padding:10px 8px;text-align:right;font-size:13px;font-weight:700">R$ '+_planBRL(Math.round(vlBook))+'</td>'
-    +'<td style="padding:4px 8px"><div style="background:rgba(255,255,255,.3);border-radius:8px;height:22px;position:relative"><div style="height:100%;width:100%;background:rgba(255,255,255,.6);border-radius:8px"></div><span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#fff">100%</span></div></td>'
-    +'</tr>';
-
-  fluxo += '</tbody></table>';
-
-  tbl.innerHTML = orcamento + alerta + fluxo;
-}
-
-
-function renderPlanejamento(discTabs, bc) {
-  _planLoad();
-  var list = currentProjId ? projIsos(currentProjId) : isos;
-
-  // ── Cabeçalho e totais físicos ──
-  var header = '<div style="padding:16px 16px 8px">'
-    + '<div style="font-size:16px;font-weight:700;color:var(--hb)">🗓️ Planejamento — Físico × Financeiro</div>'
-    + '</div>';
-
-  var totals = '';
-
-  // ── Cards de Hh ──
-  var finState = _planFinState || {};
-  var _hhHtml = '';
-  var _sumRF = (finState.recFab||[]).reduce(function(a,b){return a+(parseInt(b)||0);},0);
-  var _sumRM = (finState.recMon||[]).reduce(function(a,b){return a+(parseInt(b)||0);},0);
-  if (_sumRF > 0 || _sumRM > 0) {
-    var _pF = finState.prodFab||0, _pM = finState.prodMon||0;
-    var _cF = _sumRF * _pF, _cM = _sumRM * _pM;
-    var _vF = (finState.valor||0)*0.3, _vM = (finState.valor||0)*0.5;
-    var _mF = _cF>0 ? Math.ceil(_vF/_cF) : 0;
-    var _mM = _cM>0 ? Math.ceil(_vM/_cM) : 0;
-    // Use actual resource lines: each line is a team (caldeireiro or soldador)
-    // Show per-line Hh, not artificial split
-    var _recsFab = finState.recFab||[];
-    var _recsMon = finState.recMon||[];
-    var _hTF = _recsFab.reduce(function(s,r){return s+(parseInt(r)||0)*PLAN_HORAS_FAB*PLAN_DIAS_MES*_mF;},0);
-    var _hTM = _recsMon.reduce(function(s,r){return s+(parseInt(r)||0)*PLAN_HORAS_MON*PLAN_DIAS_MES*_mM;},0);
-    var _hG = _hTF + _hTM;
-    function _b(n){return n?Number(n).toLocaleString('pt-BR'):'0';}
-    // Build per-line rows for Fab
-    var _fabRows = _recsFab.map(function(r,i){
-      var hh = (parseInt(r)||0) * PLAN_HORAS_FAB * PLAN_DIAS_MES * _mF;
-      return '<div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0;border-bottom:1px solid #eef">'
-        +'<span style="font-size:10px;color:#555">Equipe '+(i+1)+' ('+r+' rec)</span>'
-        +'<span style="font-size:13px;font-weight:700;color:#0B3D91">'+_b(Math.round(hh))+' Hh</span>'
-        +'</div>';
-    }).join('');
-    var _monRows = _recsMon.map(function(r,i){
-      var hh = (parseInt(r)||0) * PLAN_HORAS_MON * PLAN_DIAS_MES * _mM;
-      return '<div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0;border-bottom:1px solid #eef">'
-        +'<span style="font-size:10px;color:#555">Equipe '+(i+1)+' ('+r+' rec)</span>'
-        +'<span style="font-size:13px;font-weight:700;color:#0077b6">'+_b(Math.round(hh))+' Hh</span>'
-        +'</div>';
-    }).join('');
-
-    _hhHtml = '<div style="padding:0 16px 14px"><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">'
-      // Fab card
-      +'<div style="background:#fff;border:1px solid #d0d8e8;border-radius:10px;padding:14px 16px;border-left:4px solid #0B3D91">'
-      +'<div style="font-size:11px;font-weight:700;color:#0B3D91;margin-bottom:10px">⚙️ Hh Fabricação <span style="font-weight:400;color:#888">('+_mF+(_mF===1?' mês':' meses')+' × 8h × 22d)</span></div>'
-      +_fabRows
-      +'<div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;padding-top:8px;border-top:2px solid #e8eef7">'
-      +'<span style="font-size:11px;font-weight:700;color:var(--hb)">Total Fab</span>'
-      +'<span style="font-size:16px;font-weight:800;color:#0B3D91">'+_b(Math.round(_hTF))+' Hh</span>'
-      +'</div></div>'
-      // Mon card
-      +'<div style="background:#fff;border:1px solid #b0ddf0;border-radius:10px;padding:14px 16px;border-left:4px solid #00A8E8">'
-      +'<div style="font-size:11px;font-weight:700;color:#0077b6;margin-bottom:10px">🔧 Hh Montagem <span style="font-weight:400;color:#888">('+_mM+(_mM===1?' mês':' meses')+' × 6,5h × 22d)</span></div>'
-      +_monRows
-      +'<div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;padding-top:8px;border-top:2px solid #e8eef7">'
-      +'<span style="font-size:11px;font-weight:700;color:var(--hb)">Total Mon</span>'
-      +'<span style="font-size:16px;font-weight:800;color:#0077b6">'+_b(Math.round(_hTM))+' Hh</span>'
-      +'</div></div>'
-      // Total card
-      +'<div style="background:linear-gradient(135deg,#071d4a,#0B3D91);border-radius:10px;padding:14px 16px;color:#fff;display:flex;flex-direction:column;justify-content:center">'
-      +'<div style="font-size:11px;opacity:.8;margin-bottom:8px">📊 Hh Total do Projeto</div>'
-      +'<div style="font-size:28px;font-weight:800">'+_b(Math.round(_hG))+' Hh</div>'
-      +'<div style="margin-top:10px;display:flex;gap:8px">'
-      +'<div style="background:rgba(255,255,255,.15);border-radius:6px;padding:5px 10px;text-align:center">'
-      +'<div style="font-size:9px;opacity:.7">Fabricação</div>'
-      +'<div style="font-size:13px;font-weight:700">'+_b(Math.round(_hTF))+' Hh</div>'
-      +'<div style="font-size:9px;opacity:.6">'+Math.round(_hG>0?_hTF/_hG*100:0)+'%</div>'
-      +'</div>'
-      +'<div style="background:rgba(255,255,255,.15);border-radius:6px;padding:5px 10px;text-align:center">'
-      +'<div style="font-size:9px;opacity:.7">Montagem</div>'
-      +'<div style="font-size:13px;font-weight:700">'+_b(Math.round(_hTM))+' Hh</div>'
-      +'<div style="font-size:9px;opacity:.6">'+Math.round(_hG>0?_hTM/_hG*100:0)+'%</div>'
-      +'</div>'
-      +'</div></div>'
-      +'</div></div>';
-  }
-
-  // ── Seção Físico × Financeiro ──
-
-  function _finRecRows(scope, recs) {
-    return (recs||[1]).map(function(r){
-      return '<div class="fin-linha fin-row-'+scope+'" style="display:flex;align-items:center;gap:6px;margin-bottom:5px">'
-        +'<input type="number" min="1" value="'+r+'" style="width:55px;padding:4px 6px;border:1px solid var(--hbr);border-radius:6px;font-size:11px;text-align:center" onchange="planUpdateFin()">'
-        +'<span style="font-size:9px;color:var(--hmu)">rec.</span>'
-        +'<button onclick="this.parentElement.remove();planUpdateFin()" style="background:#fdecea;border:1px solid #e0c8c8;color:var(--hd);border-radius:4px;padding:2px 6px;cursor:pointer;font-size:9px">✕</button>'
-        +'</div>';
-    }).join('');
-  }
-
-  var finSection = '<div style="margin:0 16px 16px;background:#fff;border:1px solid #d0d8e8;border-radius:12px;overflow:hidden">'
-    +'<div style="background:linear-gradient(100deg,#071d4a,#0B3D91);padding:12px 18px;color:#fff;font-size:13px;font-weight:700">💰 Controle Físico × Financeiro</div>'
-    +'<div style="padding:16px 18px">'
-    // Valor global
-    +'<div style="margin-bottom:16px;max-width:300px"><label class="mats-add-lbl">Valor Global do Projeto (R$)</label>'
-    +'<input id="fin-valor" type="text" inputmode="numeric" class="mats-add-inp" style="font-size:15px;font-weight:700" placeholder="Ex: 300.000" value="'+(finState.valor?_planBRL(finState.valor):'')+'" oninput="_planMaskBRL(this)" onchange="planUpdateFin()" onblur="planUpdateFin()">'
-    +'<div style="font-size:9px;color:var(--hmu);margin-top:4px">30% Fabricação · 50% Montagem · 20% Book</div></div>'
-    // 3 escopos lado a lado
-    +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:16px">'
-    // Fabricação 30%
-    +'<div style="background:#f0f4fb;border:1px solid #d0d8e8;border-radius:10px;padding:12px">'
-    +'<div style="font-size:11px;font-weight:700;color:#0B3D91;margin-bottom:8px">⚙️ Fabricação (30%)'+(finState.valor?' — <span style="font-weight:400">R$ '+_planBRL(finState.valor*0.3)+'</span>':'')+'</div>'
-    +'<label class="mats-add-lbl">Prod. Mensal/Recurso (R$)</label>'
-    +'<input id="fin-prod-fab" type="text" inputmode="numeric" class="mats-add-inp" style="margin-bottom:8px" placeholder="Ex: 15.000" value="'+(finState.prodFab?_planBRL(finState.prodFab):'')+'" oninput="_planMaskBRL(this)" onchange="planUpdateFin()" onblur="planUpdateFin()">'
-    +'<label class="mats-add-lbl">Recursos</label>'
-    +'<div id="fin-wrap-fab">'+_finRecRows('fab', finState.recFab||[4])+'</div>'
-    +'<button onclick="planAddRec(\'fab\')" style="font-size:10px;padding:3px 10px;border-radius:5px;border:1px solid #0B3D91;color:#0B3D91;background:#fff;cursor:pointer">+ Recurso</button>'
-    +'</div>'
-    // Montagem 50%
-    +'<div style="background:#e8f8fd;border:1px solid #b0ddf0;border-radius:10px;padding:12px">'
-    +'<div style="font-size:11px;font-weight:700;color:#0077b6;margin-bottom:8px">🔧 Montagem (50%)'+(finState.valor?' — <span style="font-weight:400">R$ '+_planBRL(finState.valor*0.5)+'</span>':'')+'</div>'
-    +'<label class="mats-add-lbl">Prod. Mensal/Recurso (R$)</label>'
-    +'<input id="fin-prod-mon" type="text" inputmode="numeric" class="mats-add-inp" style="margin-bottom:8px" placeholder="Ex: 15.000" value="'+(finState.prodMon?_planBRL(finState.prodMon):'')+'" oninput="_planMaskBRL(this)" onchange="planUpdateFin()" onblur="planUpdateFin()">'
-    +'<label class="mats-add-lbl">Recursos</label>'
-    +'<div id="fin-wrap-mon">'+_finRecRows('mon', finState.recMon||[4])+'</div>'
-    +'<button onclick="planAddRec(\'mon\')" style="font-size:10px;padding:3px 10px;border-radius:5px;border:1px solid #0077b6;color:#0077b6;background:#fff;cursor:pointer">+ Recurso</button>'
-    +'</div>'
-    // Book 20% — sem recursos, medido na entrega final
-    +'<div style="background:#edf7ed;border:1px solid #a5d6a7;border-radius:10px;padding:12px">'
-    +'<div style="font-size:11px;font-weight:700;color:#1a8c4e;margin-bottom:8px">📚 Book (20%)'+(finState.valor?' — <span style="font-weight:400">R$ '+_planBRL(finState.valor*0.2)+'</span>':'')+'</div>'
-    +'<div style="font-size:10px;color:var(--hmu);line-height:1.5">Documentação técnica.<br>Medido na entrega total do projeto.<br>Sem alocação de recurso mensal.</div>'
-    +'</div>'
-    +'</div>'
-    +'<div id="fin-result-table"></div>'
-    +'</div></div>';
-
-
-    document.getElementById('view-isos').innerHTML = bc + discTabs + header + _hhHtml + finSection + '</div>';
-  _planRefreshTotals();
-  _planRenderFinTable();
+  document.getElementById('view-isos').innerHTML = bc + discTabs + header + kpiBar + areaTable + '</div>';
 }
 
 function renderIsoView() {
