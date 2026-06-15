@@ -1156,7 +1156,7 @@ function renderProjects() {
       ${list.map(p => {
         const pi = projIsos(p.id), n = pi.length;
         const piFab = pi.filter(e => !['Apenas Montagem','Desmontagem','Referência','Escopo cancelado','Hold'].includes(e.classif||'Fabricação'));
-        const piMon = pi.filter(e => (e.classif||'Fabricação') !== 'Referência');
+        const piMon = pi.filter(e => !['Referência','Desmontagem','Escopo cancelado','Hold'].includes(e.classif||'Fabricação'));
         const af = piFab.length ? Math.round(piFab.reduce((s, e) => s + fabPct(e), 0) / piFab.length) : 0;
         const am = piMon.length ? Math.round(piMon.reduce((s, e) => s + monPct(e), 0) / piMon.length) : 0;
         const isOpen = currentProjId === p.id;
@@ -2069,7 +2069,7 @@ function dashGoToArea(area) {
 function renderDashboard(discTabs, bc) {
   const proj = projects.find(p => p.id === currentProjId);
   const list = currentProjId ? projIsos(currentProjId) : isos;
-  const listFabMon = list.filter(e => (e.classif||'Fabricação') !== 'Referência' && (e.classif||'Fabricação') !== 'Desmontagem');
+  const listFabMon = list.filter(e => !['Referência','Desmontagem','Escopo cancelado','Hold'].includes(e.classif||'Fabricação'));
   const listFabD   = listFabMon.filter(e => !['Apenas Montagem','Desmontagem','Referência','Escopo cancelado','Hold'].includes(e.classif||'Fabricação'));
 
   const nTotal = list.length;
@@ -2756,10 +2756,10 @@ function renderIsoView() {
   const proj = projects.find(p => p.id === currentProjId);
   const list = currentProjId ? projIsos(currentProjId) : isos;
   const n = list.length;
-  const listFabMon = list.filter(e => (e.classif||'Fabricação') !== 'Referência' && (e.classif||'Fabricação') !== 'Desmontagem');
+  const listFabMon = list.filter(e => !['Referência','Desmontagem','Escopo cancelado','Hold'].includes(e.classif||'Fabricação'));
   const nfm = listFabMon.length;
   const listFabOnly = listFabMon.filter(e => !['Apenas Montagem','Desmontagem','Referência','Escopo cancelado','Hold'].includes(e.classif||'Fabricação'));
-  const listMonOnly = listFabMon.filter(e => (e.classif||'Fabricação') !== 'Referência');
+  const listMonOnly = listFabMon;
   const af = listFabOnly.length ? Math.round(listFabOnly.reduce((s, e) => s + fabPct(e), 0) / listFabOnly.length) : 0;
   const am = listMonOnly.length ? Math.round(listMonOnly.reduce((s, e) => s + monPct(e), 0) / listMonOnly.length) : 0;
   const py = list.filter(e => e.paint === 'Pintado').length;
