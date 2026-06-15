@@ -684,6 +684,7 @@ let _sb = null;
 let _sbConnected = false;
 let _sbLastSync = null;
 let _sbReloadTimeout = null;
+let _sbSessionId = 'sess_' + Date.now() + '_' + Math.random().toString(36).slice(2,7);
 let _sbIgnoreNextReload = false; // evita loop ao salvar localmente
 
 function _sbInit() {
@@ -717,6 +718,14 @@ function _sbConnect(url, key) {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'hydrostec_kv' },
         async (payload) => {
           if (_sbIgnoreNextReload) return; // mudança feita por mim, ignora
+          // Verifica se a mudança tem session_id desta sessão
+          const newVal = payload && payload.new && payload.new.value;
+          if (newVal) {
+            try {
+              const parsed = JSON.parse(newVal);
+              if (parsed && parsed.__sid === _sbSessionId) return; // minha própria mudança
+            } catch(e) {}
+          }
           // Só recarrega se a mudança veio de outra sessão (chave diferente das de planejamento)
           const changedKey = payload && payload.new && payload.new.key;
           if (changedKey && (changedKey.startsWith('hyd_plan_'))) return; // planejamento é local
@@ -1020,6 +1029,8 @@ async function loadAll() {
   }
 }
 async function saveAll() {
+  _sbIgnoreNextReload = true; // ignora o echo do Supabase dos nossos próprios saves
+  setTimeout(() => { _sbIgnoreNextReload = false; }, 8000); // janela de 8s
   try { await storageSet(SK_SUPS, JSON.stringify(suportes)); } catch(e) {}
   try { await storageSet(SK_MATS, JSON.stringify(materiais)); } catch(e) {}
   try { await storageSet(SK_PROJ, JSON.stringify(projects)); } catch(e) {}
