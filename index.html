@@ -2058,18 +2058,21 @@ function renderDashboard(discTabs, bc) {
 
   // Totais gerais
   const nfm = listFabMon.length;
-  const afG = nfm ? Math.round(listFabMon.reduce((s,e)=>s+fabPct(e),0)/nfm) : 0;
+  const listFabD = listFabMon.filter(e => !['Apenas Montagem','Desmontagem','Referência'].includes(e.classif||'Fabricação'));
+  const afG = listFabD.length ? Math.round(listFabD.reduce((s,e)=>s+fabPct(e),0)/listFabD.length) : 0;
   const amG = nfm ? Math.round(listFabMon.reduce((s,e)=>s+monPct(e),0)/nfm) : 0;
 
   // Stats por área
   const areaStats = {};
   listFabMon.forEach(e => {
     const a = e.area || 'Sem área';
-    if (!areaStats[a]) areaStats[a] = { fabSum:0, monSum:0, count:0, done:0 };
-    areaStats[a].fabSum += fabPct(e);
+    if (!areaStats[a]) areaStats[a] = { fabSum:0, fabCount:0, monSum:0, monCount:0, count:0, done:0 };
+    const isFab = !['Apenas Montagem','Desmontagem','Referência'].includes(e.classif||'Fabricação');
+    if (isFab) { areaStats[a].fabSum += fabPct(e); areaStats[a].fabCount++; }
     areaStats[a].monSum += monPct(e);
+    areaStats[a].monCount++;
     areaStats[a].count++;
-    if (fabPct(e) >= 100 && monPct(e) >= 100) areaStats[a].done++;
+    if ((!isFab || fabPct(e) >= 100) && monPct(e) >= 100) areaStats[a].done++;
   });
   const areaKeys = Object.keys(areaStats).sort();
 
@@ -2099,8 +2102,8 @@ function renderDashboard(discTabs, bc) {
   const cards = areaKeys.length ? `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px;padding:0 16px 20px">
     ${areaKeys.map(a => {
       const st = areaStats[a];
-      const fpc = st.count ? Math.round(st.fabSum/st.count) : 0;
-      const mpc = st.count ? Math.round(st.monSum/st.count) : 0;
+      const fpc = st.fabCount ? Math.round(st.fabSum/st.fabCount) : 0;
+      const mpc = st.monCount ? Math.round(st.monSum/st.monCount) : 0;
       const escA = String(a).replace(/'/g, "\\'");
       return `<div class="dash-card" onclick="dashGoToArea('${escA}')" title="Ver isométricos da Área ${a}">
         <div class="dash-card-top">
@@ -3689,7 +3692,8 @@ function exportIsoSelectedPDF() {
   const mon = items.filter(e => e.classif === 'Apenas Montagem').length;
   const ref = items.filter(e => e.classif === 'Referência').length;
   const pint = items.filter(e => e.paint === 'Pintado').length;
-  const avgFab = total ? Math.round(items.reduce((s,e) => s+fabPct(e),0)/total) : 0;
+  const itemsFab = items.filter(e => !['Apenas Montagem','Desmontagem','Referência'].includes(e.classif||'Fabricação'));
+  const avgFab = itemsFab.length ? Math.round(itemsFab.reduce((s,e) => s+fabPct(e),0)/itemsFab.length) : 0;
   const avgMon = total ? Math.round(items.reduce((s,e) => s+monPct(e),0)/total) : 0;
 
   const cols = ['Nº ISO','Folha','Linha','Área','Classif.','Tipo Op.','Iso. Tipo','NR-13','Pintura','Cl. Insp.','% Fab.','% Mon.','Obs.'];
