@@ -2856,7 +2856,7 @@ function renderIsoView() {
       <th>Pintura</th>
       <th style="min-width:155px">Montagem</th>
       <th style="min-width:90px">TIE-INs</th>
-      <th style="min-width:140px">Observação</th>
+      <th style="min-width:140px;background:#fff8e1;color:#b8860b;border-left:3px solid #f9a825;border-right:3px solid #f9a825">📝 Observação</th>
       <th>Ações</th>
     </tr></thead>
     <tbody id="tbl-body"></tbody>
@@ -3032,7 +3032,7 @@ function renderRows(list) {
       </div>`}
 
     <td><input type="text" value="${e.tiein || ''}" placeholder="—" onchange="saveTieIn('${e.id}',this.value)" onclick="event.stopPropagation()" style="width:80px;padding:3px 6px;border:0.5px solid var(--hbr);border-radius:5px;font-size:10px;background:var(--hg);color:var(--ht);outline:none;text-align:center" title="Cadastrar TIE-INs"></td>
-    <td><input type="text" value="${e.obs||''}" placeholder="—" onchange="saveObs('${e.id}',this.value)" onclick="event.stopPropagation()" style="width:130px;padding:3px 6px;border:0.5px solid var(--hbr);border-radius:5px;font-size:10px;background:var(--hg);color:var(--ht);outline:none"></td>
+    <td style="background:#fffde7;border-left:3px solid #f9a825;border-right:3px solid #f9a825"><input type="text" value="${e.obs||''}" placeholder="Adicionar obs..." onchange="saveObs('${e.id}',this.value)" onclick="event.stopPropagation()" style="width:130px;padding:3px 6px;border:1px solid #f9a825;border-radius:5px;font-size:10px;background:transparent;color:#555;outline:none;font-style:${e.obs?'normal':'italic'}"></td>
     <td>
       <div class="act-col">
         <button class="btn-lupa" onclick="abrirMatsIso('${e.num}')" title="Ver materiais deste isométrico" style="${((e.classif||'Fabricação')==='Referência'||(e.classif||'Fabricação')==='Desmontagem')?'display:none':''}">🔍 Materiais</button>
