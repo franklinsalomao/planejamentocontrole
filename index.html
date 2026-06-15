@@ -3052,7 +3052,7 @@ function renderRows(list) {
       </div>`}
 
     <td><input type="text" value="${e.tiein || ''}" placeholder="—" onchange="saveTieIn('${e.id}',this.value)" onclick="event.stopPropagation()" style="width:80px;padding:3px 6px;border:0.5px solid var(--hbr);border-radius:5px;font-size:10px;background:var(--hg);color:var(--ht);outline:none;text-align:center" title="Cadastrar TIE-INs"></td>
-    <td style="background:#fffde7;border-left:3px solid #f9a825;border-right:3px solid #f9a825;padding:4px 8px" onclick="event.stopPropagation();openObsModal('${e.id}',this)"><span style="font-size:10px;color:${e.obs?'#333':'#aaa'};cursor:pointer;display:block;min-height:20px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:130px">${e.obs||'<i style=color:#ccc>📝 obs...</i>'}</span></td>
+    <td style="background:#fffde7;border-left:3px solid #f9a825;border-right:3px solid #f9a825;padding:3px 6px" onclick="event.stopPropagation()"><input type="text" value="${(e.obs||'').replace(/"/g,'&quot;')}" placeholder="📝 observação..." onblur="saveObs('${e.id}',this.value)" style="width:100%;padding:4px 8px;border:1px solid #f9a825;border-radius:5px;font-size:10px;background:#fff;color:#333;outline:none;box-sizing:border-box"></td>
     <td>
       <div class="act-col">
         <button class="btn-lupa" onclick="abrirMatsIso('${e.num}')" title="Ver materiais deste isométrico" style="${((e.classif||'Fabricação')==='Referência'||(e.classif||'Fabricação')==='Desmontagem')?'display:none':''}">🔍 Materiais</button>
