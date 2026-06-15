@@ -535,7 +535,7 @@ tbody td{padding:5px 7px;vertical-align:middle}
       <div class="field"><label>T. Operação (T.Op.)</label><input id="e-temp" placeholder="45 °C"></div>
       <div class="field"><label>Classe de Inspeção (Cl.Insp.)</label><input id="e-insp" placeholder="II"></div>
       <div class="field"><label>Pintura</label><select id="e-paint"><option value="Pintado">Pintado</option><option value="Não Pintado" selected>Não Pintado</option></select></div>
-      <div class="field"><label>Classificação</label><select id="e-classif"><option value="Fabricação" selected>Fabricação</option><option value="Apenas Montagem">Apenas Montagem</option><option value="Referência">Referência</option><option value="Desmontagem">Desmontagem</option><option value="Escopo cancelado">Escopo cancelado</option></select></div>
+      <div class="field"><label>Classificação</label><select id="e-classif"><option value="Fabricação" selected>Fabricação</option><option value="Apenas Montagem">Apenas Montagem</option><option value="Referência">Referência</option><option value="Desmontagem">Desmontagem</option><option value="Escopo cancelado">Escopo cancelado</option><option value="Hold">Hold</option></select></div>
     </div>
     <div class="sec-title">Avanço Físico — Fabricação: Pré 30% · Soldagem 50% · END 20% &nbsp;|&nbsp; Montagem: Pré 30% · Soldagem 50% · END 20%</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
@@ -1155,7 +1155,7 @@ function renderProjects() {
       ${!list.length ? `<div class="no-proj">${projects.length ? 'Nenhum resultado.' : 'Nenhum projeto. Clique em Novo Projeto.'}</div>` : ''}
       ${list.map(p => {
         const pi = projIsos(p.id), n = pi.length;
-        const piFab = pi.filter(e => !['Apenas Montagem','Desmontagem','Referência'].includes(e.classif||'Fabricação'));
+        const piFab = pi.filter(e => !['Apenas Montagem','Desmontagem','Referência','Escopo cancelado','Hold'].includes(e.classif||'Fabricação'));
         const piMon = pi.filter(e => (e.classif||'Fabricação') !== 'Referência');
         const af = piFab.length ? Math.round(piFab.reduce((s, e) => s + fabPct(e), 0) / piFab.length) : 0;
         const am = piMon.length ? Math.round(piMon.reduce((s, e) => s + monPct(e), 0) / piMon.length) : 0;
@@ -2070,13 +2070,13 @@ function renderDashboard(discTabs, bc) {
   const proj = projects.find(p => p.id === currentProjId);
   const list = currentProjId ? projIsos(currentProjId) : isos;
   const listFabMon = list.filter(e => (e.classif||'Fabricação') !== 'Referência' && (e.classif||'Fabricação') !== 'Desmontagem');
-  const listFabD   = listFabMon.filter(e => !['Apenas Montagem','Desmontagem','Referência'].includes(e.classif||'Fabricação'));
+  const listFabD   = listFabMon.filter(e => !['Apenas Montagem','Desmontagem','Referência','Escopo cancelado','Hold'].includes(e.classif||'Fabricação'));
 
   const nTotal = list.length;
   const afG = listFabD.length ? Math.round(listFabD.reduce((s,e)=>s+fabPct(e),0)/listFabD.length) : 0;
   const amG = listFabMon.length ? Math.round(listFabMon.reduce((s,e)=>s+monPct(e),0)/listFabMon.length) : 0;
   const nConcluidas = listFabMon.filter(e => {
-    const isFab = !['Apenas Montagem','Desmontagem','Referência'].includes(e.classif||'Fabricação');
+    const isFab = !['Apenas Montagem','Desmontagem','Referência','Escopo cancelado','Hold'].includes(e.classif||'Fabricação');
     return (!isFab || fabPct(e) >= 100) && monPct(e) >= 100;
   }).length;
   const nPintado = list.filter(e => e.paint === 'Pintado').length;
@@ -2086,7 +2086,7 @@ function renderDashboard(discTabs, bc) {
   listFabMon.forEach(e => {
     const a = e.area || 'Sem área';
     if (!areaStats[a]) areaStats[a] = { fabSum:0, fabCount:0, monSum:0, monCount:0, count:0, done:0 };
-    const isFab = !['Apenas Montagem','Desmontagem','Referência'].includes(e.classif||'Fabricação');
+    const isFab = !['Apenas Montagem','Desmontagem','Referência','Escopo cancelado','Hold'].includes(e.classif||'Fabricação');
     if (isFab) { areaStats[a].fabSum += fabPct(e); areaStats[a].fabCount++; }
     areaStats[a].monSum += monPct(e);
     areaStats[a].monCount++;
@@ -2758,7 +2758,7 @@ function renderIsoView() {
   const n = list.length;
   const listFabMon = list.filter(e => (e.classif||'Fabricação') !== 'Referência' && (e.classif||'Fabricação') !== 'Desmontagem');
   const nfm = listFabMon.length;
-  const listFabOnly = listFabMon.filter(e => !['Apenas Montagem','Desmontagem','Referência'].includes(e.classif||'Fabricação'));
+  const listFabOnly = listFabMon.filter(e => !['Apenas Montagem','Desmontagem','Referência','Escopo cancelado','Hold'].includes(e.classif||'Fabricação'));
   const listMonOnly = listFabMon.filter(e => (e.classif||'Fabricação') !== 'Referência');
   const af = listFabOnly.length ? Math.round(listFabOnly.reduce((s, e) => s + fabPct(e), 0) / listFabOnly.length) : 0;
   const am = listMonOnly.length ? Math.round(listMonOnly.reduce((s, e) => s + monPct(e), 0) / listMonOnly.length) : 0;
@@ -2789,7 +2789,7 @@ function renderIsoView() {
     <select id="f-fluid" onchange="filterTable()"><option value="">Fluido da linha</option>${fluids.map(a => `<option>${a}</option>`).join('')}</select>
     <select id="f-nr13" onchange="filterTable()"><option value="">NR-13</option><option>Sim</option><option>Não</option></select>
     <select id="f-paint" onchange="filterTable()"><option value="">Pintura</option><option>Pintado</option><option>Não Pintado</option></select>
-    <select id="f-classif" onchange="filterTable()"><option value="">Classif.</option><option>Fabricação</option><option>Apenas Montagem</option><option>Referência</option><option>Desmontagem</option><option>Escopo cancelado</option></select>
+    <select id="f-classif" onchange="filterTable()"><option value="">Classif.</option><option>Fabricação</option><option>Apenas Montagem</option><option>Referência</option><option>Desmontagem</option><option>Escopo cancelado</option><option>Hold</option></select>
     <button class="btn-clr" onclick="clearFilters()">✕ Limpar</button>
     <button id="btn-fc100" onclick="isoFilterFab=(isoFilterFab==='c100'?'':'c100');document.getElementById('btn-fc100').style.background=(isoFilterFab==='c100'?'#1a8c4e':'rgba(46,125,50,.08)');document.getElementById('btn-fc100').style.color=(isoFilterFab==='c100'?'#fff':'#1a8c4e');document.getElementById('btn-fc100').style.borderColor=(isoFilterFab==='c100'?'#1a8c4e':'#a5d6a7');if(isoFilterFab==='c100'){isoFilterFab='c100';var o=document.getElementById('btn-fpend');if(o){o.style.background='rgba(192,112,0,.08)';o.style.color='#c07000';o.style.borderColor='#ffe0a0';}}filterTable()" style="height:27px;padding:0 11px;font-size:10.5px;font-weight:700;border-radius:6px;border:1.5px solid #a5d6a7;background:rgba(46,125,50,.08);color:#1a8c4e;cursor:pointer;white-space:nowrap">✅ 100% Concluído</button>
     <button id="btn-fpend" onclick="isoFilterFab=(isoFilterFab==='pend'?'':'pend');document.getElementById('btn-fpend').style.background=(isoFilterFab==='pend'?'#c07000':'rgba(192,112,0,.08)');document.getElementById('btn-fpend').style.color=(isoFilterFab==='pend'?'#fff':'#c07000');document.getElementById('btn-fpend').style.borderColor=(isoFilterFab==='pend'?'#c07000':'#ffe0a0');if(isoFilterFab==='pend'){var o=document.getElementById('btn-fc100');if(o){o.style.background='rgba(46,125,50,.08)';o.style.color='#1a8c4e';o.style.borderColor='#a5d6a7';}}filterTable()" style="height:27px;padding:0 11px;font-size:10.5px;font-weight:700;border-radius:6px;border:1.5px solid #ffe0a0;background:rgba(192,112,0,.08);color:#c07000;cursor:pointer;white-space:nowrap">⏳ Pendentes</button>
@@ -2854,6 +2854,7 @@ function renderIsoView() {
         <option value="Referência">Referência</option>
         <option value="Desmontagem">Desmontagem</option>
         <option value="Escopo cancelado">Escopo cancelado</option>
+        <option value="Hold">Hold</option>
       </select>
     </label>
     <button onclick="applyBulkIso()" style="font-size:10px;padding:4px 12px;border-radius:5px;border:none;background:var(--hb);color:#fff;cursor:pointer;font-weight:600">✅ Aplicar</button>
@@ -3007,7 +3008,7 @@ function renderRows(list) {
     <td><span class="badge b-insp">Cl.${e.insp||'—'}</span></td>
     <td style="position:relative">
       <div onclick="reqAuthIE(event,'cl','${e.id}')" style="cursor:pointer;display:inline-block">
-        <span class="badge ${(e.classif||'Fabricação')==='Apenas Montagem'?'b-cm':(e.classif||'Fabricação')==='Referência'?'b-cr':(e.classif||'Fabricação')==='Desmontagem'?'b-cd':(e.classif||'Fabricação')==='Escopo cancelado'?'b-cx':'b-cf'}">${e.classif||'Fabricação'}</span>
+        <span class="badge ${(e.classif||'Fabricação')==='Apenas Montagem'?'b-cm':(e.classif||'Fabricação')==='Referência'?'b-cr':(e.classif||'Fabricação')==='Desmontagem'?'b-cd':(e.classif||'Fabricação')==='Escopo cancelado'?'b-cx':(e.classif||'Fabricação')==='Hold'?'b-hd':'b-cf'}">${e.classif||'Fabricação'}</span>
       </div>
       <div class="ie-panel-sm" id="ie-cl-${e.id}" onclick="event.stopPropagation()">
         <div class="ie-ttl">🏷️ Classificação</div>
@@ -3017,6 +3018,7 @@ function renderRows(list) {
           <option value="Referência" ${e.classif==='Referência'?'selected':''}>Referência</option>
           <option value="Desmontagem" ${e.classif==='Desmontagem'?'selected':''}>Desmontagem</option>
           <option value="Escopo cancelado" ${e.classif==='Escopo cancelado'?'selected':''}>Escopo cancelado</option>
+          <option value="Hold" ${e.classif==='Hold'?'selected':''}>Hold</option>
         </select>
         <div class="ie-foot"><button class="ie-cancel2" onclick="closeIE('cl','${e.id}')">✕</button><button class="ie-save" onclick="saveIE('cl','${e.id}')">Salvar</button></div>
       </div>
@@ -3757,7 +3759,7 @@ function exportIsoSelectedPDF() {
   const mon = items.filter(e => e.classif === 'Apenas Montagem').length;
   const ref = items.filter(e => e.classif === 'Referência').length;
   const pint = items.filter(e => e.paint === 'Pintado').length;
-  const itemsFab = items.filter(e => !['Apenas Montagem','Desmontagem','Referência'].includes(e.classif||'Fabricação'));
+  const itemsFab = items.filter(e => !['Apenas Montagem','Desmontagem','Referência','Escopo cancelado','Hold'].includes(e.classif||'Fabricação'));
   const avgFab = itemsFab.length ? Math.round(itemsFab.reduce((s,e) => s+fabPct(e),0)/itemsFab.length) : 0;
   const avgMon = total ? Math.round(items.reduce((s,e) => s+monPct(e),0)/total) : 0;
 
