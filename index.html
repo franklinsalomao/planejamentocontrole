@@ -796,13 +796,11 @@ async function storageSet(key, value) {
   // 1. Supabase (equipe)
   if (_sb) {
     try {
-      _sbIgnoreNextReload = true;
+      // NÃO reseta _sbIgnoreNextReload aqui — controlado pelo saveAll
       await _sb.from('hydrostec_kv').upsert({ key, value, updated_at: new Date().toISOString() }, { onConflict: 'key' });
       _sbLastSync = new Date();
       _sbUpdateBadge();
-      setTimeout(() => { _sbIgnoreNextReload = false; }, 5000);
     } catch(e) {
-      _sbIgnoreNextReload = false;
       console.warn('[Supabase] set error:', key, e);
     }
   }
@@ -1030,12 +1028,14 @@ async function loadAll() {
 }
 async function saveAll() {
   _sbIgnoreNextReload = true; // ignora o echo do Supabase dos nossos próprios saves
-  setTimeout(() => { _sbIgnoreNextReload = false; }, 8000); // janela de 8s
   try { await storageSet(SK_SUPS, JSON.stringify(suportes)); } catch(e) {}
   try { await storageSet(SK_MATS, JSON.stringify(materiais)); } catch(e) {}
   try { await storageSet(SK_PROJ, JSON.stringify(projects)); } catch(e) {}
   try { await storageSet(SK_ISOS, JSON.stringify(isos)); } catch(e) {}
   try { await storageSet(SK_DEL, JSON.stringify([...deletedIds])); } catch(e) {}
+  // Mantém ignore por 10s após o último save (cobre latência do Supabase)
+  clearTimeout(window._sbIgnoreTimer);
+  window._sbIgnoreTimer = setTimeout(() => { _sbIgnoreNextReload = false; }, 10000);
   if (Object.keys(lastTemplate).length) { try { await storageSet(SK_TMPL, JSON.stringify(lastTemplate)); } catch(e) {} }
 
   // Verifica uso do localStorage e alerta se próximo do limite (~4.5 MB)
