@@ -2856,6 +2856,7 @@ function renderIsoView() {
       <th>Pintura</th>
       <th style="min-width:155px">Montagem</th>
       <th style="min-width:90px">TIE-INs</th>
+      <th style="min-width:140px">Observação</th>
       <th>Ações</th>
     </tr></thead>
     <tbody id="tbl-body"></tbody>
@@ -2969,7 +2970,7 @@ function trqBadge(v) {
 function renderRows(list) {
   const body = document.getElementById('tbl-body');
   if (!body) return;
-  if (!list.length) { body.innerHTML = `<tr><td colspan="16"><div class="empty-st">${isos.length ? 'Nenhum resultado.' : 'Nenhum isométrico cadastrado.'}</div></td></tr>`; return; }
+  if (!list.length) { body.innerHTML = `<tr><td colspan="17"><div class="empty-st">${isos.length ? 'Nenhum resultado.' : 'Nenhum isométrico cadastrado.'}</div></td></tr>`; return; }
   body.innerHTML = list.map(e => {
     const isDesmontagem = (e.classif||'Fabricação') === 'Desmontagem';
     const rowStyle = isDesmontagem ? 'background:#fff5f5;border-left:3px solid #c0392b' : '';
@@ -3031,6 +3032,7 @@ function renderRows(list) {
       </div>`}
 
     <td><input type="text" value="${e.tiein || ''}" placeholder="—" onchange="saveTieIn('${e.id}',this.value)" onclick="event.stopPropagation()" style="width:80px;padding:3px 6px;border:0.5px solid var(--hbr);border-radius:5px;font-size:10px;background:var(--hg);color:var(--ht);outline:none;text-align:center" title="Cadastrar TIE-INs"></td>
+    <td><input type="text" value="${e.obs||''}" placeholder="—" onchange="saveObs('${e.id}',this.value)" onclick="event.stopPropagation()" style="width:130px;padding:3px 6px;border:0.5px solid var(--hbr);border-radius:5px;font-size:10px;background:var(--hg);color:var(--ht);outline:none"></td>
     <td>
       <div class="act-col">
         <button class="btn-lupa" onclick="abrirMatsIso('${e.num}')" title="Ver materiais deste isométrico" style="${((e.classif||'Fabricação')==='Referência'||(e.classif||'Fabricação')==='Desmontagem')?'display:none':''}">🔍 Materiais</button>
@@ -3105,6 +3107,12 @@ async function saveTieIn(id, value) {
   e.tiein = (value || '').trim();
   await saveAll();
 }
+async function saveObs(id, value) {
+  const e = isos.find(x => x.id === id); if (!e) return;
+  e.obs = (value || '').trim();
+  await saveAll();
+}
+
 async function togglePaint(id) { const e = isos.find(x => x.id === id); if (!e) return; e.paint = e.paint === 'Pintado' ? 'Não Pintado' : 'Pintado'; await saveAll(); renderIsoView(); }
 async function quickSaveTH(id) {
   const e = isos.find(x => x.id === id); if (!e) return;
