@@ -2079,7 +2079,10 @@ function renderDashboard(discTabs, bc) {
     areaStats[a].count++;
     if ((!isFab || fabPct(e) >= 100) && monPct(e) >= 100) areaStats[a].done++;
   });
-  const areaKeys = Object.keys(areaStats).sort();
+  const areaKeys = Object.keys(areaStats).sort((a, b) => {
+    const na = parseInt(a) || 0, nb = parseInt(b) || 0;
+    return na !== nb ? na - nb : String(a).localeCompare(String(b));
+  });
   const projName = proj ? proj.name : 'Geral';
   const hoje = new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'short',year:'numeric'});
 
