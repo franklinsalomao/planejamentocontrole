@@ -668,7 +668,7 @@ let _supSearch = '', _supArea = '', _supFab = '', _supPint = '', _supMon = '', _
 let isoFilterFab = '';
 // Unlock de status de suporte por sessão (reseta ao recarregar a página)
 let supUnlocked = false;
-let _ieSessionUnlocked = false; // sessão de avanço: não pede senha novamente
+let _ieSessionUnlocked = sessionStorage.getItem('hyd_ie_unlocked') === '1'; // persiste durante a sessão do browser
 let matUnlocked = false;  // Sessão de edição de status/retirada de materiais
 let _pendingMatAction = null;
 let _pendingToggleId = null, _pendingToggleField = null, _pendingToggleVal = null, _pendingBulk = false;
@@ -3127,7 +3127,7 @@ async function checkPwd() {
       }
     }
     else if (pendingAction === 'del-selected') deleteSelected();
-    else if (pendingAction === 'edit-status') { _ieSessionUnlocked = true; openIEDirect(pendingIEType, pendingId); }
+    else if (pendingAction === 'edit-status') { _ieSessionUnlocked = true; sessionStorage.setItem('hyd_ie_unlocked','1'); openIEDirect(pendingIEType, pendingId); }
     else if (pendingAction === 'unlock-mat') {
       matUnlocked = true;
       if (_pendingMatAction) { const fn = _pendingMatAction; _pendingMatAction = null; fn(); }
