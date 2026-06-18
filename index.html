@@ -717,26 +717,16 @@ function _sbConnect(url, key) {
     _sb.channel('hy-realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'hydrostec_kv' },
         async (payload) => {
-          if (_sbIgnoreNextReload) return; // mudança feita por mim, ignora
-          // Verifica se a mudança tem session_id desta sessão
-          const newVal = payload && payload.new && payload.new.value;
-          if (newVal) {
-            try {
-              const parsed = JSON.parse(newVal);
-              if (parsed && parsed.__sid === _sbSessionId) return; // minha própria mudança
-            } catch(e) {}
-          }
-          // Só recarrega se a mudança veio de outra sessão (chave diferente das de planejamento)
+          // Ignora apenas se a mudança foi feita por esta sessão nos últimos 8s
+          if (_sbIgnoreNextReload) return;
           const changedKey = payload && payload.new && payload.new.key;
-          if (changedKey && (changedKey.startsWith('hyd_plan_'))) return; // planejamento é local
+          if (changedKey && changedKey.startsWith('hyd_plan_')) return; // planejamento é local
           clearTimeout(_sbReloadTimeout);
           _sbReloadTimeout = setTimeout(async () => {
             await loadAll();
-            if (!_sbIgnoreNextReload) {
-              renderIsoView();
-              renderHeader();
-              renderProjects();
-            }
+            renderIsoView();
+            renderHeader();
+            renderProjects();
             _sbLastSync = new Date();
             _sbUpdateBadge();
           }, 400);
@@ -772,22 +762,21 @@ function _sbUpdateBadge() {
 
 /* ── CLOUD STORAGE com Supabase + fallback ── */
 async function storageGet(key) {
-  // Para dados de isométricos/projetos: localStorage é SEMPRE a fonte primária
-  // (evita que Supabase sobrescreva avanços salvos localmente)
-  const local = LS.getItem(key);
-  if (local && (key.startsWith('hy_iso') || key.startsWith('hy_proj') || key.startsWith('hy_sups') || key.startsWith('hy_mats'))) {
-    return local; // usa local direto, não consulta Supabase
-  }
-  // 1. Supabase (equipe) — para outras chaves
+  // Supabase é a fonte primária para dados compartilhados em equipe
   if (_sb) {
     try {
       const { data, error } = await _sb.from('hydrostec_kv').select('value').eq('key', key).maybeSingle();
-      if (!error && data) return data.value;
+      if (!error && data) {
+        // Atualiza localStorage com dado mais recente do Supabase
+        try { LS.setItem(key, data.value); } catch(e) {}
+        return data.value;
+      }
     } catch(e) { console.warn('[Supabase] get error:', key, e); }
   }
-  // 2. localStorage — fallback
+  // localStorage — fallback quando Supabase não disponível
+  const local = LS.getItem(key);
   if (local) return local;
-  // 3. window.storage (Claude artifact) — fallback
+  // window.storage (Claude artifact) — fallback final
   if (window.storage) {
     try { const r = await window.storage.get(key, false); return r ? r.value : null; } catch(e) { return null; }
   }
