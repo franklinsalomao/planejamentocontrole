@@ -724,12 +724,28 @@ function _sbConnect(url, key) {
           clearTimeout(_sbReloadTimeout);
           _sbReloadTimeout = setTimeout(async () => {
             await loadAll();
-            renderIsoView();
-            renderHeader();
-            renderProjects();
             _sbLastSync = new Date();
             _sbUpdateBadge();
-          }, 400);
+            // Se campo com foco, não re-renderiza agora — mostra badge de atualização pendente
+            const active = document.activeElement;
+            const hasFocus = active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.tagName === 'SELECT') && active.closest('#view-isos');
+            if (hasFocus) {
+              // Mostra indicador discreto de atualização disponível
+              const badge = document.getElementById('sync-badge');
+              if (badge) { badge.textContent = '🔄 Atualização disponível'; badge.style.background = 'rgba(230,138,0,.5)'; }
+              // Agenda re-render após 3s sem foco
+              clearTimeout(window._sbPendingRender);
+              window._sbPendingRender = setInterval(function() {
+                const a = document.activeElement;
+                const f = a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA') && a.closest('#view-isos');
+                if (!f) { clearInterval(window._sbPendingRender); renderIsoView(); renderHeader(); renderProjects(); _sbUpdateBadge(); }
+              }, 1000);
+            } else {
+              renderIsoView();
+              renderHeader();
+              renderProjects();
+            }
+          }, 200);
         })
       .subscribe(status => {
         _sbConnected = (status === 'SUBSCRIBED');
@@ -737,6 +753,19 @@ function _sbConnect(url, key) {
         _sbUpdateBadge();
       });
   } catch(e) { console.error('[Supabase] init error:', e); _sb = null; _sbUpdateBadge(); }
+  // Polling fallback: recarrega dados a cada 30s para garantir sincronização
+  clearInterval(window._sbPollInterval);
+  window._sbPollInterval = setInterval(async function() {
+    if (!_sb || _sbIgnoreNextReload) return;
+    const active = document.activeElement;
+    const hasFocus = active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA') && active.closest('#view-isos');
+    if (hasFocus) return;
+    await loadAll();
+    renderIsoView();
+    renderProjects();
+    _sbLastSync = new Date();
+    _sbUpdateBadge();
+  }, 30000);
 }
 
 function _sbUpdateBadge() {
@@ -2734,11 +2763,13 @@ function renderPlanejamento(discTabs, bc) {
   _planRenderFinTable();
 }
 
-function renderIsoView() {
-  // Não re-renderiza se o usuário está editando um campo
-  const active = document.activeElement;
-  if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.tagName === 'SELECT') && active.closest('#view-isos')) {
-    return; // campo em foco — aborta re-render
+function renderIsoView(force) {
+  // Não re-renderiza se o usuário está editando um campo (a menos que forçado)
+  if (!force) {
+    const active = document.activeElement;
+    if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.tagName === 'SELECT') && active.closest('#view-isos')) {
+      return; // campo em foco — aborta re-render
+    }
   }
   const _isoContainer = document.getElementById('view-isos');
   if (!_isoContainer) return; // container não existe (projeto não está aberto)
