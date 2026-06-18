@@ -765,7 +765,19 @@ function _sbConnect(url, key) {
     renderProjects();
     _sbLastSync = new Date();
     _sbUpdateBadge();
-  }, 30000);
+  }, 10000);
+}
+
+async function manualSync() {
+  if (!_sb) return;
+  const el = document.getElementById('sync-badge');
+  if (el) { el.textContent = '🔄 Sincronizando...'; el.style.background = 'rgba(230,138,0,.5)'; }
+  await loadAll();
+  renderIsoView();
+  renderHeader();
+  renderProjects();
+  _sbLastSync = new Date();
+  _sbUpdateBadge();
 }
 
 function _sbUpdateBadge() {
@@ -781,7 +793,9 @@ function _sbUpdateBadge() {
     const t = _sbLastSync ? _sbLastSync.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) : '';
     el.textContent = '🟢 Sync ' + t;
     el.style.background = 'rgba(26,140,78,.35)';
-    el.title = 'Sincronizado com a equipe';
+    el.title = 'Clique para sincronizar agora';
+    el.onclick = manualSync;
+    el.style.cursor = 'pointer';
   } else {
     el.textContent = '🟡 Conectando...';
     el.style.background = 'rgba(230,138,0,.35)';
@@ -1055,7 +1069,7 @@ async function saveAll() {
   try { await storageSet(SK_DEL, JSON.stringify([...deletedIds])); } catch(e) {}
   // Mantém ignore por 10s após o último save (cobre latência do Supabase)
   clearTimeout(window._sbIgnoreTimer);
-  window._sbIgnoreTimer = setTimeout(() => { _sbIgnoreNextReload = false; }, 15000);
+  window._sbIgnoreTimer = setTimeout(() => { _sbIgnoreNextReload = false; }, 5000);
   if (Object.keys(lastTemplate).length) { try { await storageSet(SK_TMPL, JSON.stringify(lastTemplate)); } catch(e) {} }
 
   // Verifica uso do localStorage e alerta se próximo do limite (~4.5 MB)
