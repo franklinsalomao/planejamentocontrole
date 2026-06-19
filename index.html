@@ -2927,6 +2927,57 @@ function renderPlanejamento(discTabs, bc) {
       +'</div></div>';
   }
 
+  // ── Card de Disciplina: Estrutura Metálica ──
+  var _estList2 = currentProjId ? estrutura.filter(function(e){ return e.projId === currentProjId; }) : estrutura;
+  var _estHtml = '';
+  if (_estList2.length) {
+    var _eTotal = _estList2.length;
+    var _eFabOk = _estList2.filter(function(e){ return e.fab === 'Fabricado'; }).length;
+    var _eMonOk = _estList2.filter(function(e){ return e.mon === 'Montado'; }).length;
+    var _eGrdOk = _estList2.filter(function(e){ return e.grade === 'Comprado'; }).length;
+    var _eCobOk = _estList2.filter(function(e){ return e.cobertura === 'Comprado'; }).length;
+    var _ePeso  = _estList2.reduce(function(s,e){ return s + (parseFloat(e.peso)||0); }, 0);
+    var _ePFab = Math.round(_eFabOk/_eTotal*100);
+    var _ePMon = Math.round(_eMonOk/_eTotal*100);
+    var _ePGrd = Math.round(_eGrdOk/_eTotal*100);
+    var _ePCob = Math.round(_eCobOk/_eTotal*100);
+    var _eHoje = new Date().toISOString().slice(0,10);
+    var _eAtrasados = _estList2.filter(function(e){
+      var lateGrd = e.grade !== 'Comprado' && e.grade !== 'N/A' && e.grdData && e.grdData < _eHoje;
+      var lateCob = e.cobertura !== 'Comprado' && e.cobertura !== 'N/A' && e.cobData && e.cobData < _eHoje;
+      return lateGrd || lateCob;
+    }).length;
+
+    function _eBar(label, pct, ok, total, color) {
+      return '<div style="margin-bottom:9px">'
+        +'<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:3px">'
+        +'<span style="font-size:10px;color:#555">'+label+'</span>'
+        +'<span style="font-size:11px;font-weight:700;color:'+color+'">'+pct+'% <span style="font-weight:400;color:#999">('+ok+'/'+total+')</span></span>'
+        +'</div>'
+        +'<div style="height:6px;background:#eef1f6;border-radius:4px;overflow:hidden">'
+        +'<div style="height:100%;width:'+pct+'%;background:'+color+';border-radius:4px"></div>'
+        +'</div></div>';
+    }
+
+    _estHtml = '<div style="padding:0 16px 14px"><div style="background:#fff;border:1px solid #d0d8e8;border-left:4px solid #6a1b9a;border-radius:10px;padding:14px 16px">'
+      +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">'
+      +'<div>'
+      +'<div style="font-size:12px;font-weight:700;color:#6a1b9a">🏗️ Estrutura Metálica</div>'
+      +'<div style="font-size:10px;color:#888;margin-top:2px">'+_eTotal+' desenho'+(_eTotal!==1?'s':'')+' · '+_ePeso.toLocaleString('pt-BR',{maximumFractionDigits:1})+' kg total</div>'
+      +'</div>'
+      +(_eAtrasados>0
+        ? '<div style="background:#fdecea;color:var(--hd);font-size:10px;font-weight:700;padding:4px 10px;border-radius:20px">⚠️ '+_eAtrasados+' atrasado'+(_eAtrasados!==1?'s':'')+'</div>'
+        : '<div style="background:#e8f5e9;color:#2e7d32;font-size:10px;font-weight:700;padding:4px 10px;border-radius:20px">✅ Em dia</div>')
+      +'</div>'
+      +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px 20px">'
+      +_eBar('⚙️ Fabricação', _ePFab, _eFabOk, _eTotal, '#0B3D91')
+      +_eBar('🔧 Montagem',   _ePMon, _eMonOk, _eTotal, '#0077b6')
+      +_eBar('▦ Grade de Piso', _ePGrd, _eGrdOk, _eTotal, '#7b1fa2')
+      +_eBar('🏠 Cobertura (Teto)', _ePCob, _eCobOk, _eTotal, '#e65100')
+      +'</div>'
+      +'</div></div>';
+  }
+
   // ── Seção Físico × Financeiro ──
 
   function _finRecRows(scope, recs) {
@@ -2976,7 +3027,7 @@ function renderPlanejamento(discTabs, bc) {
     +'</div></div>';
 
 
-    document.getElementById('view-isos').innerHTML = bc + discTabs + header + _hhHtml + finSection + '</div>';
+    document.getElementById('view-isos').innerHTML = bc + discTabs + header + _hhHtml + _estHtml + finSection + '</div>';
   _planRefreshTotals();
   _planRenderFinTable();
 }
