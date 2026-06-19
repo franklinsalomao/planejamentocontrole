@@ -3373,9 +3373,26 @@ async function saveProject() {
   }
 }
 async function delProject(id) {
+  const proj = projects.find(p => p.id === id);
+  const name = proj ? proj.name : id;
+  if (!confirm(`Excluir o projeto "${name}"?\n\nTodos os isométricos, suportes e materiais associados também serão excluídos permanentemente.\n\nEsta ação não pode ser desfeita.`)) return;
+
+  // Remove isométricos do projeto e marca como deletados (evita reaparecer via sync)
+  const projIsoNums = new Set(isos.filter(e => e.projId === id).map(e => e.num));
+  const projIsoIds  = isos.filter(e => e.projId === id).map(e => e.id);
+  projIsoIds.forEach(iid => deletedIds.add(iid));
+  isos = isos.filter(e => e.projId !== id);
+
+  // Remove suportes e materiais vinculados aos isos do projeto
+  suportes = suportes.filter(s => !projIsoNums.has(s.isometrico));
+  materiais = materiais.filter(m => m.projId !== id && !projIsoNums.has(m.iso));
+
+  // Remove o projeto
   projects = projects.filter(p => p.id !== id);
   if (currentProjId === id) currentProjId = null;
-  await saveAll(); renderProjects();
+
+  await saveAll();
+  renderProjects();
 }
 
 async function clearProjectData(id) {
