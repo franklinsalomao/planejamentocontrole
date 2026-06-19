@@ -670,7 +670,7 @@ let _supSearch = '', _supArea = '', _supFab = '', _supPint = '', _supMon = '', _
 let isoFilterFab = '';
 // Unlock de status de suporte por sessão (reseta ao recarregar a página)
 let supUnlocked = false;
-let _estSearch = '', _estFab = '', _estMon = '', _estGrd = '';
+let _estSearch = '', _estFab = '', _estMon = '', _estGrd = '', _estCob = '';
 let _ieSessionUnlocked = sessionStorage.getItem('hyd_ie_unlocked') === '1'; // persiste durante a sessão do browser
 let matUnlocked = false;  // Sessão de edição de status/retirada de materiais
 let _pendingMatAction = null;
@@ -1346,6 +1346,7 @@ async function _applySupChange(id, field, value) {
 const EST_FAB_OPTS  = ['Pendente','Em Fabricação','Fabricado'];
 const EST_MON_OPTS  = ['Pendente','Em Montagem','Montado'];
 const EST_GRD_OPTS  = ['Pendente','Em Compra','Comprado','N/A'];
+const EST_COB_OPTS  = ['Pendente','Em Compra','Comprado','N/A'];
 
 function _estList() {
   return currentProjId ? estrutura.filter(e => e.projId === currentProjId) : estrutura;
@@ -1357,12 +1358,14 @@ function renderEstruturaView(discTabs, bc) {
   const fFab = _estFab || '';
   const fMon = _estMon || '';
   const fGrd = _estGrd || '';
+  const fCob = _estCob || '';
 
   const filtered = list.filter(e => {
     if (fSearch && !String(e.desenho||'').toLowerCase().includes(fSearch)) return false;
     if (fFab && e.fab !== fFab) return false;
     if (fMon && e.mon !== fMon) return false;
     if (fGrd && e.grade !== fGrd) return false;
+    if (fCob && e.cobertura !== fCob) return false;
     return true;
   });
 
@@ -1370,19 +1373,24 @@ function renderEstruturaView(discTabs, bc) {
   const fabOk = list.filter(e => e.fab === 'Fabricado').length;
   const monOk = list.filter(e => e.mon === 'Montado').length;
   const grdOk = list.filter(e => e.grade === 'Comprado').length;
+  const cobOk = list.filter(e => e.cobertura === 'Comprado').length;
   const pesoTotal = list.reduce((s,e) => s + (parseFloat(e.peso) || 0), 0);
   const pFab = total ? Math.round(fabOk/total*100) : 0;
   const pMon = total ? Math.round(monOk/total*100) : 0;
   const pGrd = total ? Math.round(grdOk/total*100) : 0;
+  const pCob = total ? Math.round(cobOk/total*100) : 0;
   const hojeISO = new Date().toISOString().slice(0,10);
-  const atrasados = list.filter(e => e.grade !== 'Comprado' && e.grade !== 'N/A' && e.grdData && e.grdData < hojeISO).length;
+  const atrasadosGrd = list.filter(e => e.grade !== 'Comprado' && e.grade !== 'N/A' && e.grdData && e.grdData < hojeISO).length;
+  const atrasadosCob = list.filter(e => e.cobertura !== 'Comprado' && e.cobertura !== 'N/A' && e.cobData && e.cobData < hojeISO).length;
+  const atrasados = atrasadosGrd + atrasadosCob;
 
   const kpis = `<div class="sum-bar" style="margin:10px 16px 0;gap:10px">
     <div class="sum-card"><div class="sum-val" style="color:var(--hb)">${total}</div><div class="sum-lbl">Desenhos</div><div style="font-size:9px;color:var(--hmu)">${pesoTotal.toLocaleString('pt-BR',{maximumFractionDigits:1})} kg total</div></div>
     <div class="sum-card"><div class="sum-val" style="color:var(--hb)">${pFab}%</div><div class="sum-lbl">Fabricação</div><div style="font-size:9px;color:var(--hmu)">${fabOk}/${total} fabricados</div><div class="kpi-bar" style="margin-top:4px"><div style="width:${pFab}%;height:5px;border-radius:3px;background:var(--hb)"></div></div></div>
     <div class="sum-card"><div class="sum-val" style="color:#0077b6">${pMon}%</div><div class="sum-lbl">Montagem</div><div style="font-size:9px;color:var(--hmu)">${monOk}/${total} montados</div><div class="kpi-bar" style="margin-top:4px"><div style="width:${pMon}%;height:5px;border-radius:3px;background:#0077b6"></div></div></div>
     <div class="sum-card"><div class="sum-val" style="color:#7b1fa2">${pGrd}%</div><div class="sum-lbl">Grade de Piso</div><div style="font-size:9px;color:var(--hmu)">${grdOk}/${total} comprados</div><div class="kpi-bar" style="margin-top:4px"><div style="width:${pGrd}%;height:5px;border-radius:3px;background:#7b1fa2"></div></div></div>
-    <div class="sum-card" style="${atrasados>0?'border-color:var(--hd);background:#fdecea':''}"><div class="sum-val" style="color:${atrasados>0?'var(--hd)':'var(--hmu)'}">${atrasados}</div><div class="sum-lbl">${atrasados>0?'⚠️ Atrasados':'Atrasados'}</div><div style="font-size:9px;color:var(--hmu)">grade além do prazo</div></div>
+    <div class="sum-card"><div class="sum-val" style="color:#e65100">${pCob}%</div><div class="sum-lbl">Cobertura (Teto)</div><div style="font-size:9px;color:var(--hmu)">${cobOk}/${total} comprados</div><div class="kpi-bar" style="margin-top:4px"><div style="width:${pCob}%;height:5px;border-radius:3px;background:#e65100"></div></div></div>
+    <div class="sum-card" style="${atrasados>0?'border-color:var(--hd);background:#fdecea':''}"><div class="sum-val" style="color:${atrasados>0?'var(--hd)':'var(--hmu)'}">${atrasados}</div><div class="sum-lbl">${atrasados>0?'⚠️ Atrasados':'Atrasados'}</div><div style="font-size:9px;color:var(--hmu)">grade/cobertura além do prazo</div></div>
   </div>`;
 
   const filterBar = `<div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid var(--hbr)">
@@ -1399,8 +1407,12 @@ function renderEstruturaView(discTabs, bc) {
       <option value="">Compra Grade</option>
       ${EST_GRD_OPTS.map(o=>`<option value="${o}" ${fGrd===o?'selected':''}>${o}</option>`).join('')}
     </select>
+    <select id="ef-cob" onchange="_estCob=this.value;renderIsoView()" style="font-size:11px;padding:3px 7px;border:0.5px solid var(--hbr);border-radius:5px;background:var(--hg);color:var(--ht)">
+      <option value="">Compra Cobertura</option>
+      ${EST_COB_OPTS.map(o=>`<option value="${o}" ${fCob===o?'selected':''}>${o}</option>`).join('')}
+    </select>
     <span style="font-size:10px;color:var(--hmu);margin-left:4px">${filtered.length} de ${total}</span>
-    <button class="btn-clr" onclick="_estSearch='';_estFab='';_estMon='';_estGrd='';renderIsoView()" title="Limpar filtros">✕</button>
+    <button class="btn-clr" onclick="_estSearch='';_estFab='';_estMon='';_estGrd='';_estCob='';renderIsoView()" title="Limpar filtros">✕</button>
     <button class="btn btn-cyan" style="height:27px;font-size:11px" onclick="addEstrutura()">+ Novo Desenho</button>
   </div>`;
 
@@ -1442,6 +1454,23 @@ function renderEstruturaView(discTabs, bc) {
         })()}
       </td>
       <td style="text-align:center">
+        <select onchange="estSetField('${esc}','cobertura',this.value)" style="font-size:10.5px;padding:3px 6px;border-radius:5px;border:0.5px solid var(--hbr);background:${e.cobertura==='Comprado'?'#e8f5e9':e.cobertura==='Em Compra'?'#fff8e1':'var(--hg)'};color:var(--ht)">
+          ${EST_COB_OPTS.map(o=>`<option value="${o}" ${e.cobertura===o?'selected':''}>${o}</option>`).join('')}
+        </select>
+      </td>
+      <td style="text-align:center">
+        ${(() => {
+          const today = new Date().toISOString().slice(0,10);
+          const isLate = e.cobertura !== 'Comprado' && e.cobertura !== 'N/A' && e.cobData && e.cobData < today;
+          const inputStyle = 'width:120px;padding:3px 6px;border-radius:5px;font-size:10.5px;text-align:center;'
+            + (isLate ? 'border:1.5px solid var(--hd);background:#fdecea;color:var(--hd);font-weight:700'
+                      : 'border:0.5px solid var(--hbr);background:var(--hg);color:var(--ht)');
+          const input = '<input type="date" value="' + (e.cobData||'') + '" onchange="estSetField(\'' + esc + '\',\'cobData\',this.value)" style="' + inputStyle + '">';
+          const badge = isLate ? '<div style="font-size:9px;color:var(--hd);font-weight:700;margin-top:2px">⚠️ ATRASADO</div>' : '';
+          return input + badge;
+        })()}
+      </td>
+      <td style="text-align:center">
         <button class="btn-lupa" onclick="delEstrutura('${esc}')" title="Excluir desenho" style="color:var(--hd);border-color:#e0c8c8">🗑️</button>
       </td>
     </tr>`;
@@ -1457,6 +1486,8 @@ function renderEstruturaView(discTabs, bc) {
           <th style="text-align:center">Status Montagem</th>
           <th style="text-align:center">Compra Grade de Piso</th>
           <th style="text-align:center">Chegada Grade</th>
+          <th style="text-align:center">Compra Cobertura (Teto)</th>
+          <th style="text-align:center">Chegada Cobertura</th>
           <th style="text-align:center">Ações</th>
         </tr></thead>
         <tbody>${rows}</tbody>
@@ -1485,7 +1516,9 @@ async function addEstrutura() {
     fab: 'Pendente',
     mon: 'Pendente',
     grade: 'Pendente',
-    grdData: ''
+    grdData: '',
+    cobertura: 'Pendente',
+    cobData: ''
   });
   await saveAll();
   renderIsoView();
