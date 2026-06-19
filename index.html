@@ -1440,6 +1440,7 @@ function renderSuportesView(discTabs, bc) {
     <span style="font-size:10px;color:var(--hmu);margin-left:4px">${list.length} de ${suportes.length}</span>
     <button class="btn-clr" onclick="clearSupFilters()" title="Limpar filtros">✕</button>
     <button class="btn btn-out" style="height:27px;font-size:11px;background:rgba(46,125,50,.12);color:#2e7d32;border-color:#a5d6a7" onclick="openImportSupsModal()" title="Importar suportes via planilha Excel">📥 Importar XLSX</button>
+    <button class="btn btn-cyan" style="height:27px;font-size:11px;background:rgba(0,90,180,.85)" onclick="openImportSupsPdfModal()" title="Importar suportes via tabela em PDF">📎 Importar PDF</button>
     <button onclick="exportSuportesPDF()" id="sup-exp-btn" style="font-size:11px;padding:4px 10px;border-radius:6px;border:0.5px solid var(--hbr);background:var(--hg);color:var(--ht);cursor:pointer;height:27px;display:flex;align-items:center;gap:4px">📄 Exportar PDF</button>
     <button class="btn-del-sel" id="sbtn-del-sel" style="display:none" onclick="reqAuth('del-sup-sel','')">🗑️ Excluir selecionados (<span id="s-sel-count">0</span>)</button>
   </div>
@@ -6105,7 +6106,7 @@ function openImportSupsModal() {
 }
 
 function importSupsXLSX(file) {
-  const setStatus = msg => { const el = document.getElementById('sup-import-status'); if (el) el.textContent = msg; };
+  const setStatus = msg => { const el = document.getElementById('sup-import-status') || document.getElementById('sup-pdf-import-status'); if (el) el.textContent = msg; };
 
   const doImport = (xlsxLib) => {
     try {
@@ -6141,8 +6142,106 @@ function importSupsXLSX(file) {
   );
 }
 
+
+/* ═══════════════════ IMPORTAÇÃO DE SUPORTES VIA PDF (TABELA) ═══════════════════
+   Extrai texto posicionado do PDF, reconstrói linhas por proximidade vertical,
+   ordena por X dentro de cada linha, e reaproveita o parser de colunas do XLSX.
+══════════════════════════════════════════════════════════════════════════════ */
+function openImportSupsPdfModal() {
+  const old = document.getElementById('sup-pdf-import-modal');
+  if (old) old.remove();
+
+  const modal = document.createElement('div');
+  modal.id = 'sup-pdf-import-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(10,20,50,.55);z-index:3000;display:flex;align-items:center;justify-content:center;padding:16px';
+  modal.innerHTML = `
+    <div style="background:#fff;border-radius:12px;padding:24px 28px;width:480px;max-width:97vw;box-shadow:0 8px 40px rgba(0,0,0,.28);position:relative">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
+        <div style="background:#005ab4;color:#fff;border-radius:8px;width:34px;height:34px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">📎</div>
+        <div>
+          <div style="font-size:14px;font-weight:700;color:#0B3D91">Importar Suportes via PDF</div>
+          <div style="font-size:10px;color:#5a6a85">Tabela com colunas: Seq, Tipo, Linha, Isométrico, Área, Fabricação, Pintura, Montagem, Solda</div>
+        </div>
+        <button onclick="document.getElementById('sup-pdf-import-modal').remove()" style="position:absolute;top:14px;right:14px;background:none;border:none;font-size:18px;color:#999;cursor:pointer">✕</button>
+      </div>
+      <hr style="border:none;border-top:1px solid #e8edf4;margin:12px 0">
+      <div id="sup-pdf-import-drop" style="border:2px dashed #d0d8e8;border-radius:8px;padding:26px 16px;text-align:center;cursor:pointer;transition:.15s;background:#f4f6f9;margin-bottom:12px"
+        ondragover="event.preventDefault();this.style.borderColor='#00A8E8';this.style.background='#e0f6ff'"
+        ondragleave="this.style.borderColor='#d0d8e8';this.style.background='#f4f6f9'"
+        ondrop="event.preventDefault();this.style.borderColor='#d0d8e8';this.style.background='#f4f6f9';const f=[...event.dataTransfer.files].find(x=>/\.pdf$/i.test(x.name));if(f){document.getElementById('sup-pdf-import-status').textContent='📂 '+f.name;importSupsPDF(f);}else{document.getElementById('sup-pdf-import-status').textContent='❌ Selecione um arquivo .pdf'}"
+        onclick="document.getElementById('sup-pdf-import-file').click()">
+        <div style="font-size:26px;margin-bottom:5px">📄</div>
+        <div style="font-size:11.5px;font-weight:600;color:#0B3D91">Clique para selecionar ou arraste o PDF aqui</div>
+        <div style="font-size:9.5px;color:#5a6a85;margin-top:3px">Tabela com cabeçalho de colunas</div>
+      </div>
+      <input type="file" id="sup-pdf-import-file" accept=".pdf" style="display:none"
+        onchange="if(this.files[0]){document.getElementById('sup-pdf-import-status').textContent='📂 '+this.files[0].name;importSupsPDF(this.files[0]);}">
+      <div id="sup-pdf-import-status" style="font-size:11px;color:#5a6a85;min-height:18px;text-align:center"></div>
+      <div style="display:flex;justify-content:flex-end;margin-top:10px">
+        <button onclick="document.getElementById('sup-pdf-import-modal').remove()" style="padding:7px 16px;border:1px solid #ddd;border-radius:7px;background:#f5f5f5;cursor:pointer;font-size:12px">Fechar</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+}
+
+async function importSupsPDF(file) {
+  const setStatus = msg => { const el = document.getElementById('sup-pdf-import-status'); if (el) el.textContent = msg; };
+  try {
+    if (typeof pdfjsLib === 'undefined') { setStatus('❌ pdf.js não carregou. Verifique conexão.'); return; }
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    setStatus('⏳ Lendo PDF...');
+    const buf = await file.arrayBuffer();
+    const pdfDoc = await pdfjsLib.getDocument({ data: buf }).promise;
+
+    // Junta linhas reconstruídas de todas as páginas em uma única matriz de "rows"
+    const allRows = [];
+    for (let p = 1; p <= pdfDoc.numPages; p++) {
+      setStatus(`⏳ Processando página ${p}/${pdfDoc.numPages}...`);
+      const pg = await pdfDoc.getPage(p);
+      const tc = await pg.getTextContent();
+      const items = tc.items.filter(it => it.str && it.str.trim().length);
+      if (!items.length) continue;
+
+      // Agrupa por proximidade vertical (mesma linha de tabela)
+      const Y_TOL = 4; // tolerância em pt para considerar "mesma linha"
+      const sorted = items.slice().sort((a,b) => b.transform[5] - a.transform[5]); // topo→baixo
+      const lines = [];
+      sorted.forEach(it => {
+        const y = it.transform[5];
+        let line = lines.find(l => Math.abs(l.y - y) <= Y_TOL);
+        if (!line) { line = { y, items: [] }; lines.push(line); }
+        line.items.push(it);
+      });
+      // Dentro de cada linha, ordena por X (esquerda→direita) e junta células próximas
+      lines.forEach(line => {
+        line.items.sort((a,b) => a.transform[4] - b.transform[4]);
+        const cells = [];
+        let buf2 = '', lastX = null;
+        const X_GAP = 8; // pt — gap mínimo para considerar nova célula
+        line.items.forEach(it => {
+          const x = it.transform[4];
+          if (lastX !== null && (x - lastX) > X_GAP && buf2.trim()) {
+            cells.push(buf2.trim()); buf2 = '';
+          }
+          buf2 += (buf2 && !buf2.endsWith(' ') ? ' ' : '') + it.str;
+          lastX = x + (it.width || 0);
+        });
+        if (buf2.trim()) cells.push(buf2.trim());
+        if (cells.length) allRows.push(cells);
+      });
+    }
+
+    if (!allRows.length) { setStatus('❌ Não foi possível extrair texto tabular do PDF.'); return; }
+    setStatus(`⏳ ${allRows.length} linha(s) extraída(s). Processando...`);
+    processSupsRows(allRows);
+  } catch(err) {
+    setStatus('❌ Erro: ' + err.message);
+    console.error('[importSupsPDF]', err);
+  }
+}
+
 function processSupsRows(rows) {
-  const setStatus = msg => { const el = document.getElementById('sup-import-status'); if (el) el.textContent = msg; };
+  const setStatus = msg => { const el = document.getElementById('sup-import-status') || document.getElementById('sup-pdf-import-status'); if (el) el.textContent = msg; };
   const norm = s => String(s||'').toLowerCase().trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
 
   // Detecta linha de cabeçalho
@@ -6206,7 +6305,7 @@ function processSupsRows(rows) {
   saveAll().then(() => {
     renderIsoView();
     setStatus(`✅ ${added} suporte(s) importado(s)` + (skipped ? ` · ${skipped} linha(s) ignorada(s) (sem isométrico)` : ''));
-    setTimeout(() => { const m = document.getElementById('sup-import-modal'); if (m) m.remove(); }, 1800);
+    setTimeout(() => { const m1 = document.getElementById('sup-import-modal'); if (m1) m1.remove(); const m2 = document.getElementById('sup-pdf-import-modal'); if (m2) m2.remove(); }, 1800);
   });
 }
 
