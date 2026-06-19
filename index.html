@@ -1285,12 +1285,14 @@ function sincronizarPlanilha() {
 }
 
 const DISC_TABS = {
-  caldeiraria: { label:'🔧 Caldeiraria', subs:['dashboard','isometricos','suportes','materiais','estrutura','planejamento'],
-    labels:['Dashboard','Controle de Isométricos','Controle de Suportes','Controle de Materiais','Estrutura Metálica','Planejamento'] },
+  caldeiraria: { label:'🔧 Caldeiraria', subs:['dashboard','isometricos','suportes','materiais','estrutura'],
+    labels:['Dashboard','Controle de Isométricos','Controle de Suportes','Controle de Materiais','Estrutura Metálica'] },
   eletrica: { label:'⚡ Elétrica', subs:['cabos-el','sup-el','encam-el','dt-el','equip-el'],
     labels:['Controle de Cabos','Controle de Suportes','Controle de Encaminhamento','Controle DT','Controle de Equipamentos'] },
   instr: { label:'🔬 Instrumentação', subs:['cabos-ins','encam-ins','instrumentos','equip-ins','interlig'],
-    labels:['Controle de Cabos','Controle de Encaminhamento','Controle de Instrumentos','Controle de Equipamentos','Controle de Interligação'] }
+    labels:['Controle de Cabos','Controle de Encaminhamento','Controle de Instrumentos','Controle de Equipamentos','Controle de Interligação'] },
+  planejamento: { label:'🗓️ Planejamento', subs:['planejamento'],
+    labels:['Físico × Financeiro'] }
 };
 function setDisc(d) {
   currentDisc = d;
@@ -3119,7 +3121,7 @@ function renderIsoView(force) {
     renderDashboard(discTabs, bc); return;
   }
 
-  if (currentDisc === 'caldeiraria' && currentSubTab === 'planejamento') {
+  if (currentDisc === 'planejamento') {
     renderPlanejamento(discTabs, bc); return;
   }
 
