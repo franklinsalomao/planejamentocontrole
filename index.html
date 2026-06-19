@@ -1374,12 +1374,15 @@ function renderEstruturaView(discTabs, bc) {
   const pFab = total ? Math.round(fabOk/total*100) : 0;
   const pMon = total ? Math.round(monOk/total*100) : 0;
   const pGrd = total ? Math.round(grdOk/total*100) : 0;
+  const hojeISO = new Date().toISOString().slice(0,10);
+  const atrasados = list.filter(e => e.grade !== 'Comprado' && e.grade !== 'N/A' && e.grdData && e.grdData < hojeISO).length;
 
   const kpis = `<div class="sum-bar" style="margin:10px 16px 0;gap:10px">
     <div class="sum-card"><div class="sum-val" style="color:var(--hb)">${total}</div><div class="sum-lbl">Desenhos</div><div style="font-size:9px;color:var(--hmu)">${pesoTotal.toLocaleString('pt-BR',{maximumFractionDigits:1})} kg total</div></div>
     <div class="sum-card"><div class="sum-val" style="color:var(--hb)">${pFab}%</div><div class="sum-lbl">Fabricação</div><div style="font-size:9px;color:var(--hmu)">${fabOk}/${total} fabricados</div><div class="kpi-bar" style="margin-top:4px"><div style="width:${pFab}%;height:5px;border-radius:3px;background:var(--hb)"></div></div></div>
     <div class="sum-card"><div class="sum-val" style="color:#0077b6">${pMon}%</div><div class="sum-lbl">Montagem</div><div style="font-size:9px;color:var(--hmu)">${monOk}/${total} montados</div><div class="kpi-bar" style="margin-top:4px"><div style="width:${pMon}%;height:5px;border-radius:3px;background:#0077b6"></div></div></div>
     <div class="sum-card"><div class="sum-val" style="color:#7b1fa2">${pGrd}%</div><div class="sum-lbl">Grade de Piso</div><div style="font-size:9px;color:var(--hmu)">${grdOk}/${total} comprados</div><div class="kpi-bar" style="margin-top:4px"><div style="width:${pGrd}%;height:5px;border-radius:3px;background:#7b1fa2"></div></div></div>
+    <div class="sum-card" style="${atrasados>0?'border-color:var(--hd);background:#fdecea':''}"><div class="sum-val" style="color:${atrasados>0?'var(--hd)':'var(--hmu)'}">${atrasados}</div><div class="sum-lbl">${atrasados>0?'⚠️ Atrasados':'Atrasados'}</div><div style="font-size:9px;color:var(--hmu)">grade além do prazo</div></div>
   </div>`;
 
   const filterBar = `<div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid var(--hbr)">
@@ -1427,6 +1430,18 @@ function renderEstruturaView(discTabs, bc) {
         </select>
       </td>
       <td style="text-align:center">
+        ${(() => {
+          const today = new Date().toISOString().slice(0,10);
+          const isLate = e.grade !== 'Comprado' && e.grade !== 'N/A' && e.grdData && e.grdData < today;
+          const inputStyle = 'width:120px;padding:3px 6px;border-radius:5px;font-size:10.5px;text-align:center;'
+            + (isLate ? 'border:1.5px solid var(--hd);background:#fdecea;color:var(--hd);font-weight:700'
+                      : 'border:0.5px solid var(--hbr);background:var(--hg);color:var(--ht)');
+          const input = '<input type="date" value="' + (e.grdData||'') + '" onchange="estSetField(\'' + esc + '\',\'grdData\',this.value)" style="' + inputStyle + '">';
+          const badge = isLate ? '<div style="font-size:9px;color:var(--hd);font-weight:700;margin-top:2px">⚠️ ATRASADO</div>' : '';
+          return input + badge;
+        })()}
+      </td>
+      <td style="text-align:center">
         <button class="btn-lupa" onclick="delEstrutura('${esc}')" title="Excluir desenho" style="color:var(--hd);border-color:#e0c8c8">🗑️</button>
       </td>
     </tr>`;
@@ -1441,6 +1456,7 @@ function renderEstruturaView(discTabs, bc) {
           <th style="text-align:center">Status Fabricação</th>
           <th style="text-align:center">Status Montagem</th>
           <th style="text-align:center">Compra Grade de Piso</th>
+          <th style="text-align:center">Chegada Grade</th>
           <th style="text-align:center">Ações</th>
         </tr></thead>
         <tbody>${rows}</tbody>
@@ -1468,7 +1484,8 @@ async function addEstrutura() {
     peso: '',
     fab: 'Pendente',
     mon: 'Pendente',
-    grade: 'Pendente'
+    grade: 'Pendente',
+    grdData: ''
   });
   await saveAll();
   renderIsoView();
