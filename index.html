@@ -655,6 +655,8 @@ let suportes = [];   // Controle de Suportes
 const SK_SUPS = 'hy_suportes';
 let materiais = [];  // dados de materiais (aba removida)
 const SK_MATS = 'hy_mats';
+let estrutura = []; // Controle de Estrutura Metálica
+const SK_EST = 'hy_estrutura';
 
 /* ── Dados seed — material_consolidado.xlsx corrigido (426 registros) ── */
 const MATS_SEED = [];
@@ -668,6 +670,7 @@ let _supSearch = '', _supArea = '', _supFab = '', _supPint = '', _supMon = '', _
 let isoFilterFab = '';
 // Unlock de status de suporte por sessão (reseta ao recarregar a página)
 let supUnlocked = false;
+let _estSearch = '', _estFab = '', _estMon = '', _estGrd = '';
 let _ieSessionUnlocked = sessionStorage.getItem('hyd_ie_unlocked') === '1'; // persiste durante a sessão do browser
 let matUnlocked = false;  // Sessão de edição de status/retirada de materiais
 let _pendingMatAction = null;
@@ -898,6 +901,11 @@ async function loadAll() {
     const sv = await storageGet(SK_SUPS);
     if (sv) { const sd = JSON.parse(sv); if (sd && sd.length) suportes = sd; }
   } catch(e) {}
+  // Estrutura Metálica
+  try {
+    const ev = await storageGet(SK_EST);
+    if (ev) { const ed = JSON.parse(ev); if (ed && ed.length) estrutura = ed; }
+  } catch(e) {}
   // Migração incremental: campo soldado e ajuste de labels de status
   suportes.forEach(s => {
     if (!s.soldado) s.soldado = 'Não soldado';
@@ -1063,6 +1071,7 @@ async function loadAll() {
 async function saveAll() {
   _sbIgnoreNextReload = true; // ignora o echo do Supabase dos nossos próprios saves
   try { await storageSet(SK_SUPS, JSON.stringify(suportes)); } catch(e) {}
+  try { await storageSet(SK_EST, JSON.stringify(estrutura)); } catch(e) {}
   try { await storageSet(SK_MATS, JSON.stringify(materiais)); } catch(e) {}
   try { await storageSet(SK_PROJ, JSON.stringify(projects)); } catch(e) {}
   try { await storageSet(SK_ISOS, JSON.stringify(isos)); } catch(e) {}
@@ -1276,8 +1285,8 @@ function sincronizarPlanilha() {
 }
 
 const DISC_TABS = {
-  caldeiraria: { label:'🔧 Caldeiraria', subs:['dashboard','isometricos','suportes','materiais','planejamento'],
-    labels:['Dashboard','Controle de Isométricos','Controle de Suportes','Controle de Materiais','Planejamento'] },
+  caldeiraria: { label:'🔧 Caldeiraria', subs:['dashboard','isometricos','suportes','materiais','estrutura','planejamento'],
+    labels:['Dashboard','Controle de Isométricos','Controle de Suportes','Controle de Materiais','Estrutura Metálica','Planejamento'] },
   eletrica: { label:'⚡ Elétrica', subs:['cabos-el','sup-el','encam-el','dt-el','equip-el'],
     labels:['Controle de Cabos','Controle de Suportes','Controle de Encaminhamento','Controle DT','Controle de Equipamentos'] },
   instr: { label:'🔬 Instrumentação', subs:['cabos-ins','encam-ins','instrumentos','equip-ins','interlig'],
@@ -1328,6 +1337,144 @@ async function _applySupChange(id, field, value) {
 }
 
 // toggleSup substituído por changeSup (selects)
+
+
+/* ═══════════════════ CONTROLE DE ESTRUTURA METÁLICA ═══════════════════
+   Registro por desenho: Número do Desenho, Peso, Status Fabricação,
+   Status Montagem, Compra de Grade de Piso.
+══════════════════════════════════════════════════════════════════════ */
+const EST_FAB_OPTS  = ['Pendente','Em Fabricação','Fabricado'];
+const EST_MON_OPTS  = ['Pendente','Em Montagem','Montado'];
+const EST_GRD_OPTS  = ['Pendente','Em Compra','Comprado','N/A'];
+
+function _estList() {
+  return currentProjId ? estrutura.filter(e => e.projId === currentProjId) : estrutura;
+}
+
+function renderEstruturaView(discTabs, bc) {
+  const list = _estList();
+  const fSearch = (_estSearch || '').toLowerCase();
+  const fFab = _estFab || '';
+  const fMon = _estMon || '';
+  const fGrd = _estGrd || '';
+
+  const filtered = list.filter(e => {
+    if (fSearch && !String(e.desenho||'').toLowerCase().includes(fSearch)) return false;
+    if (fFab && e.fab !== fFab) return false;
+    if (fMon && e.mon !== fMon) return false;
+    if (fGrd && e.grade !== fGrd) return false;
+    return true;
+  });
+
+  const total = list.length;
+  const fabOk = list.filter(e => e.fab === 'Fabricado').length;
+  const monOk = list.filter(e => e.mon === 'Montado').length;
+  const grdOk = list.filter(e => e.grade === 'Comprado').length;
+  const pesoTotal = list.reduce((s,e) => s + (parseFloat(e.peso) || 0), 0);
+  const pFab = total ? Math.round(fabOk/total*100) : 0;
+  const pMon = total ? Math.round(monOk/total*100) : 0;
+  const pGrd = total ? Math.round(grdOk/total*100) : 0;
+
+  const kpis = `<div class="sum-bar" style="margin:10px 16px 0;gap:10px">
+    <div class="sum-card"><div class="sum-val" style="color:var(--hb)">${total}</div><div class="sum-lbl">Desenhos</div><div style="font-size:9px;color:var(--hmu)">${pesoTotal.toLocaleString('pt-BR',{maximumFractionDigits:1})} kg total</div></div>
+    <div class="sum-card"><div class="sum-val" style="color:var(--hb)">${pFab}%</div><div class="sum-lbl">Fabricação</div><div style="font-size:9px;color:var(--hmu)">${fabOk}/${total} fabricados</div><div class="kpi-bar" style="margin-top:4px"><div style="width:${pFab}%;height:5px;border-radius:3px;background:var(--hb)"></div></div></div>
+    <div class="sum-card"><div class="sum-val" style="color:#0077b6">${pMon}%</div><div class="sum-lbl">Montagem</div><div style="font-size:9px;color:var(--hmu)">${monOk}/${total} montados</div><div class="kpi-bar" style="margin-top:4px"><div style="width:${pMon}%;height:5px;border-radius:3px;background:#0077b6"></div></div></div>
+    <div class="sum-card"><div class="sum-val" style="color:#7b1fa2">${pGrd}%</div><div class="sum-lbl">Grade de Piso</div><div style="font-size:9px;color:var(--hmu)">${grdOk}/${total} comprados</div><div class="kpi-bar" style="margin-top:4px"><div style="width:${pGrd}%;height:5px;border-radius:3px;background:#7b1fa2"></div></div></div>
+  </div>`;
+
+  const filterBar = `<div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid var(--hbr)">
+    <input id="ef-search" placeholder="🔍 Número do desenho" value="${_estSearch||''}" oninput="_estSearch=this.value;renderIsoView()" style="font-size:11px;padding:4px 8px;border:0.5px solid var(--hbr);border-radius:5px;background:var(--hg);color:var(--ht);min-width:170px">
+    <select id="ef-fab" onchange="_estFab=this.value;renderIsoView()" style="font-size:11px;padding:3px 7px;border:0.5px solid var(--hbr);border-radius:5px;background:var(--hg);color:var(--ht)">
+      <option value="">Fabricação</option>
+      ${EST_FAB_OPTS.map(o=>`<option value="${o}" ${fFab===o?'selected':''}>${o}</option>`).join('')}
+    </select>
+    <select id="ef-mon" onchange="_estMon=this.value;renderIsoView()" style="font-size:11px;padding:3px 7px;border:0.5px solid var(--hbr);border-radius:5px;background:var(--hg);color:var(--ht)">
+      <option value="">Montagem</option>
+      ${EST_MON_OPTS.map(o=>`<option value="${o}" ${fMon===o?'selected':''}>${o}</option>`).join('')}
+    </select>
+    <select id="ef-grd" onchange="_estGrd=this.value;renderIsoView()" style="font-size:11px;padding:3px 7px;border:0.5px solid var(--hbr);border-radius:5px;background:var(--hg);color:var(--ht)">
+      <option value="">Compra Grade</option>
+      ${EST_GRD_OPTS.map(o=>`<option value="${o}" ${fGrd===o?'selected':''}>${o}</option>`).join('')}
+    </select>
+    <span style="font-size:10px;color:var(--hmu);margin-left:4px">${filtered.length} de ${total}</span>
+    <button class="btn-clr" onclick="_estSearch='';_estFab='';_estMon='';_estGrd='';renderIsoView()" title="Limpar filtros">✕</button>
+    <button class="btn btn-cyan" style="height:27px;font-size:11px" onclick="addEstrutura()">+ Novo Desenho</button>
+  </div>`;
+
+  const rows = filtered.map(e => {
+    const esc = String(e.id).replace(/'/g,"\\'");
+    return `<tr>
+      <td style="font-family:monospace;font-size:11px;font-weight:600">${e.desenho||''}</td>
+      <td style="text-align:center">
+        <input type="number" step="0.1" value="${e.peso||''}" placeholder="—" onchange="estSetField('${esc}','peso',this.value)" style="width:75px;padding:3px 6px;border:0.5px solid var(--hbr);border-radius:5px;font-size:11px;text-align:center;background:var(--hg);color:var(--ht)"> kg
+      </td>
+      <td style="text-align:center">
+        <select onchange="estSetField('${esc}','fab',this.value)" style="font-size:10.5px;padding:3px 6px;border-radius:5px;border:0.5px solid var(--hbr);background:${e.fab==='Fabricado'?'#e8f5e9':e.fab==='Em Fabricação'?'#fff8e1':'var(--hg)'};color:var(--ht)">
+          ${EST_FAB_OPTS.map(o=>`<option value="${o}" ${e.fab===o?'selected':''}>${o}</option>`).join('')}
+        </select>
+      </td>
+      <td style="text-align:center">
+        <select onchange="estSetField('${esc}','mon',this.value)" style="font-size:10.5px;padding:3px 6px;border-radius:5px;border:0.5px solid var(--hbr);background:${e.mon==='Montado'?'#e8f5e9':e.mon==='Em Montagem'?'#fff8e1':'var(--hg)'};color:var(--ht)">
+          ${EST_MON_OPTS.map(o=>`<option value="${o}" ${e.mon===o?'selected':''}>${o}</option>`).join('')}
+        </select>
+      </td>
+      <td style="text-align:center">
+        <select onchange="estSetField('${esc}','grade',this.value)" style="font-size:10.5px;padding:3px 6px;border-radius:5px;border:0.5px solid var(--hbr);background:${e.grade==='Comprado'?'#e8f5e9':e.grade==='Em Compra'?'#fff8e1':'var(--hg)'};color:var(--ht)">
+          ${EST_GRD_OPTS.map(o=>`<option value="${o}" ${e.grade===o?'selected':''}>${o}</option>`).join('')}
+        </select>
+      </td>
+      <td style="text-align:center">
+        <button class="btn-lupa" onclick="delEstrutura('${esc}')" title="Excluir desenho" style="color:var(--hd);border-color:#e0c8c8">🗑️</button>
+      </td>
+    </tr>`;
+  }).join('');
+
+  const tbl = filtered.length
+    ? `<div class="tbl-wrap" style="margin:16px"><table style="width:100%">
+        <thead><tr>
+          <th>Número do Desenho</th>
+          <th style="text-align:center">Peso</th>
+          <th style="text-align:center">Status Fabricação</th>
+          <th style="text-align:center">Status Montagem</th>
+          <th style="text-align:center">Compra Grade de Piso</th>
+          <th style="text-align:center">Ações</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table></div>`
+    : `<div class="ph-panel"><div style="font-size:32px">🏗️</div><strong>Nenhum desenho cadastrado</strong><span style="font-size:11px">Clique em "+ Novo Desenho" para começar.</span></div>`;
+
+  document.getElementById('view-isos').innerHTML = bc + discTabs + kpis + filterBar + tbl + '</div>';
+}
+
+async function estSetField(id, field, value) {
+  const e = estrutura.find(x => x.id === id); if (!e) return;
+  e[field] = value;
+  await saveAll();
+  renderIsoView();
+}
+
+async function addEstrutura() {
+  const desenho = prompt('Número do desenho:');
+  if (!desenho || !desenho.trim()) return;
+  estrutura.push({
+    id: 'est_' + Date.now() + '_' + Math.random().toString(36).slice(2,6),
+    projId: currentProjId || null,
+    desenho: desenho.trim(),
+    peso: '',
+    fab: 'Pendente',
+    mon: 'Pendente',
+    grade: 'Pendente'
+  });
+  await saveAll();
+  renderIsoView();
+}
+
+async function delEstrutura(id) {
+  if (!confirm('Excluir este desenho de estrutura metálica?')) return;
+  estrutura = estrutura.filter(e => e.id !== id);
+  await saveAll();
+  renderIsoView();
+}
 
 function renderSuportesView(discTabs, bc) {
   // ── Filtros — lidos das variáveis de estado (evita perda de foco ao re-renderizar) ──
@@ -2858,6 +3005,10 @@ function renderIsoView(force) {
     renderMatsCaldeiraria(discTabs, bc); return;
   }
 
+  if (currentDisc === 'caldeiraria' && currentSubTab === 'estrutura') {
+    renderEstruturaView(discTabs, bc); return;
+  }
+
   if (currentDisc === 'caldeiraria' && currentSubTab === 'dashboard') {
     renderDashboard(discTabs, bc); return;
   }
@@ -3388,6 +3539,7 @@ async function delProject(id) {
   // Remove suportes e materiais vinculados aos isos do projeto
   suportes = suportes.filter(s => !projIsoNums.has(s.isometrico));
   materiais = materiais.filter(m => m.projId !== id && !projIsoNums.has(m.iso));
+  estrutura = estrutura.filter(e => e.projId !== id);
 
   // Remove o projeto
   projects = projects.filter(p => p.id !== id);
@@ -3412,6 +3564,9 @@ async function clearProjectData(id) {
 
   // 3. Remove suportes cujo isométrico pertencia ao projeto
   suportes = suportes.filter(s => !projIsoNums.has(s.isometrico));
+
+  // 3b. Remove estrutura metálica do projeto
+  estrutura = estrutura.filter(e => e.projId !== id);
 
   // 4. Remove materiais (matsCtrl) do projeto
   matsCtrl = matsCtrl.filter(m => m.projId !== id);
