@@ -1146,7 +1146,7 @@ function goView(v, pid) {
 
   document.getElementById('tb-proj').textContent = projects.length;
 
-  if (v === 'projects') { renderProjects(); renderHeader(); }
+  if (v === 'projects') renderProjects();
   else if (v === 'isos') renderIsoView();
   renderHeader();
 }
@@ -1183,90 +1183,1855 @@ function renderHeader() {
 /* ── PROJECTS ── */
 function renderProjects() {
   const search = (document.getElementById('proj-search-inp') ? document.getElementById('proj-search-inp').value : '').toLowerCase();
-  const list = projects.filter(p => !search || p.name.toLowerCase().includes(search) || (p.code||'').toLowerCase().includes(search));
-
-  const rows = list.map(p => {
-    const pi = projIsos(p.id), n = pi.length;
-    const piFab = pi.filter(e => !['Apenas Montagem','Desmontagem','Referência','Escopo cancelado','Hold'].includes(e.classif||'Fabricação'));
-    const piMon = pi.filter(e => !['Referência','Desmontagem','Escopo cancelado','Hold'].includes(e.classif||'Fabricação'));
-    const af = piFab.length ? Math.round(piFab.reduce((s,e) => s+fabPct(e),0)/piFab.length) : 0;
-    const am = piMon.length ? Math.round(piMon.reduce((s,e) => s+monPct(e),0)/piMon.length) : 0;
-    const isOpen = currentProjId === p.id;
-
-    const fabClr = af>=100?'#1a8c4e':af>=70?'#c07000':'#0B3D91';
-    const monClr = am>=100?'#1a8c4e':am>=70?'#c07000':'#0077b6';
-
-    const bar = (pct, clr) =>
-      `<div style="display:flex;align-items:center;gap:6px;min-width:90px">
-        <div style="flex:1;height:6px;background:#e8eef7;border-radius:3px;overflow:hidden">
-          <div style="height:100%;width:${pct}%;background:${clr};border-radius:3px"></div>
-        </div>
-        <span style="font-size:11px;font-weight:700;color:${clr};min-width:32px">${pct}%</span>
-      </div>`;
-
-    const expandedContent = isOpen
-      ? `<tr><td colspan="8" style="padding:0;border-top:2px solid var(--hc)">
-          <div style="padding:16px 20px;background:#f8fafd"><div id="view-isos"></div></div>
-         </td></tr>`
-      : '';
-
-    return `<tr style="background:${isOpen?'#eef4ff':'#fff'};border-bottom:1px solid #e8eef7;transition:.15s" onmouseover="if(!${isOpen})this.style.background='#f8fafd'" onmouseout="if(!${isOpen})this.style.background='#fff'">
-      <td style="padding:10px 16px">
-        <div style="font-size:13px;font-weight:700;color:var(--hb)">${p.name}</div>
-        ${p.desc?`<div style="font-size:10px;color:var(--hmu);margin-top:1px;max-width:260px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.desc}</div>`:''}
-      </td>
-      <td style="padding:10px 12px;font-size:11px;color:var(--hmu);white-space:nowrap">${p.code||'—'}</td>
-      <td style="padding:10px 12px;font-size:11px;color:var(--hmu)">${p.plant||'—'}</td>
-      <td style="padding:10px 12px;text-align:center;font-size:12px;font-weight:600;color:var(--hb)">${n}</td>
-      <td style="padding:10px 12px">${bar(af, fabClr)}</td>
-      <td style="padding:10px 12px">${bar(am, monClr)}</td>
-      <td style="padding:10px 16px">
-        <div style="display:flex;gap:4px;align-items:center">
-          ${isOpen
-            ? '<button onclick="currentProjId=null;renderProjects()" style="font-size:11px;padding:5px 12px;border-radius:6px;border:1px solid #bbb;background:#f0f0f0;cursor:pointer;font-weight:600;color:#555">✕ Fechar</button>'
-            : '<button onclick="goView(\'isos\',\'' + p.id + '\')" style="font-size:11px;padding:5px 14px;border-radius:6px;border:none;background:linear-gradient(90deg,#071d4a,#0B3D91);color:#fff;cursor:pointer;font-weight:600">Abrir →</button>'}
-          <button onclick="reqAuth('edit-proj','${p.id}')" style="font-size:11px;padding:5px 9px;border-radius:6px;border:1px solid #d0d8e8;background:#f8fafd;cursor:pointer" title="Editar">✏️</button>
-          <button onclick="reqAuth('clear-proj','${p.id}')" style="font-size:11px;padding:5px 9px;border-radius:6px;border:1px solid #d0d8e8;background:#f8fafd;cursor:pointer" title="Zerar dados">🧹</button>
-          <button onclick="reqAuth('del-proj','${p.id}')" style="font-size:11px;padding:5px 9px;border-radius:6px;border:1px solid #e0c8c8;background:#fdecea;cursor:pointer;color:var(--hd)" title="Excluir">🗑️</button>
-        </div>
-      </td>
-    </tr>
-    ${expandedContent}`;
-  }).join('');
-
+  const list = projects.filter(p => !search || p.name.toLowerCase().includes(search) || (p.code || '').toLowerCase().includes(search));
   document.getElementById('view-projects').innerHTML = `
     <div class="proj-bar">
       <div style="display:flex;align-items:center;gap:8px">
         <span style="font-size:13px">🔍</span>
-        <input class="proj-search" id="proj-search-inp" placeholder="Buscar por nome ou código..." value="${search}" oninput="renderProjects()">
+        <input class="proj-search" id="proj-search-inp" placeholder="Buscar projeto por nome ou código..." value="${search}" oninput="renderProjects()">
       </div>
-      <span style="font-size:11px;color:var(--hmu);font-weight:500;background:#fff;padding:4px 12px;border-radius:20px;border:1px solid var(--hbr)">${projects.length} projeto${projects.length!==1?'s':''}</span>
+      <span style="font-size:11px;color:var(--hmu);font-weight:500;background:#fff;padding:4px 12px;border-radius:20px;border:1px solid var(--hbr)">${projects.length} projeto${projects.length !== 1 ? 's' : ''}</span>
     </div>
-    <div style="padding:0 16px 16px">
-      ${!list.length
-        ? `<div class="no-proj">${projects.length?'Nenhum resultado.':'Nenhum projeto. Clique em Novo Projeto.'}</div>`
-        : `<div style="background:#fff;border:1px solid #e8eef7;border-radius:10px;overflow:hidden;box-shadow:0 1px 6px rgba(0,0,0,.05)">
-            <table style="width:100%;border-collapse:collapse">
-              <thead>
-                <tr style="background:linear-gradient(90deg,#071d4a,#0B3D91);color:#fff">
-                  <th style="padding:10px 16px;text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px">Projeto</th>
-                  <th style="padding:10px 12px;text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px">Código</th>
-                  <th style="padding:10px 12px;text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px">Planta</th>
-                  <th style="padding:10px 12px;text-align:center;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px">Folhas</th>
-                  <th style="padding:10px 12px;text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px">⚙️ Fabricação</th>
-                  <th style="padding:10px 12px;text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px">🔧 Montagem</th>
-                  <th style="padding:10px 16px;text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px">Ações</th>
-                </tr>
-              </thead>
-              <tbody>${rows}</tbody>
-            </table>
-          </div>`}
+    <div class="proj-grid">
+      ${!list.length ? `<div class="no-proj">${projects.length ? 'Nenhum resultado.' : 'Nenhum projeto. Clique em Novo Projeto.'}</div>` : ''}
+      ${list.map(p => {
+        const pi = projIsos(p.id), n = pi.length;
+        const piFab = pi.filter(e => !['Apenas Montagem','Desmontagem','Referência','Escopo cancelado','Hold'].includes(e.classif||'Fabricação'));
+        const piMon = pi.filter(e => !['Referência','Desmontagem','Escopo cancelado','Hold'].includes(e.classif||'Fabricação'));
+        const af = piFab.length ? Math.round(piFab.reduce((s, e) => s + fabPct(e), 0) / piFab.length) : 0;
+        const am = piMon.length ? Math.round(piMon.reduce((s, e) => s + monPct(e), 0) / piMon.length) : 0;
+        const isOpen = currentProjId === p.id;
+        const openBtn = isOpen
+          ? '<button class="proj-open-btn" style="background:linear-gradient(90deg,#666,#888)" onclick="currentProjId=null;renderProjects()">✕ Fechar</button>'
+          : '<button class="proj-open-btn" onclick="goView(\'isos\',\''+p.id+'\')" >Abrir Projeto →</button>';
+        const expandedContent = isOpen
+          ? '<div style="border-top:2px solid var(--hc);padding:16px 20px;background:#f8fafd"><div id="view-isos"></div></div>'
+          : '';
+        const descHtml = p.desc
+          ? '<div style="font-size:9.5px;color:var(--hmu);margin-bottom:8px;line-height:1.4">'+p.desc+'</div>'
+          : '';
+        return '<div class="proj-card '+(isOpen?'active-proj':'')+'" style="'+(isOpen?'grid-column:1/-1;':'')+'">'
+          + '<div class="pc-card-top">'
+          +   '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">'
+          +     '<div style="flex:1;min-width:0">'
+          +       '<div class="pc-name">'+p.name+'</div>'
+          +       '<div class="pc-code">'+(p.code||'—')+(p.plant?' · '+p.plant:'')+'</div>'
+          +     '</div>'
+          +     '<div style="display:flex;gap:4px;flex-shrink:0">'
+          +       '<button class="btn-edit-sm" style="background:rgba(255,255,255,.15);border-color:rgba(255,255,255,.25);color:#fff" onclick="reqAuth(\'edit-proj\',\''+p.id+'\')">✏️</button>'
+          +       '<button class="btn-edit-sm" style="background:rgba(255,255,255,.15);border-color:rgba(255,255,255,.25);color:#fff" onclick="reqAuth(\'clear-proj\',\''+p.id+'\')">🧹</button>'
+          +       '<button class="proj-del-btn" style="background:rgba(255,255,255,.12);border-color:rgba(255,100,100,.4);color:#ffaaaa" onclick="reqAuth(\'del-proj\',\''+p.id+'\')">🗑️</button>'
+          +     '</div>'
+          +   '</div>'
+          + '</div>'
+          + '<div class="pc-card-body">'
+          +   '<div class="pc-stats">'
+          +     '<span class="proj-stat">📄 '+n+' folha'+(n!==1?'s':'')+'</span>'
+          +     '<span class="proj-stat proj-stat-fab">⚙️ Fab '+af+'%</span>'
+          +     '<span class="proj-stat proj-stat-mon">🔧 Mon '+am+'%</span>'
+          +   '</div>'
+          +   descHtml
+          +   '<div class="pc-acts">'+openBtn+'</div>'
+          + '</div>'
+          + expandedContent
+          + '</div>';
+      }).join('')}
+      <div class="proj-new-card" onclick="reqAuth('add-proj')">
+        <div class="pnc-icon">＋</div>
+        <div class="pnc-lbl">Novo Projeto</div>
+        <div style="font-size:9px;color:var(--hmu);margin-top:2px">Clique para criar</div>
+      </div>
     </div>`;
 
+  // Se há projeto aberto, renderiza o conteúdo dentro do card
   if (currentProjId) {
-    renderIsoView(true); // force=true bypasses the focus guard
-    _sbUpdateBadge();
+    renderIsoView();
   }
+}
+
+/* ── DISCIPLINE TABS ── */
+
+/* ══ DADOS DA PLANILHA PJ-0602807 — correlação por nº isométrico ══════════
+   Fonte: Dados_Isometricos_PJ0602807.xlsx · 40 registros
+   Campos atualizados: line, fluid, nr13, iso_term, temp, insp
+══════════════════════════════════════════════════════════════════════════ */
+const PLANILHA_DADOS = {"BK-BA01-00040-IS-20-00426":{"line":"4\"-P-39332","fluid":"A","nr13":"Sim","iso_term":"NR","temp":"44 °C","insp":"II"},"BK-BA01-00100-IS-20-00839":{"line":"6\"-P-01079","fluid":"L","nr13":"Sim","iso_term":"NR","temp":"51 °C","insp":"II"},"BK-BA01-00900-IS-20-00490":{"line":"8\"-MC-900-1031","fluid":"D","nr13":"Não","iso_term":"NR","temp":"40 °C","insp":"II"},"BK-BA01-00900-IS-20-00492":{"line":"8\"-MC-900-1030","fluid":"D","nr13":"Não","iso_term":"P","temp":"144 °C","insp":"II"},"BK-BA01-00900-IS-20-00493":{"line":"8\"-MC-900-1033","fluid":"D","nr13":"Não","iso_term":"NR","temp":"40 °C","insp":"II"},"BK-BA01-00900-IS-20-00496":{"line":"6\"-LC-09005","fluid":"D","nr13":"Não","iso_term":"H","temp":"101 °C","insp":"II"},"BK-BA01-00900-IS-20-00497":{"line":"6\"-LC-900-1004","fluid":"D","nr13":"Não","iso_term":"H","temp":"101 °C","insp":"II"},"BK-BA01-00900-IS-20-00498":{"line":"8\"-NC-09003","fluid":"D","nr13":"Não","iso_term":"H","temp":"77 °C","insp":"II"},"BK-BA01-00900-IS-20-00499":{"line":"8\"-NC-900-1001","fluid":"D","nr13":"Não","iso_term":"P","temp":"96.7 °C","insp":"II"},"BK-BA01-00900-IS-20-00500":{"line":"8\"-MC-900-1032","fluid":"D","nr13":"Não","iso_term":"NR","temp":"40 °C","insp":"II"},"BK-BA01-00900-IS-20-00501":{"line":"4\"-BW-90001","fluid":"D","nr13":"Não","iso_term":"H","temp":"147 °C","insp":"II"},"BK-BA01-00900-IS-20-00502":{"line":"6\"-LC-09025","fluid":"D","nr13":"Não","iso_term":"H","temp":"101 °C","insp":"II"},"BK-BA01-00900-IS-20-00503":{"line":"2\"-MC-90022","fluid":"D","nr13":"Não","iso_term":"H","temp":"170 °C","insp":"II"},"BK-BA01-01050-IS-20-00744":{"line":"6\"-P-1050-1265","fluid":"L","nr13":"Sim","iso_term":"NR","temp":"44 °C","insp":"II"},"BK-BA01-01100-IS-20-04904":{"line":"16\"-RW-11002","fluid":"D","nr13":"Não","iso_term":"NR","temp":"49 °C","insp":"II"},"BK-BA01-01500-IS-20-00424":{"line":"8\"-P-1547","fluid":"G","nr13":"Sim","iso_term":"NR","temp":"26 °C","insp":"II"},"BK-BA01-03200-IS-20-00662":{"line":"16\"-TS-32003","fluid":"C","nr13":"Não","iso_term":"H","temp":"290 °C","insp":"II"},"BK-BA01-04100-IS-20-06072":{"line":"8\"-FG-41010","fluid":"A","nr13":"Sim","iso_term":"NR","temp":"40 °C","insp":"II"},"BK-BA01-04200-IS-20-01642":{"line":"6\"-P-4200-1043","fluid":"A","nr13":"Sim","iso_term":"NR","temp":"45 °C","insp":"II"},"BK-BA01-04200-IS-20-01643":{"line":"6\"-P-42716","fluid":"A","nr13":"Sim","iso_term":"NR","temp":"45 °C","insp":"II"},"BK-BA01-00040-IS-20-00424":{"line":"10\"-P-38127-BC05-NR","fluid":"L","nr13":"Sim","iso_term":"NR","temp":"40 °C","insp":"II"},"BK-BA01-00900-IS-20-00491":{"line":"10\"-MC-90012-BC50-H","fluid":"D","nr13":"Não","iso_term":"H","temp":"144 °C","insp":"II"},"BK-BA01-00900-IS-20-00504":{"line":"16\"-MC-90021-BC50-H","fluid":"D","nr13":"Não","iso_term":"H","temp":"144 °C","insp":"II"},"BK-BA01-00950-IS-20-00609":{"line":"8\"-P-09523-BC05-NR","fluid":"L","nr13":"Sim","iso_term":"NR","temp":"44 °C","insp":"II"},"BK-BA01-01100-IS-20-01630":{"line":"4\"-FG-11600-A2A","fluid":"","nr13":"Não","iso_term":"NR","temp":"65 °C","insp":""},"BK-BA01-01100-IS-20-03184":{"line":"8\"-WF-11008-BC51","fluid":"","nr13":"Não","iso_term":"NR","temp":"120 °C","insp":""},"BK-BA01-01100-IS-20-04903":{"line":"10\"-QW-11012-BC50A-NR","fluid":"A","nr13":"Sim","iso_term":"NR","temp":"50 °C","insp":"II"},"BK-BA01-01100-IS-20-04905":{"line":"14\"-QW-11010A-BC50-P","fluid":"A","nr13":"Sim","iso_term":"P","temp":"74 °C","insp":"II"},"BK-BA01-01100-IS-20-04906":{"line":"6\"-P-1079-BC05","fluid":"A","nr13":"Sim","iso_term":"NR","temp":"60 °C","insp":"II"},"BK-BA01-01100-IS-20-04907":{"line":"6\"-P-11247-CC05","fluid":"A","nr13":"Sim","iso_term":"NR","temp":"35 °C","insp":"II"},"BK-BA01-03200-IS-20-00661":{"line":"24\"-US-32002-BC50-H","fluid":"V","nr13":"Não","iso_term":"H","temp":"190 °C","insp":"II"},"BK-BA01-03900-IS-20-00157":{"line":"4\"-P-3900-1054-CC05-NR","fluid":"A","nr13":"Sim","iso_term":"NR","temp":"44 °C","insp":"II"},"BK-BA01-03900-IS-20-00158":{"line":"4\"-P-3900-1053-CC05-NR","fluid":"A","nr13":"Sim","iso_term":"NR","temp":"44 °C","insp":"II"},"BK-BA01-04100-IS-20-06070":{"line":"SW-410102-AC50","fluid":"D","nr13":"Não","iso_term":"NR","temp":"65 °C","insp":"II"},"BK-BA01-04100-IS-20-06075":{"line":"6\"-P-410375-BC05/CC05","fluid":"A","nr13":"Sim","iso_term":"NR","temp":"60 °C","insp":"II"},"BK-BA01-04100-IS-20-06076":{"line":"4\"-P-410376-BC05","fluid":"A","nr13":"Sim","iso_term":"NR","temp":"60 °C","insp":"II"},"BK-BA01-04100-IS-20-06077":{"line":"4\"-P-410377-CC05","fluid":"A","nr13":"Sim","iso_term":"NR","temp":"60 °C","insp":"II"},"BK-BA01-06053-IS-20-02688":{"line":"12\"-AD-6053007-BC70-H","fluid":"D","nr13":"Não","iso_term":"H","temp":"63.5 °C","insp":"II"},"BK-BA01-06053-IS-20-02689":{"line":"12\"-AD-6053026-BC70-H","fluid":"D","nr13":"Não","iso_term":"H","temp":"63.5 °C","insp":"II"},"BK-BA01-09000-IS-20-00660":{"line":"8\"-FG-90011-BC51","fluid":"G","nr13":"Sim","iso_term":"NR","temp":"45 °C","insp":"II"},"BK-BA01-04900-IS-20-00255":{"line":"BW-4900-1007","fluid":"D","nr13":"Sim","iso_term":"NR","temp":"45 °C","insp":"II"},"BK-BA01-04900-IS-20-00256":{"line":"BW-4900-1008","fluid":"D","nr13":"Sim","iso_term":"NR","temp":"45 °C","insp":"II"},"BK-BA01-04900-IS-20-00258":{"line":"BW-4900-1009","fluid":"D","nr13":"Sim","iso_term":"NR","temp":"45 °C","insp":"II"},"BK-BA01-04900-IS-20-00259":{"line":"BW-4900-1010","fluid":"D","nr13":"Sim","iso_term":"NR","temp":"45 °C","insp":"II"},"BK-BA01-04900-IS-20-00260":{"line":"TS-4900-1001","fluid":"A","nr13":"Sim","iso_term":"NR","temp":"45 °C","insp":"II"},"BK-BA01-04900-IS-20-00261":{"line":"TS-4900-1000","fluid":"A","nr13":"Sim","iso_term":"NR","temp":"45 °C","insp":"II"},"BK-BA01-04900-IS-20-00263":{"line":"BW-4900-1011","fluid":"D","nr13":"Sim","iso_term":"NR","temp":"45 °C","insp":"II"},"BK-BA01-04900-IS-20-00265":{"line":"SV-4900-1001","fluid":"B","nr13":"Sim","iso_term":"NR","temp":"45 °C","insp":"II"},"BK-BA01-04900-IS-20-00266":{"line":"US-4900-1000","fluid":"B","nr13":"Sim","iso_term":"NR","temp":"45 °C","insp":"II"},"BK-BA01-04900-IS-20-00267":{"line":"LC-4900-1002","fluid":"L","nr13":"Sim","iso_term":"NR","temp":"45 °C","insp":"II"},"BK-BA01-04900-IS-20-00270":{"line":"SW-4900-1000","fluid":"D","nr13":"Não","iso_term":"NR","temp":"45 °C","insp":"II"},"BK-BA01-04900-IS-20-00271":{"line":"SW-4900-1001","fluid":"D","nr13":"Não","iso_term":"NR","temp":"45 °C","insp":"II"},"BK-BA01-04900-IS-20-00272":{"line":"RW-4900-1003","fluid":"D","nr13":"Não","iso_term":"NR","temp":"45 °C","insp":"II"},"BK-BA01-04900-IS-20-00273":{"line":"RW-4900-1004","fluid":"D","nr13":"Não","iso_term":"NR","temp":"45 °C","insp":"II"},"BK-BA01-04900-IS-20-00284":{"line":"OD-4900-1007","fluid":"D","nr13":"Sim","iso_term":"NR","temp":"45 °C","insp":"II"},"BK-BA01-04900-IS-20-00285":{"line":"OD-4900-1008","fluid":"D","nr13":"Sim","iso_term":"NR","temp":"45 °C","insp":"II"},"BK-BA01-04900-IS-20-00290":{"line":"SW-4900-1002","fluid":"D","nr13":"Não","iso_term":"NR","temp":"45 °C","insp":"II"},"BK-BA01-04900-IS-20-00291":{"line":"RW-4900-1005","fluid":"D","nr13":"Não","iso_term":"NR","temp":"45 °C","insp":"II"},"BK-BA01-01400-IS-20-01148":{"line":"3\"-P-1400-1011-CC04-P","fluid":"A","nr13":"Não","iso_term":"NR","temp":"45 °C","insp":"II"}};
+
+function sincronizarPlanilha() {
+  if (!isos || !isos.length) { showExt('Nenhum isométrico cadastrado.','err'); return; }
+  // Aplica PLANILHA_DADOS apenas no projeto ativo (proj-001 / PJ-0602807)
+  // Outros projetos têm seus próprios dados independentes
+  const _projFiltro = currentProjId || null;
+  let atualizados = 0, naoEncontrados = [];
+  isos.forEach(e => {
+    // Só sincroniza isométricos do projeto atualmente aberto
+    if (_projFiltro && e.projId !== _projFiltro) return;
+    const d = PLANILHA_DADOS[e.num];
+    if (!d) { naoEncontrados.push(e.num); return; }
+    if (d.line)     e.line     = d.line;
+    if (d.fluid)    e.fluid    = d.fluid;
+    if (d.nr13)     e.nr13     = d.nr13;
+    if (d.iso_term) e.iso_term = d.iso_term;
+    if (d.temp)     e.temp     = d.temp;
+    if (d.insp)     e.insp     = d.insp;
+    atualizados++;
+  });
+  saveAll().then(() => {
+    renderIsoView();
+    const msg = `✅ ${atualizados} isométrico${atualizados!==1?'s':''} atualizado${atualizados!==1?'s':''} com dados da planilha.`
+      + (naoEncontrados.length ? `\n⚠ ${naoEncontrados.length} sem correspondência na planilha.` : '');
+    showExt(msg, 'ok');
+  });
+}
+
+const DISC_TABS = {
+  caldeiraria: { label:'🔧 Caldeiraria', subs:['dashboard','isometricos','suportes','materiais','estrutura'],
+    labels:['Dashboard','Controle de Isométricos','Controle de Suportes','Controle de Materiais','Estrutura Metálica'] },
+  eletrica: { label:'⚡ Elétrica', subs:['cabos-el','sup-el','encam-el','dt-el','equip-el'],
+    labels:['Controle de Cabos','Controle de Suportes','Controle de Encaminhamento','Controle DT','Controle de Equipamentos'] },
+  instr: { label:'🔬 Instrumentação', subs:['cabos-ins','encam-ins','instrumentos','equip-ins','interlig'],
+    labels:['Controle de Cabos','Controle de Encaminhamento','Controle de Instrumentos','Controle de Equipamentos','Controle de Interligação'] },
+  planejamento: { label:'🗓️ Planejamento', subs:['planejamento'],
+    labels:['Físico × Financeiro'] }
+};
+function setDisc(d) {
+  currentDisc = d;
+  const tabs = getEffectiveDiscTabs(currentProjId);
+  currentSubTab = tabs[d].subs[0];
+  renderIsoView();
+}
+function setSubTab(s) { currentSubTab = s; renderIsoView(); }
+
+/* Retorna os DISC_TABS efetivos para o projeto atual.
+   Cada projeto pode definir tabConfig para sobrescrever subs/labels por disciplina. */
+function getEffectiveDiscTabs(projId) {
+  const proj = projects.find(p => p.id === projId);
+  if (!proj || !proj.tabConfig) return DISC_TABS;
+  const result = {};
+  Object.keys(DISC_TABS).forEach(disc => {
+    result[disc] = (proj.tabConfig[disc])
+      ? { label: DISC_TABS[disc].label, ...proj.tabConfig[disc] }
+      : DISC_TABS[disc];
+  });
+  return result;
+}
+
+/* ── ISO VIEW ── */
+
+/* ══════════════════════════════════════════════════════════════════════════
+   CONTROLE DE SUPORTES
+══════════════════════════════════════════════════════════════════════════ */
+function supStatusClass(v) {
+  return v === 'Fabricado' ? 'b-sim' : v === 'N/A' ? 'b-na' : 'b-pen';
+}
+/* changeSup — chamado pelo <select> de cada status */
+function changeSup(id, field, value) {
+  if (!supUnlocked) {
+    _pendingToggleId = id; _pendingToggleField = field; _pendingToggleVal = value;
+    reqAuth('unlock-sup', ''); return;
+  }
+  _applySupChange(id, field, value);
+}
+async function _applySupChange(id, field, value) {
+  const s = suportes.find(x => x.id === id); if (!s) return;
+  s[field] = value;
+  await saveAll(); renderIsoView();
+}
+
+// toggleSup substituído por changeSup (selects)
+
+
+/* ═══════════════════ CONTROLE DE ESTRUTURA METÁLICA ═══════════════════
+   Registro por desenho: Número do Desenho, Peso, Status Fabricação,
+   Status Montagem, Compra de Grade de Piso.
+══════════════════════════════════════════════════════════════════════ */
+const EST_FAB_OPTS  = ['Pendente','Em Fabricação','Fabricado'];
+const EST_MON_OPTS  = ['Pendente','Em Montagem','Montado'];
+const EST_GRD_OPTS  = ['Pendente','Em Compra','Comprado','N/A'];
+const EST_COB_OPTS  = ['Pendente','Em Compra','Comprado','N/A'];
+
+function _estList() {
+  return currentProjId ? estrutura.filter(e => e.projId === currentProjId) : estrutura;
+}
+
+function renderEstruturaView(discTabs, bc) {
+  const list = _estList();
+  const fSearch = (_estSearch || '').toLowerCase();
+  const fFab = _estFab || '';
+  const fMon = _estMon || '';
+  const fGrd = _estGrd || '';
+  const fCob = _estCob || '';
+
+  const filtered = list.filter(e => {
+    if (fSearch && !String(e.desenho||'').toLowerCase().includes(fSearch)) return false;
+    if (fFab && e.fab !== fFab) return false;
+    if (fMon && e.mon !== fMon) return false;
+    if (fGrd && e.grade !== fGrd) return false;
+    if (fCob && e.cobertura !== fCob) return false;
+    return true;
+  });
+
+  const total = list.length;
+  const fabOk = list.filter(e => e.fab === 'Fabricado').length;
+  const monOk = list.filter(e => e.mon === 'Montado').length;
+  const grdOk = list.filter(e => e.grade === 'Comprado').length;
+  const cobOk = list.filter(e => e.cobertura === 'Comprado').length;
+  const pesoTotal = list.reduce((s,e) => s + (parseFloat(e.peso) || 0), 0);
+  const pFab = total ? Math.round(fabOk/total*100) : 0;
+  const pMon = total ? Math.round(monOk/total*100) : 0;
+  const pGrd = total ? Math.round(grdOk/total*100) : 0;
+  const pCob = total ? Math.round(cobOk/total*100) : 0;
+  const hojeISO = new Date().toISOString().slice(0,10);
+  const atrasadosGrd = list.filter(e => e.grade !== 'Comprado' && e.grade !== 'N/A' && e.grdData && e.grdData < hojeISO).length;
+  const atrasadosCob = list.filter(e => e.cobertura !== 'Comprado' && e.cobertura !== 'N/A' && e.cobData && e.cobData < hojeISO).length;
+  const atrasados = atrasadosGrd + atrasadosCob;
+
+  const kpis = `<div class="sum-bar" style="margin:10px 16px 0;gap:10px">
+    <div class="sum-card"><div class="sum-val" style="color:var(--hb)">${total}</div><div class="sum-lbl">Desenhos</div><div style="font-size:9px;color:var(--hmu)">${pesoTotal.toLocaleString('pt-BR',{maximumFractionDigits:1})} kg total</div></div>
+    <div class="sum-card"><div class="sum-val" style="color:var(--hb)">${pFab}%</div><div class="sum-lbl">Fabricação</div><div style="font-size:9px;color:var(--hmu)">${fabOk}/${total} fabricados</div><div class="kpi-bar" style="margin-top:4px"><div style="width:${pFab}%;height:5px;border-radius:3px;background:var(--hb)"></div></div></div>
+    <div class="sum-card"><div class="sum-val" style="color:#0077b6">${pMon}%</div><div class="sum-lbl">Montagem</div><div style="font-size:9px;color:var(--hmu)">${monOk}/${total} montados</div><div class="kpi-bar" style="margin-top:4px"><div style="width:${pMon}%;height:5px;border-radius:3px;background:#0077b6"></div></div></div>
+    <div class="sum-card"><div class="sum-val" style="color:#7b1fa2">${pGrd}%</div><div class="sum-lbl">Grade de Piso</div><div style="font-size:9px;color:var(--hmu)">${grdOk}/${total} comprados</div><div class="kpi-bar" style="margin-top:4px"><div style="width:${pGrd}%;height:5px;border-radius:3px;background:#7b1fa2"></div></div></div>
+    <div class="sum-card"><div class="sum-val" style="color:#e65100">${pCob}%</div><div class="sum-lbl">Cobertura (Teto)</div><div style="font-size:9px;color:var(--hmu)">${cobOk}/${total} comprados</div><div class="kpi-bar" style="margin-top:4px"><div style="width:${pCob}%;height:5px;border-radius:3px;background:#e65100"></div></div></div>
+    <div class="sum-card" style="${atrasados>0?'border-color:var(--hd);background:#fdecea':''}"><div class="sum-val" style="color:${atrasados>0?'var(--hd)':'var(--hmu)'}">${atrasados}</div><div class="sum-lbl">${atrasados>0?'⚠️ Atrasados':'Atrasados'}</div><div style="font-size:9px;color:var(--hmu)">grade/cobertura além do prazo</div></div>
+  </div>`;
+
+  const filterBar = `<div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid var(--hbr)">
+    <input id="ef-search" placeholder="🔍 Número do desenho" value="${_estSearch||''}" oninput="_estSearch=this.value;renderIsoView()" style="font-size:11px;padding:4px 8px;border:0.5px solid var(--hbr);border-radius:5px;background:var(--hg);color:var(--ht);min-width:170px">
+    <select id="ef-fab" onchange="_estFab=this.value;renderIsoView()" style="font-size:11px;padding:3px 7px;border:0.5px solid var(--hbr);border-radius:5px;background:var(--hg);color:var(--ht)">
+      <option value="">Fabricação</option>
+      ${EST_FAB_OPTS.map(o=>`<option value="${o}" ${fFab===o?'selected':''}>${o}</option>`).join('')}
+    </select>
+    <select id="ef-mon" onchange="_estMon=this.value;renderIsoView()" style="font-size:11px;padding:3px 7px;border:0.5px solid var(--hbr);border-radius:5px;background:var(--hg);color:var(--ht)">
+      <option value="">Montagem</option>
+      ${EST_MON_OPTS.map(o=>`<option value="${o}" ${fMon===o?'selected':''}>${o}</option>`).join('')}
+    </select>
+    <select id="ef-grd" onchange="_estGrd=this.value;renderIsoView()" style="font-size:11px;padding:3px 7px;border:0.5px solid var(--hbr);border-radius:5px;background:var(--hg);color:var(--ht)">
+      <option value="">Compra Grade</option>
+      ${EST_GRD_OPTS.map(o=>`<option value="${o}" ${fGrd===o?'selected':''}>${o}</option>`).join('')}
+    </select>
+    <select id="ef-cob" onchange="_estCob=this.value;renderIsoView()" style="font-size:11px;padding:3px 7px;border:0.5px solid var(--hbr);border-radius:5px;background:var(--hg);color:var(--ht)">
+      <option value="">Compra Cobertura</option>
+      ${EST_COB_OPTS.map(o=>`<option value="${o}" ${fCob===o?'selected':''}>${o}</option>`).join('')}
+    </select>
+    <span style="font-size:10px;color:var(--hmu);margin-left:4px">${filtered.length} de ${total}</span>
+    <button class="btn-clr" onclick="_estSearch='';_estFab='';_estMon='';_estGrd='';_estCob='';renderIsoView()" title="Limpar filtros">✕</button>
+    <button class="btn btn-cyan" style="height:27px;font-size:11px" onclick="addEstrutura()">+ Novo Desenho</button>
+  </div>`;
+
+  const rows = filtered.map(e => {
+    const esc = String(e.id).replace(/'/g,"\\'");
+    return `<tr>
+      <td style="font-family:monospace;font-size:11px;font-weight:600">${e.desenho||''}</td>
+      <td>
+        <input type="text" value="${(e.equip||'').replace(/"/g,'&quot;')}" placeholder="—" onchange="estSetField('${esc}','equip',this.value)" style="width:120px;padding:3px 6px;border:0.5px solid var(--hbr);border-radius:5px;font-size:11px;background:var(--hg);color:var(--ht)">
+      </td>
+      <td style="text-align:center">
+        <input type="number" step="0.1" value="${e.peso||''}" placeholder="—" onchange="estSetField('${esc}','peso',this.value)" style="width:75px;padding:3px 6px;border:0.5px solid var(--hbr);border-radius:5px;font-size:11px;text-align:center;background:var(--hg);color:var(--ht)"> kg
+      </td>
+      <td style="text-align:center">
+        <select onchange="estSetField('${esc}','fab',this.value)" style="font-size:10.5px;padding:3px 6px;border-radius:5px;border:0.5px solid var(--hbr);background:${e.fab==='Fabricado'?'#e8f5e9':e.fab==='Em Fabricação'?'#fff8e1':'var(--hg)'};color:var(--ht)">
+          ${EST_FAB_OPTS.map(o=>`<option value="${o}" ${e.fab===o?'selected':''}>${o}</option>`).join('')}
+        </select>
+      </td>
+      <td style="text-align:center">
+        <select onchange="estSetField('${esc}','mon',this.value)" style="font-size:10.5px;padding:3px 6px;border-radius:5px;border:0.5px solid var(--hbr);background:${e.mon==='Montado'?'#e8f5e9':e.mon==='Em Montagem'?'#fff8e1':'var(--hg)'};color:var(--ht)">
+          ${EST_MON_OPTS.map(o=>`<option value="${o}" ${e.mon===o?'selected':''}>${o}</option>`).join('')}
+        </select>
+      </td>
+      <td style="text-align:center">
+        <select onchange="estSetField('${esc}','grade',this.value)" style="font-size:10.5px;padding:3px 6px;border-radius:5px;border:0.5px solid var(--hbr);background:${e.grade==='Comprado'?'#e8f5e9':e.grade==='Em Compra'?'#fff8e1':'var(--hg)'};color:var(--ht)">
+          ${EST_GRD_OPTS.map(o=>`<option value="${o}" ${e.grade===o?'selected':''}>${o}</option>`).join('')}
+        </select>
+      </td>
+      <td style="text-align:center">
+        ${(() => {
+          const today = new Date().toISOString().slice(0,10);
+          const isLate = e.grade !== 'Comprado' && e.grade !== 'N/A' && e.grdData && e.grdData < today;
+          const inputStyle = 'width:120px;padding:3px 6px;border-radius:5px;font-size:10.5px;text-align:center;'
+            + (isLate ? 'border:1.5px solid var(--hd);background:#fdecea;color:var(--hd);font-weight:700'
+                      : 'border:0.5px solid var(--hbr);background:var(--hg);color:var(--ht)');
+          const input = '<input type="date" value="' + (e.grdData||'') + '" onchange="estSetField(\'' + esc + '\',\'grdData\',this.value)" style="' + inputStyle + '">';
+          const badge = isLate ? '<div style="font-size:9px;color:var(--hd);font-weight:700;margin-top:2px">⚠️ ATRASADO</div>' : '';
+          return input + badge;
+        })()}
+      </td>
+      <td style="text-align:center">
+        <select onchange="estSetField('${esc}','cobertura',this.value)" style="font-size:10.5px;padding:3px 6px;border-radius:5px;border:0.5px solid var(--hbr);background:${e.cobertura==='Comprado'?'#e8f5e9':e.cobertura==='Em Compra'?'#fff8e1':'var(--hg)'};color:var(--ht)">
+          ${EST_COB_OPTS.map(o=>`<option value="${o}" ${e.cobertura===o?'selected':''}>${o}</option>`).join('')}
+        </select>
+      </td>
+      <td style="text-align:center">
+        ${(() => {
+          const today = new Date().toISOString().slice(0,10);
+          const isLate = e.cobertura !== 'Comprado' && e.cobertura !== 'N/A' && e.cobData && e.cobData < today;
+          const inputStyle = 'width:120px;padding:3px 6px;border-radius:5px;font-size:10.5px;text-align:center;'
+            + (isLate ? 'border:1.5px solid var(--hd);background:#fdecea;color:var(--hd);font-weight:700'
+                      : 'border:0.5px solid var(--hbr);background:var(--hg);color:var(--ht)');
+          const input = '<input type="date" value="' + (e.cobData||'') + '" onchange="estSetField(\'' + esc + '\',\'cobData\',this.value)" style="' + inputStyle + '">';
+          const badge = isLate ? '<div style="font-size:9px;color:var(--hd);font-weight:700;margin-top:2px">⚠️ ATRASADO</div>' : '';
+          return input + badge;
+        })()}
+      </td>
+      <td style="text-align:center">
+        <button class="btn-lupa" onclick="delEstrutura('${esc}')" title="Excluir desenho" style="color:var(--hd);border-color:#e0c8c8">🗑️</button>
+      </td>
+    </tr>`;
+  }).join('');
+
+  const tbl = filtered.length
+    ? `<div class="tbl-wrap" style="margin:16px"><table style="width:100%">
+        <thead><tr>
+          <th>Número do Desenho</th>
+          <th>Equipamento</th>
+          <th style="text-align:center">Peso</th>
+          <th style="text-align:center">Status Fabricação</th>
+          <th style="text-align:center">Status Montagem</th>
+          <th style="text-align:center">Compra Grade de Piso</th>
+          <th style="text-align:center">Chegada Grade</th>
+          <th style="text-align:center">Compra Cobertura (Teto)</th>
+          <th style="text-align:center">Chegada Cobertura</th>
+          <th style="text-align:center">Ações</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table></div>`
+    : `<div class="ph-panel"><div style="font-size:32px">🏗️</div><strong>Nenhum desenho cadastrado</strong><span style="font-size:11px">Clique em "+ Novo Desenho" para começar.</span></div>`;
+
+  document.getElementById('view-isos').innerHTML = bc + discTabs + kpis + filterBar + tbl + '</div>';
+}
+
+async function estSetField(id, field, value) {
+  const e = estrutura.find(x => x.id === id); if (!e) return;
+  e[field] = value;
+  await saveAll();
+  renderIsoView();
+}
+
+async function addEstrutura() {
+  const desenho = prompt('Número do desenho:');
+  if (!desenho || !desenho.trim()) return;
+  estrutura.push({
+    id: 'est_' + Date.now() + '_' + Math.random().toString(36).slice(2,6),
+    projId: currentProjId || null,
+    desenho: desenho.trim(),
+    equip: '',
+    peso: '',
+    fab: 'Pendente',
+    mon: 'Pendente',
+    grade: 'Pendente',
+    grdData: '',
+    cobertura: 'Pendente',
+    cobData: ''
+  });
+  await saveAll();
+  renderIsoView();
+}
+
+async function delEstrutura(id) {
+  if (!confirm('Excluir este desenho de estrutura metálica?')) return;
+  estrutura = estrutura.filter(e => e.id !== id);
+  await saveAll();
+  renderIsoView();
+}
+
+function renderSuportesView(discTabs, bc) {
+  // ── Filtros — lidos das variáveis de estado (evita perda de foco ao re-renderizar) ──
+  const fArea   = _supArea;
+  const fFab    = _supFab;
+  const fPint   = _supPint;
+  const fMon    = _supMon;
+  const fSearch = _supSearch;
+
+  const projId = currentProjId;
+  // Se há projeto selecionado, filtra pelos isométricos do projeto
+  const projIsoNums = projId
+    ? isos.filter(e => e.projId === projId).map(e => e.num)
+    : null;
+
+  let list = suportes.filter(s => {
+    if (projIsoNums && !projIsoNums.includes(s.isometrico)) return false;
+    if (fArea   && s.area !== fArea)     return false;
+    if (fFab    && s.fab !== fFab)       return false;
+    if (fPint   && s.pintura !== fPint)  return false;
+    if (fMon    && s.mon !== fMon)       return false;
+    if (_supSold && s.soldado !== _supSold) return false;
+    if (fSearch) {
+      const q = fSearch.toLowerCase();
+      if (!s.seq.toLowerCase().includes(q) &&
+          !s.tipo.toLowerCase().includes(q) &&
+          !s.linha.toLowerCase().includes(q) &&
+          !s.isometrico.toLowerCase().includes(q)) return false;
+    }
+    return true;
+  });
+
+  // KPIs — calculados sobre TODOS os suportes do projeto (sem filtros adicionais)
+  // O filtro de projeto (projIsoNums) é aplicado, mas os filtros de área/status/busca NÃO
+  // para garantir que os cards reflitam o total real do projeto
+  const kpiList = projIsoNums
+    ? suportes.filter(s => projIsoNums.includes(s.isometrico))
+    : suportes;
+  const total   = kpiList.length;
+  const fabOk   = kpiList.filter(s => s.fab     === 'Fabricado').length;
+  const pintOk  = kpiList.filter(s => s.pintura === 'Pintado').length;
+  const monOk   = kpiList.filter(s => s.mon     === 'Montado').length;
+  const fabNA   = kpiList.filter(s => s.fab     === 'N/A').length;
+  const pintNA  = kpiList.filter(s => s.pintura === 'N/A').length;
+  const monNA   = kpiList.filter(s => s.mon     === 'N/A').length;
+  const nSold   = kpiList.filter(s => s.soldado === 'Soldado à linha').length;
+  const fabBase = total - fabNA;
+  const pintBase= total - pintNA;
+  const monBase = total - monNA;
+  const pFab    = fabBase  ? Math.round(fabOk  / fabBase  * 100) : 0;
+  const pPint   = pintBase ? Math.round(pintOk / pintBase * 100) : 0;
+  const pMon    = monBase  ? Math.round(monOk  / monBase  * 100) : 0;
+
+  // Áreas disponíveis
+  const areas  = [...new Set(suportes.map(s => s.area).filter(Boolean))].sort();
+  const OPTS_FAB  = ['Pendente','N/A','Fabricado'];
+  const OPTS_PINT = ['Pendente','N/A','Pintado'];
+  const OPTS_MON  = ['Pendente','N/A','Montado'];
+
+  const kpis = `<div class="sum-bar" style="margin:10px 16px 0;gap:10px">
+    <div class="sum-card"><div class="sum-val" style="color:var(--hb)">${fabBase}</div><div class="sum-lbl">Fabricáveis</div><div style="font-size:9px;color:var(--hmu)">${total} total · ${fabNA} N/A</div></div>
+    <div class="sum-card">
+      <div class="sum-val" style="color:var(--hb)">${pFab}%</div>
+      <div class="sum-lbl">Fab. Concluída</div>
+      <div style="font-size:9px;color:var(--hmu)">${fabOk} / ${fabBase} fabricados</div>
+      <div class="kpi-bar" style="margin-top:4px"><div style="width:${pFab}%;height:5px;border-radius:3px;background:var(--hb)"></div></div>
+    </div>
+    <div class="sum-card">
+      <div class="sum-val" style="color:#7b1fa2">${pPint}%</div>
+      <div class="sum-lbl">Pintura Concluída</div>
+      <div style="font-size:9px;color:var(--hmu)">${pintOk} / ${pintBase} pintados</div>
+      <div class="kpi-bar" style="margin-top:4px"><div style="width:${pPint}%;height:5px;border-radius:3px;background:#7b1fa2"></div></div>
+    </div>
+    <div class="sum-card">
+      <div class="sum-val" style="color:var(--hc)">${pMon}%</div>
+      <div class="sum-lbl">Mont. Concluída</div>
+      <div style="font-size:9px;color:var(--hmu)">${monOk} / ${monBase} montados</div>
+      <div class="kpi-bar" style="margin-top:4px"><div style="width:${pMon}%;height:5px;border-radius:3px;background:var(--hc)"></div></div>
+    </div>
+    <div class="sum-card" style="border-left:3px solid #e53935">
+      <div class="sum-val" style="color:#e53935">${nSold}</div>
+      <div class="sum-lbl" style="color:#e53935">⚠ Soldados à linha</div>
+      <div style="font-size:9px;color:var(--hmu)">impeditivo p/ TH</div>
+    </div>
+  </div>`;
+
+  const filters = `<div class="filter-bar" style="flex-wrap:wrap;gap:6px;padding:8px 16px">
+    <input id="sf-search" class="f-inp" placeholder="🔍 SEQ / Tipo / Linha / Isométrico" style="min-width:220px" value="${fSearch}" oninput="_supSearch=this.value;renderIsoView()">
+    <select id="sf-area" onchange="_supArea=this.value;renderIsoView()" style="font-size:11px;padding:3px 7px;border:0.5px solid var(--hbr);border-radius:5px;background:var(--hg);color:var(--ht)">
+      <option value="">Área</option>
+      ${areas.map(a => `<option value="${a}" ${fArea===a?'selected':''}>${a}</option>`).join('')}
+    </select>
+    <select id="sf-fab" onchange="_supFab=this.value;renderIsoView()" style="font-size:11px;padding:3px 7px;border:0.5px solid var(--hbr);border-radius:5px;background:var(--hg);color:var(--ht)">
+      <option value="">Fabricação</option>
+      ${OPTS_FAB.map(o=>`<option value="${o}" ${fFab===o?'selected':''}>${o}</option>`).join('')}
+    </select>
+    <select id="sf-pint" onchange="_supPint=this.value;renderIsoView()" style="font-size:11px;padding:3px 7px;border:0.5px solid var(--hbr);border-radius:5px;background:var(--hg);color:var(--ht)">
+      <option value="">Pintura</option>
+      ${OPTS_PINT.map(o=>`<option value="${o}" ${fPint===o?'selected':''}>${o}</option>`).join('')}
+    </select>
+    <select id="sf-mon" onchange="_supMon=this.value;renderIsoView()" style="font-size:11px;padding:3px 7px;border:0.5px solid var(--hbr);border-radius:5px;background:var(--hg);color:var(--ht)">
+      <option value="">Montagem</option>
+      ${OPTS_MON.map(o=>`<option value="${o}" ${fMon===o?'selected':''}>${o}</option>`).join('')}
+    </select>
+    <select id="sf-sold" onchange="_supSold=this.value;renderIsoView()" style="font-size:11px;padding:3px 7px;border:0.5px solid var(--hbr);border-radius:5px;background:var(--hg);color:var(--ht)">
+      <option value="">Cond. Solda</option>
+      <option value="Não soldado"  ${_supSold==='Não soldado'?'selected':''}>Não soldado</option>
+      <option value="Soldado à linha" ${_supSold==='Soldado à linha'?'selected':''}>Soldado à linha</option>
+    </select>
+    <span style="font-size:10px;color:var(--hmu);margin-left:4px">${list.length} de ${suportes.length}</span>
+    <button class="btn-clr" onclick="clearSupFilters()" title="Limpar filtros">✕</button>
+    <button class="btn btn-out" style="height:27px;font-size:11px;background:rgba(46,125,50,.12);color:#2e7d32;border-color:#a5d6a7" onclick="openImportSupsModal()" title="Importar suportes via planilha Excel">📥 Importar XLSX</button>
+    <button class="btn btn-cyan" style="height:27px;font-size:11px;background:rgba(0,90,180,.85)" onclick="openImportSupsPdfModal()" title="Importar suportes via tabela em PDF">📎 Importar PDF</button>
+    <button onclick="exportSuportesPDF()" id="sup-exp-btn" style="font-size:11px;padding:4px 10px;border-radius:6px;border:0.5px solid var(--hbr);background:var(--hg);color:var(--ht);cursor:pointer;height:27px;display:flex;align-items:center;gap:4px">📄 Exportar PDF</button>
+    <button class="btn-del-sel" id="sbtn-del-sel" style="display:none" onclick="reqAuth('del-sup-sel','')">🗑️ Excluir selecionados (<span id="s-sel-count">0</span>)</button>
+  </div>
+  <div id="sup-bulk-bar" style="display:none;flex-wrap:wrap;align-items:center;gap:8px;padding:6px 16px 8px;background:rgba(25,118,210,.07);border-bottom:1px solid var(--hbr)">
+    <span style="font-size:11px;font-weight:600;color:var(--hb)">📋 <span id="sup-bulk-count">0</span> selecionado(s) — aplicar status:</span>
+    <label style="font-size:10px;color:var(--hmu)">Fabricação:
+      <select id="bulk-fab" style="font-size:10px;padding:2px 6px;border-radius:4px;border:1px solid var(--hbr);background:var(--hg);color:var(--ht);margin-left:3px">
+        <option value="">—</option>
+        <option value="Pendente">⏳ Pendente</option>
+        <option value="N/A">— N/A</option>
+        <option value="Fabricado">✔ Fabricado</option>
+      </select>
+    </label>
+    <label style="font-size:10px;color:var(--hmu)">Pintura:
+      <select id="bulk-pint" style="font-size:10px;padding:2px 6px;border-radius:4px;border:1px solid var(--hbr);background:var(--hg);color:var(--ht);margin-left:3px">
+        <option value="">—</option>
+        <option value="Pendente">⏳ Pendente</option>
+        <option value="N/A">— N/A</option>
+        <option value="Pintado">✔ Pintado</option>
+      </select>
+    </label>
+    <label style="font-size:10px;color:var(--hmu)">Montagem:
+      <select id="bulk-mon" style="font-size:10px;padding:2px 6px;border-radius:4px;border:1px solid var(--hbr);background:var(--hg);color:var(--ht);margin-left:3px">
+        <option value="">—</option>
+        <option value="Pendente">⏳ Pendente</option>
+        <option value="N/A">— N/A</option>
+        <option value="Montado">✔ Montado</option>
+      </select>
+    </label>
+    <label style="font-size:10px;color:var(--hmu)">Cond. Solda:
+      <select id="bulk-sold" style="font-size:10px;padding:2px 6px;border-radius:4px;border:1px solid var(--hbr);background:var(--hg);color:var(--ht);margin-left:3px">
+        <option value="">—</option>
+        <option value="Não soldado">✔ Não soldado</option>
+        <option value="Soldado à linha">⚠ Soldado à linha</option>
+      </select>
+    </label>
+    <button onclick="applyBulkSup()" style="font-size:10px;padding:4px 12px;border-radius:5px;border:none;background:var(--hb);color:#fff;cursor:pointer;font-weight:600">✅ Aplicar</button>
+    <button onclick="cancelBulkSup()" style="font-size:10px;padding:4px 10px;border-radius:5px;border:1px solid var(--hbr);background:var(--hg);color:var(--hmu);cursor:pointer">✕ Cancelar</button>
+  </div>`;
+
+  const rows = list.length ? list.map(s => `<tr style="${s.sub?'background:var(--hbl);opacity:0.88':''}">
+    <td style="text-align:center"><input type="checkbox" class="sup-chk" data-id="${s.id}" onchange="supOnCheckChange()"></td>
+    <td style="font-size:10px;font-weight:${s.sub?'400':'600'};white-space:nowrap;color:${s.sub?'var(--hmu)':'inherit'};padding-left:${s.sub?'20px':'8px'}">${s.sub?'↳ ':''}${s.seq}</td>
+    <td style="font-size:10px;white-space:nowrap"><code style="background:${s.sub?'rgba(0,0,0,0.04)':'var(--hbl)'};padding:1px 5px;border-radius:3px;color:${s.sub?'var(--hmu)':'var(--hb)'};font-size:9.5px">${s.tipo}</code></td>
+    <td style="text-align:center;font-size:11px;font-weight:600">${s.qtd}</td>
+    <td style="text-align:center"><span class="badge b-insp" style="font-size:9px">${s.diam}</span></td>
+    <td style="font-size:9.5px;color:var(--hmu);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${s.linha}">${s.linha}</td>
+    <td style="font-size:9px;color:var(--hmu);max-width:190px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${s.isometrico}">${s.isometrico}</td>
+    <td style="text-align:center;padding:4px 6px">
+      <select class="sup-sel sup-sel-sold" onchange="changeSup('${s.id}','soldado',this.value)" data-id="${s.id}" data-field="soldado"
+        style="font-size:10px;padding:3px 6px;border-radius:5px;cursor:pointer;font-weight:600;min-width:110px;border:1px solid;${s.soldado==='Soldado à linha'?'background:#ffebee;color:#c62828;border-color:#ef9a9a':'background:#e8f5e9;color:#2e7d32;border-color:#a5d6a7'}">
+        <option value="Não soldado"    ${(!s.soldado||s.soldado==='Não soldado')?'selected':''}>✔ Não soldado</option>
+        <option value="Soldado à linha"${s.soldado==='Soldado à linha'?'selected':''}>⚠ Soldado à linha</option>
+      </select>
+    </td>
+    <td style="text-align:center;padding:4px 6px">
+      <select class="sup-sel sup-sel-fab" onchange="changeSup('${s.id}','fab',this.value)" data-id="${s.id}" data-field="fab"
+        style="font-size:10px;padding:3px 6px;border-radius:5px;cursor:pointer;font-weight:500;min-width:95px;border:1px solid;${s.fab==='Fabricado'?'background:#e8f5e9;color:#2e7d32;border-color:#a5d6a7':s.fab==='N/A'?'background:#f5f5f5;color:#9e9e9e;border-color:#e0e0e0':'background:var(--hbl);color:var(--hmu);border-color:var(--hbr)'}">
+        <option value="Pendente" ${s.fab==='Pendente'?'selected':''}>⏳ Pendente</option>
+        <option value="N/A"      ${s.fab==='N/A'?'selected':''}>— N/A</option>
+        <option value="Fabricado"${s.fab==='Fabricado'?'selected':''}>✔ Fabricado</option>
+      </select>
+    </td>
+    <td style="text-align:center;padding:4px 6px">
+      <select class="sup-sel sup-sel-pint" onchange="changeSup('${s.id}','pintura',this.value)" data-id="${s.id}" data-field="pintura"
+        style="font-size:10px;padding:3px 6px;border-radius:5px;cursor:pointer;font-weight:500;min-width:95px;border:1px solid;${s.pintura==='Pintado'?'background:#f3e5f5;color:#6a1b9a;border-color:#ce93d8':s.pintura==='N/A'?'background:#f5f5f5;color:#9e9e9e;border-color:#e0e0e0':'background:var(--hbl);color:var(--hmu);border-color:var(--hbr)'}">
+        <option value="Pendente" ${s.pintura==='Pendente'?'selected':''}>⏳ Pendente</option>
+        <option value="N/A"      ${s.pintura==='N/A'?'selected':''}>— N/A</option>
+        <option value="Pintado"  ${s.pintura==='Pintado'?'selected':''}>✔ Pintado</option>
+      </select>
+    </td>
+    <td style="text-align:center;padding:4px 6px">
+      <select class="sup-sel sup-sel-mon" onchange="changeSup('${s.id}','mon',this.value)" data-id="${s.id}" data-field="mon"
+        style="font-size:10px;padding:3px 6px;border-radius:5px;cursor:pointer;font-weight:500;min-width:95px;border:1px solid;${s.mon==='Montado'?'background:#e8f5e9;color:#2e7d32;border-color:#a5d6a7':s.mon==='N/A'?'background:#f5f5f5;color:#9e9e9e;border-color:#e0e0e0':'background:var(--hbl);color:var(--hmu);border-color:var(--hbr)'}">
+        <option value="Pendente" ${s.mon==='Pendente'?'selected':''}>⏳ Pendente</option>
+        <option value="N/A"      ${s.mon==='N/A'?'selected':''}>— N/A</option>
+        <option value="Montado"  ${s.mon==='Montado'?'selected':''}>✔ Montado</option>
+      </select>
+    </td>
+  </tr>`).join('') :
+    `<tr><td colspan="11"><div class="empty-st">Nenhum suporte encontrado.</div></td></tr>`;
+
+  const tbl = `<div class="tbl-wrap"><table id="main-table" style="min-width:900px">
+    <thead><tr>
+      <th style="width:28px;text-align:center"><input type="checkbox" id="s-chk-all" title="Selecionar todos" onchange="supToggleAll(this.checked)"></th>
+      <th>SEQ</th>
+      <th>Tipo de Suporte</th>
+      <th style="text-align:center">Qtd</th>
+      <th style="text-align:center">Diam.</th>
+      <th>Linha Suportada</th>
+      <th>Isométrico</th>
+      <th style="text-align:center;min-width:120px">Cond. Solda</th>
+      <th style="text-align:center;min-width:110px">Fabricação</th>
+      <th style="text-align:center;min-width:110px">Pintura</th>
+      <th style="text-align:center;min-width:110px">Montagem</th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table></div>`;
+
+  document.getElementById('view-isos').innerHTML = bc + discTabs + kpis + filters + tbl + '</div>';
+  // Restaurar foco no campo de busca se o usuário estava digitando
+  if (_supSearch !== '') {
+    const _sf = document.getElementById('sf-search');
+    if (_sf) { _sf.focus(); _sf.setSelectionRange(_sf.value.length, _sf.value.length); }
+  }
+}
+
+function supToggleAll(checked) {
+  document.querySelectorAll('.sup-chk').forEach(c => c.checked = checked);
+  supOnCheckChange();
+}
+function supOnCheckChange() {
+  const sel = document.querySelectorAll('.sup-chk:checked');
+  const btn  = document.getElementById('sbtn-del-sel');
+  const cnt  = document.getElementById('s-sel-count');
+  const bulk = document.getElementById('sup-bulk-bar');
+  const bulkCnt = document.getElementById('sup-bulk-count');
+  const all  = document.getElementById('s-chk-all');
+  const expBtn = document.getElementById('sup-exp-btn');
+  if (btn)     btn.style.display  = sel.length ? 'inline-flex' : 'none';
+  if (cnt)     cnt.textContent    = sel.length;
+  if (bulk)    bulk.style.display = sel.length ? 'flex' : 'none';
+  if (bulkCnt) bulkCnt.textContent = sel.length;
+  if (expBtn)  expBtn.textContent = sel.length ? ('📄 Exportar (' + sel.length + ' selecionado' + (sel.length !== 1 ? 's' : '') + ')') : '📄 Exportar PDF';
+  const total = document.querySelectorAll('.sup-chk').length;
+  if (all) all.indeterminate = sel.length > 0 && sel.length < total;
+  if (all && sel.length === total && total > 0) all.checked = true;
+  if (all && sel.length === 0) all.checked = false;
+}
+function applyBulkSup() {
+  if (!supUnlocked) { _pendingBulk = true; reqAuth('unlock-sup', ''); return; }
+  const ids = [...document.querySelectorAll('.sup-chk:checked')].map(c => c.dataset.id);
+  if (!ids.length) return;
+  const vFab  = document.getElementById('bulk-fab')?.value  || '';
+  const vPint = document.getElementById('bulk-pint')?.value || '';
+  const vMon  = document.getElementById('bulk-mon')?.value  || '';
+  const vSold = document.getElementById('bulk-sold')?.value || '';
+  suportes.forEach(s => {
+    if (!ids.includes(s.id)) return;
+    if (vFab)  s.fab     = vFab;
+    if (vPint) s.pintura = vPint;
+    if (vMon)  s.mon     = vMon;
+    if (vSold) s.soldado = vSold;
+  });
+  saveAll().then(() => renderIsoView());
+}
+function cancelBulkSup() {
+  document.querySelectorAll('.sup-chk').forEach(c => c.checked = false);
+  const all = document.getElementById('s-chk-all');
+  if (all) { all.checked = false; all.indeterminate = false; }
+  supOnCheckChange();
+}
+async function delSupSel() {
+  const ids = [...document.querySelectorAll('.sup-chk:checked')].map(c => c.dataset.id);
+  if (!ids.length) return;
+  suportes = suportes.filter(s => !ids.includes(s.id));
+  await saveAll();
+  renderIsoView();
+}
+function exportSuportesPDF() {
+  // Se há itens selecionados (checkboxes), exporta apenas esses
+  const selectedIds = [...document.querySelectorAll('.sup-chk:checked')].map(c => c.dataset.id);
+  let list;
+  if (selectedIds.length) {
+    list = suportes.filter(s => selectedIds.includes(s.id));
+  } else {
+    // Sem seleção: exporta a lista filtrada atual
+    const projId = currentProjId;
+    const projIsoNums = projId ? isos.filter(e => e.projId === projId).map(e => e.num) : null;
+    list = suportes.filter(s => {
+      if (projIsoNums && !projIsoNums.includes(s.isometrico)) return false;
+      if (_supArea && s.area !== _supArea)           return false;
+      if (_supFab  && s.fab  !== _supFab)            return false;
+      if (_supPint && s.pintura !== _supPint)        return false;
+      if (_supMon  && s.mon  !== _supMon)            return false;
+      if (_supSold && s.soldado !== _supSold)        return false;
+      if (_supSearch) {
+        const q = _supSearch.toLowerCase();
+        if (!s.seq.toLowerCase().includes(q) && !s.tipo.toLowerCase().includes(q) &&
+            !s.linha.toLowerCase().includes(q) && !s.isometrico.toLowerCase().includes(q)) return false;
+      }
+      return true;
+    });
+  }
+  if (!list.length) { alert('Nenhum suporte para exportar.'); return; }
+
+  const now = new Date().toLocaleDateString('pt-BR');
+  const proj = projects.find(p => p.id === currentProjId);
+  const projName = proj ? proj.name : 'Todos os projetos';
+  const total   = list.length;
+  const fabOk   = list.filter(s => s.fab     === 'Fabricado').length;
+  const pintOk  = list.filter(s => s.pintura === 'Pintado').length;
+  const monOk   = list.filter(s => s.mon     === 'Montado').length;
+  const nSold   = list.filter(s => s.soldado === 'Soldado à linha').length;
+  const fabNA_r = list.filter(s => s.fab     === 'N/A').length;
+  const pintNA_r= list.filter(s => s.pintura === 'N/A').length;
+  const monNA_r = list.filter(s => s.mon     === 'N/A').length;
+  const fabBase_r  = total - fabNA_r  || 1;
+  const pintBase_r = total - pintNA_r || 1;
+  const monBase_r  = total - monNA_r  || 1;
+
+  const hasFilters = _supArea || _supFab || _supPint || _supMon || _supSold || _supSearch;
+  const hasSelection = selectedIds && selectedIds.length > 0;
+
+  const rows = list.map(s => {
+    const fabClr  = s.fab     === 'Fabricado' ? '#2e7d32' : s.fab     === 'N/A' ? '#9e9e9e' : '#e65100';
+    const pintClr = s.pintura === 'Pintado'   ? '#6a1b9a' : s.pintura === 'N/A' ? '#9e9e9e' : '#e65100';
+    const monClr  = s.mon     === 'Montado'   ? '#2e7d32' : s.mon     === 'N/A' ? '#9e9e9e' : '#e65100';
+    const soldado = s.soldado === 'Soldado à linha';
+    const rowBg   = s.sub ? 'background:#f7f7f7' : '';
+    const indent  = s.sub ? 'padding-left:18px' : 'padding-left:6px';
+    return `<tr style="${rowBg}">
+      <td style="${indent};font-size:9px;white-space:nowrap;color:${s.sub?'#888':'#222'}">${s.sub?'↳ ':''}${s.seq}</td>
+      <td style="font-size:9px">${s.tipo}</td>
+      <td style="text-align:center;font-size:9px">${s.qtd}</td>
+      <td style="text-align:center;font-size:9px">${s.diam}</td>
+      <td style="font-size:9px;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${s.linha}">${s.linha}</td>
+      <td style="font-size:8.5px;max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${s.isometrico}">${s.isometrico}</td>
+      <td style="text-align:center;font-size:9px;font-weight:600;color:${soldado?'#c62828':'#2e7d32'}">${soldado?'⚠ Soldado':'✔ Não sold.'}</td>
+      <td style="text-align:center;font-size:9px;font-weight:600;color:${fabClr}">${s.fab}</td>
+      <td style="text-align:center;font-size:9px;font-weight:600;color:${pintClr}">${s.pintura}</td>
+      <td style="text-align:center;font-size:9px;font-weight:600;color:${monClr}">${s.mon}</td>
+    </tr>`;
+  }).join('');
+
+  const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">
+<title>Controle de Suportes — HYDROSTEC</title>
+<style>
+  *{box-sizing:border-box}
+  body{font-family:Arial,sans-serif;margin:20px;color:#222;font-size:10px}
+  h2{margin:0 0 3px;font-size:15px;color:#1565c0;letter-spacing:.3px}
+  .meta{font-size:9px;color:#777;margin-bottom:14px}
+  .kpi-row{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+  .kpi{border:1px solid #ddd;border-radius:7px;padding:7px 14px;text-align:center;min-width:78px}
+  .kpi-val{font-size:18px;font-weight:700}
+  .kpi-lbl{font-size:8px;color:#888;margin-top:2px;white-space:nowrap}
+  table{border-collapse:collapse;width:100%;font-size:9px}
+  thead tr{background:#1565c0}
+  th{color:#fff;padding:5px 6px;text-align:left;font-size:8.5px;white-space:nowrap;font-weight:600}
+  td{border-bottom:1px solid #eee;padding:4px 6px;vertical-align:middle}
+  tr:last-child td{border-bottom:none}
+  @page{margin:15mm}
+  @media print{body{margin:0}.meta{margin-bottom:8px}}
+</style></head><body>
+<h2>📋 Controle de Suportes</h2>
+<div class="meta">Projeto: <strong>${projName}</strong> &nbsp;|&nbsp; Exportado em: ${now} &nbsp;|&nbsp; <strong>${list.length}</strong> registro(s)${hasSelection ? ' &nbsp;|&nbsp; <em>✅ Selecionados</em>' : hasFilters ? ' &nbsp;|&nbsp; <em>Filtros ativos</em>' : ''}</div>
+<div class="kpi-row">
+  <div class="kpi"><div class="kpi-val" style="color:#1565c0">${total}</div><div class="kpi-lbl">Total</div></div>
+  <div class="kpi"><div class="kpi-val" style="color:#2e7d32">${fabOk}/${fabBase_r}</div><div class="kpi-lbl">Fabricados</div></div>
+  <div class="kpi"><div class="kpi-val" style="color:#6a1b9a">${pintOk}/${pintBase_r}</div><div class="kpi-lbl">Pintados</div></div>
+  <div class="kpi"><div class="kpi-val" style="color:#2e7d32">${monOk}/${monBase_r}</div><div class="kpi-lbl">Montados</div></div>
+  <div class="kpi" style="border-color:#ef9a9a"><div class="kpi-val" style="color:#c62828">${nSold}</div><div class="kpi-lbl">Soldados à linha ⚠</div></div>
+</div>
+<table>
+<thead><tr>
+  <th>SEQ</th><th>Tipo</th><th style="text-align:center">Qtd</th><th style="text-align:center">Diam.</th>
+  <th>Linha Suportada</th><th>Isométrico</th>
+  <th style="text-align:center">Cond. Solda</th>
+  <th style="text-align:center">Fabricação</th>
+  <th style="text-align:center">Pintura</th>
+  <th style="text-align:center">Montagem</th>
+</tr></thead>
+<tbody>${rows}</tbody>
+</table>
+
+
+<!-- OBS MODAL -->
+<div id="obs-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:12px;padding:24px;width:420px;max-width:90vw;box-shadow:0 8px 40px rgba(0,0,0,.25)">
+    <div style="font-size:14px;font-weight:700;color:var(--hb);margin-bottom:14px">📝 Observação</div>
+    <textarea id="obs-input" rows="4" style="width:100%;padding:10px 12px;border:1.5px solid #f9a825;border-radius:8px;font-size:13px;resize:vertical;outline:none;font-family:inherit;box-sizing:border-box" placeholder="Digite a observação..."></textarea>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:14px">
+      <button onclick="closeObsModal()" style="padding:8px 18px;border:1px solid #ddd;border-radius:7px;background:#f5f5f5;cursor:pointer;font-size:12px">Cancelar</button>
+      <button onclick="confirmObs()" style="padding:8px 20px;border:none;border-radius:7px;background:#f9a825;color:#fff;font-weight:700;cursor:pointer;font-size:12px">Salvar</button>
+    </div>
+  </div>
+</div>
+</body></html>`;
+
+  const w = window.open('', '_blank', 'width=960,height=720');
+  if (!w) { alert('Permita pop-ups para exportar o PDF.'); return; }
+  w.document.write(html);
+  w.document.close();
+  w.focus();
+  setTimeout(() => w.print(), 450);
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════
+   CONTROLE DE MATERIAIS
+═══════════════════════════════════════════════════════════════════════ */
+
+let _matIso = '', _matSearch = '', _matStatus = '', _matRetirada = '', _matClassif = '';
+
+/* ── Importação de XLSX de materiais ── */
+let _xlsxRows = [], _xlsxCols = [], _xlsxFileName = '';
+
+async function xlsxPickSheet(sheets) {
+  return new Promise(resolve => {
+    const opts = sheets.map((s,i) => `<option value="${s}">${s}</option>`).join('');
+    const el = document.createElement('div');
+    el.innerHTML = `<div id="sheet-pick-modal" style="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:3000;display:flex;align-items:center;justify-content:center">
+      <div style="background:var(--hg);border-radius:12px;padding:24px;width:340px;box-shadow:0 8px 32px rgba(0,0,0,.25)">
+        <div style="font-size:13px;font-weight:700;margin-bottom:14px">📋 Selecione a aba da planilha</div>
+        <select id="sheet-pick-sel" style="width:100%;padding:7px;border-radius:6px;border:1px solid var(--hbr);background:var(--hg);color:var(--ht);font-size:12px">${opts}</select>
+        <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px">
+          <button onclick="document.getElementById('sheet-pick-modal').remove();_xlsxPickResolve(null)" style="padding:6px 14px;border-radius:6px;border:1px solid var(--hbr);background:var(--hg);color:var(--hmu);cursor:pointer;font-size:11px">Cancelar</button>
+          <button onclick="const v=document.getElementById('sheet-pick-sel').value;document.getElementById('sheet-pick-modal').remove();_xlsxPickResolve(v)" style="padding:6px 16px;border-radius:6px;border:none;background:var(--hb);color:#fff;cursor:pointer;font-size:11px;font-weight:600">Selecionar</button>
+        </div>
+      </div></div>`;
+    window._xlsxPickResolve = resolve;
+    document.body.appendChild(el.firstElementChild);
+  });
+}
+
+// Campos do sistema com aliases para auto-detectar
+const XLSX_FIELDS = [
+  { key: 'isoNum',     label: 'Isométrico',    aliases: ['nº isométrico','nº isometrico','isométrico','isometrico','isonum','iso','nº ls / doc. ref.','doc. ref.'] },
+  { key: 'spec',       label: 'Spec',          aliases: ['spec','especificação','especif','esp'] },
+  { key: 'codigoItem', label: 'Código Item',   aliases: ['código item','codigo item','codigoitem','cod item','cod. item'] },
+  { key: 'diam',       label: 'Diâm.',         aliases: ['diam.','diâm.','diam','diâmetro','diametro'] },
+  { key: 'qtd',        label: 'Qtd.',          aliases: ['quant.','qtd','qtd.','quantidade'] },
+  { key: 'descricao',  label: 'Descrição',     aliases: ['descrição','descricao','description','desc','tipo de suporte','tipo'] },
+  { key: 'classif',    label: 'Classificação',   aliases: ['classificação','classif','classific','class','tipo material','tipo mat'] },
+  { key: 'status',     label: 'Status',        aliases: ['status'] },
+];
+
+function autoDetectCols(headers) {
+  const map = {};
+  for (const f of XLSX_FIELDS) {
+    const hLower = headers.map(h => h.toLowerCase());
+    for (const alias of f.aliases) {
+      const idx = hLower.findIndex(h => h.includes(alias));
+      if (idx >= 0) { map[f.key] = headers[idx]; break; }
+    }
+  }
+  return map;
+}
+
+function openXlsxMapModal(sheetName) {
+  const autoMap = autoDetectCols(_xlsxCols);
+  const noneOpt = '<option value="">— não importar —</option>';
+  const colOpts = _xlsxCols.map(c => `<option value="${c}">${c}</option>`).join('');
+
+  const fieldRows = XLSX_FIELDS.map(f => {
+    const sel = autoMap[f.key] || '';
+    const opts = _xlsxCols.map(c => `<option value="${c}" ${c===sel?'selected':''}>${c}</option>`).join('');
+    const required = ['descricao'].includes(f.key);
+    return `<div style="display:grid;grid-template-columns:130px 1fr;align-items:center;gap:8px;margin-bottom:6px">
+      <label style="font-size:11px;color:var(--hmu);font-weight:${required?'600':'400'}">${f.label}${required?' *':''}</label>
+      <select id="xmap-${f.key}" style="font-size:11px;padding:4px 7px;border-radius:5px;border:1px solid var(--hbr);background:var(--hg);color:var(--ht)" onchange="updateXlsxPreview()">
+        ${noneOpt}${opts}
+      </select>
+    </div>`;
+  }).join('');
+
+  // Preview das primeiras 5 linhas
+  const previewRows = _xlsxRows.slice(0,5).map((r,i) =>
+    `<tr>${_xlsxCols.map((_,ci) => `<td style="padding:2px 5px;font-size:9px;border:1px solid #eee;white-space:nowrap;max-width:120px;overflow:hidden;text-overflow:ellipsis">${r[ci]??''}</td>`).join('')}</tr>`
+  ).join('');
+  const previewHead = _xlsxCols.map(c => `<th style="padding:3px 5px;font-size:8.5px;background:#1565c0;color:#fff;white-space:nowrap">${c}</th>`).join('');
+
+  const modal = `<div id="xlsx-map-modal" onclick="if(event.target===this)closeModal('xlsx-map-modal')" style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:2500;display:flex;align-items:center;justify-content:center;padding:16px">
+    <div style="background:var(--hg);border-radius:12px;padding:24px;width:700px;max-width:98vw;max-height:90vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,.3)">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+        <div style="font-size:14px;font-weight:700;color:var(--ht)">📊 Importar XLSX — Mapear Colunas</div>
+        <span style="font-size:10px;color:var(--hmu)">${_xlsxFileName} · aba: ${sheetName} · ${_xlsxRows.length} linhas</span>
+      </div>
+
+      <div style="font-size:10px;color:var(--hmu);margin-bottom:10px">Associe cada campo do sistema à coluna correspondente na sua planilha. Campos com <strong>*</strong> são obrigatórios para importar.</div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 24px;margin-bottom:16px;padding:14px;background:rgba(0,0,0,.03);border-radius:8px;border:1px solid var(--hbr)">
+        ${fieldRows}
+      </div>
+
+      <div style="margin-bottom:16px">
+        <div style="font-size:10px;font-weight:600;color:var(--hmu);margin-bottom:6px">📋 Prévia dos dados (5 primeiras linhas)</div>
+        <div style="overflow-x:auto;border-radius:6px;border:1px solid var(--hbr)">
+          <table style="border-collapse:collapse;min-width:100%"><thead><tr>${previewHead}</tr></thead><tbody id="xlsx-preview-body">${previewRows}</tbody></table>
+        </div>
+      </div>
+
+      <div id="xlsx-map-info" style="font-size:10px;color:#e65100;margin-bottom:10px;min-height:16px"></div>
+
+      <div style="margin-bottom:14px;padding:10px 14px;background:rgba(21,101,192,.06);border-radius:8px;border:1px solid rgba(21,101,192,.2)">
+        <div style="font-size:11px;font-weight:700;color:#1565c0;margin-bottom:8px">⚙️ Modo de Importação</div>
+        <div style="display:flex;gap:20px;align-items:center;flex-wrap:wrap">
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:11px;color:var(--ht)">
+            <input type="radio" name="import-mode" id="xmap-mode-append"   value="append"  checked style="cursor:pointer">
+            <span><strong>Acrescentar</strong> — adiciona novos itens sem remover os existentes</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:11px;color:var(--ht)">
+            <input type="radio" name="import-mode" id="xmap-mode-replace"  value="replace"        style="cursor:pointer">
+            <span><strong style="color:#e53935">Substituir</strong> — remove TODOS os materiais do projeto e reimporta do zero</span>
+          </label>
+        </div>
+        <div id="xmap-replace-warn" style="display:none;margin-top:6px;font-size:10px;color:#e53935;font-weight:600">
+          ⚠️ Esta opção vai APAGAR todos os materiais do projeto atual antes de importar. Use quando quiser reimportar a planilha completa sem duplicatas.
+        </div>
+      </div>
+
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+        <div>
+          <label style="font-size:10px;color:var(--hmu)">Isométrico padrão (quando a coluna estiver vazia):
+            <input id="xmap-iso-default" value="${_matIso||''}" placeholder="BK-BA01-..." style="margin-left:6px;padding:3px 7px;border-radius:5px;border:1px solid var(--hbr);font-size:10px;width:200px">
+          </label>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button onclick="closeModal('xlsx-map-modal')" style="padding:7px 16px;border-radius:7px;border:1px solid var(--hbr);background:var(--hg);color:var(--hmu);cursor:pointer;font-size:12px">Cancelar</button>
+          <button onclick="confirmXlsxImport()" id="xlsx-confirm-btn" style="padding:7px 20px;border-radius:7px;border:none;background:var(--hb);color:#fff;cursor:pointer;font-size:12px;font-weight:600">✔ Importar ${_xlsxRows.length} linha(s)</button>
+        </div>
+      </div>
+    </div>
+  </div>`;
+
+  document.body.insertAdjacentHTML('beforeend', modal);
+}
+
+function updateXlsxPreview() {
+  const desc = document.getElementById('xmap-descricao')?.value;
+  const info = document.getElementById('xlsx-map-info');
+  if (info) {
+    if (!desc) info.textContent = '⚠ Mapeie pelo menos "Descrição" para identificar os registros.';
+    else info.textContent = '';
+  }
+  // Mostra aviso de substituição
+  const replaceRadio = document.getElementById('xmap-mode-replace');
+  const warn = document.getElementById('xmap-replace-warn');
+  if (replaceRadio && warn) warn.style.display = replaceRadio.checked ? 'block' : 'none';
+}
+// Listener para os radio buttons de modo
+document.addEventListener('change', e => {
+  if (e.target && e.target.name === 'import-mode') updateXlsxPreview();
+});
+
+async function confirmXlsxImport() {
+  const getMap = key => document.getElementById('xmap-' + key)?.value || '';
+  const isoDefault = document.getElementById('xmap-iso-default')?.value?.trim() || _matIso || '';
+  const projId = currentProjId || '';
+  const STATUS_VALID = ['Pendente', 'Estoque', 'Em compra'];
+  const importMode = document.querySelector('input[name="import-mode"]:checked')?.value || 'append';
+
+  const colIdx = {};
+  for (const f of XLSX_FIELDS) colIdx[f.key] = _xlsxCols.indexOf(getMap(f.key));
+
+  const getVal = (row, key) => {
+    const i = colIdx[key];
+    if (i < 0) return '';
+    const v = row[i];
+    if (v === null || v === undefined) return '';
+    return String(v).trim();
+  };
+
+  const _sfxRgx = /\s*[\(\[]\s*(?:[Ff]olha\s*(\d+)|[Ff][Ll]?\.?\s*(\d+))\s*[\)\]]\s*$/;
+  const getIso = row => {
+    let v = getVal(row, 'isoNum');
+    if (!v) return isoDefault;
+    if (v.includes(' / ')) {
+      const parts = v.split(' / ');
+      const isPart = parts.find(p => p.trim().includes('-IS-'));
+      if (isPart) v = isPart.trim();
+    }
+    return v.replace(_sfxRgx, '').trim() || isoDefault;
+  };
+  // Captura o índice numérico do sufixo de folha antes de removê-lo
+  // Ex: "(FL2)"→"2", "(F1)"→"1", sem sufixo→"0"  — usado no fingerprint para evitar colisões
+  const getFolhaIdx = row => {
+    const v = getVal(row, 'isoNum') || '';
+    const m = v.match(_sfxRgx);
+    return m ? (m[1] || m[2] || '0') : '0';
+  };
+
+  // ── Mapeia TODAS as linhas sem nenhum filtro de conteúdo ──
+  // Linhas completamente vazias (sem nenhum valor em nenhuma coluna mapeada) são as únicas ignoradas
+  const ts = Date.now();
+  const items = _xlsxRows
+    .map((row, idx) => {
+      // Verifica se a linha tem pelo menos um campo com conteúdo
+      const hasAny = Object.values(colIdx).some(i => i >= 0 && row[i] !== null && row[i] !== undefined && String(row[i]).trim() !== '');
+      if (!hasAny) return null;
+      const rawStatus = getVal(row, 'status');
+      const status = STATUS_VALID.includes(rawStatus) ? rawStatus : 'Pendente';
+      return {
+        id:         `mat_${ts}_${idx}_${Math.random().toString(36).slice(2,6)}`,
+        projId,
+        isoNum:     getIso(row),
+        folhaIdx:   getFolhaIdx(row),
+        classif:    (() => { const v = getVal(row, 'classif'); return v === 'Montagem' ? 'Montagem' : 'Fabricação'; })(),
+        spec:       getVal(row, 'spec'),
+        codigoItem: getVal(row, 'codigoItem'),
+        diam:       getVal(row, 'diam'),
+        qtd:        getVal(row, 'qtd'),
+        descricao:  getVal(row, 'descricao'),
+        status,
+        retiradaData: status === 'Estoque' ? new Date().toLocaleDateString('pt-BR') : ''
+      };
+    })
+    .filter(r => r !== null);
+
+  if (!items.length) {
+    document.getElementById('xlsx-map-info').textContent = '❌ Nenhum dado encontrado com as colunas mapeadas. Verifique os mapeamentos.';
+    return;
+  }
+
+  // ── Helper: exibe resultado dentro do modal com botão OK ──
+  const showXlsxResult = (lines, isError = false) => {
+    const modal = document.getElementById('xlsx-map-modal');
+    if (!modal) return;
+    const color   = isError ? '#e53935' : '#2e7d32';
+    const bgColor = isError ? 'rgba(229,57,53,.07)' : 'rgba(46,125,50,.07)';
+    const icon    = isError ? '❌' : '✅';
+    modal.querySelector('div').innerHTML = `
+      <div style="display:flex;flex-direction:column;align-items:center;gap:18px;padding:10px 0">
+        <div style="font-size:32px">${icon}</div>
+        <div style="font-size:13px;font-weight:700;color:${color};text-align:center">${lines[0]}</div>
+        ${lines.slice(1).map(l => `<div style="font-size:11px;color:var(--hmu);background:${bgColor};border-radius:7px;padding:8px 14px;width:100%;white-space:pre-wrap;word-break:break-word">${l}</div>`).join('')}
+        <button onclick="closeModal('xlsx-map-modal')" style="margin-top:6px;padding:10px 36px;border-radius:8px;border:none;background:var(--hb);color:#fff;cursor:pointer;font-size:13px;font-weight:700">OK</button>
+      </div>`;
+  };
+
+  _xlsxRows = []; _xlsxCols = [];
+
+  // ── MODO SUBSTITUIR ──
+  if (importMode === 'replace') {
+    const nExisting = materiais.filter(m => (m.projId||'') === projId).length;
+    if (!confirm(`⚠️ SUBSTITUIR: ${nExisting} materiais do projeto atual serão APAGADOS e reimportados.\n\nContinuar?`)) return;
+    materiais = materiais.filter(m => (m.projId||'') !== projId);
+    materiais.push(...items);
+    await saveAll();
+    renderIsoView();
+    const isoNums = new Set(isos.map(x => x.num));
+    const orphans = items.filter(m => m.isoNum && !isoNums.has(m.isoNum));
+    const lines = [`${items.length} item(s) importado(s) com sucesso — modo Substituir.`];
+    if (orphans.length) {
+      const orphanIsos = [...new Set(orphans.map(m => m.isoNum))];
+      lines.push(`⚠️ ${orphans.length} item(s) sem isométrico cadastrado:\n${orphanIsos.join('\n')}`);
+    }
+    showXlsxResult(lines);
+    return;
+  }
+
+  // ── MODO ACRESCENTAR ──
+  const fp = m => [m.isoNum, m.folhaIdx||'0', m.spec, m.codigoItem, m.diam, m.qtd, m.descricao, m.classif||'']
+    .map(v => (v||'').trim().toLowerCase()).join('§');
+  const existingFP = new Set(materiais.map(fp));
+  const toAdd = items.filter(r => !existingFP.has(fp(r)));
+  const dupl  = items.length - toAdd.length;
+
+  if (!toAdd.length) {
+    showXlsxResult([
+      `Todos os ${items.length} item(s) já existem no sistema.`,
+      '💡 Para reimportar do zero, selecione o modo "Substituir".'
+    ], true);
+    return;
+  }
+
+  materiais.push(...toAdd);
+  await saveAll();
+  renderIsoView();
+  const isoNums = new Set(isos.map(x => x.num));
+  const orphans = toAdd.filter(m => m.isoNum && !isoNums.has(m.isoNum));
+  const lines = [
+    dupl > 0
+      ? `${toAdd.length} de ${items.length} item(s) importado(s). (${dupl} já existiam)`
+      : `${toAdd.length} item(s) importado(s) com sucesso!`
+  ];
+  if (dupl > 0) lines.push('💡 Para reimportar tudo do zero, selecione o modo "Substituir".');
+  if (orphans.length) {
+    const orphanIsos = [...new Set(orphans.map(m => m.isoNum))];
+    lines.push(`⚠️ ${orphans.length} item(s) sem isométrico cadastrado:\n${orphanIsos.join('\n')}`);
+  }
+  showXlsxResult(lines);
+}
+
+
+/* ── Importação de PDF de materiais ── */
+async function importMatPdf(file) {
+  if (typeof pdfjsLib === 'undefined') { alert('pdf.js não carregou. Verifique conexão.'); return; }
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+  // Detecta número do isométrico pelo nome do arquivo
+  const fn = file.name.replace(/\.pdf$/i,'');
+  const mIso = fn.replace(/[_\s]+/g,'-').match(/([A-Z]{2,6}-[A-Z0-9]+-\d{4,}-IS-\d{1,3}-\d{4,})/i);
+  const isoNum = mIso ? mIso[1].toUpperCase() : fn.toUpperCase();
+
+  let pdfDoc;
+  try {
+    const buf = await file.arrayBuffer();
+    pdfDoc = await pdfjsLib.getDocument({ data: buf }).promise;
+  } catch(e) { alert('Erro ao abrir PDF: ' + e.message); return; }
+
+  // Pergunta ao usuário qual página contém a lista de materiais
+  const numPgs = pdfDoc.numPages;
+  let pagesToScan = [];
+  for (let p = 1; p <= numPgs; p++) pagesToScan.push(p);
+
+  showMatStatus(`🤖 Extraindo materiais de ${file.name}...`);
+  let totalAdded = 0;
+
+  for (const p of pagesToScan) {
+    showMatStatus(`🤖 Página ${p}/${numPgs} — lendo materiais com IA...`);
+    try {
+      const items = await extractMateriaisVision(pdfDoc, p, isoNum);
+      if (items && items.length) {
+        const projId = currentProjId || '';
+        const newItems = items.map(it => ({
+          id: 'mat_' + Date.now() + '_' + Math.random().toString(36).slice(2,7),
+          isoNum, projId,
+          item: String(it.item||''),
+          spec: String(it.spec||''),
+  
+          codigoItem: String(it.codigoItem||it.codigo_item||''),
+          diam: String(it.diam||''),
+          qtd: String(it.qtd||it.quant||''),
+          descricao: String(it.descricao||''),
+          status: 'Pendente'
+        }));
+        // Remove itens duplicados (mesmo isoNum + item + codigoItem)
+        const existing = new Set(materiais.map(m => `${m.isoNum}|${m.item}|${m.codigoItem}`));
+        const toAdd = newItems.filter(n => !existing.has(`${n.isoNum}|${n.item}|${n.codigoItem}`));
+        materiais.push(...toAdd);
+        totalAdded += toAdd.length;
+      }
+    } catch(e) {
+      const msg = String(e.message||e);
+      if (msg === 'SEM_MATERIAIS') continue; // página sem tabela de materiais
+      if (msg === 'SALDO_INSUFICIENTE') { showMatStatus('💳 Sem saldo na API. Verifique em console.anthropic.com.', true); break; }
+      if (msg === 'CHAVE_INVALIDA')     { showMatStatus('❌ Chave de API inválida.', true); break; }
+      if (msg === 'SEM_CHAVE')          { showMatStatus('🔑 Configure a API Key para usar extração automática.', true); openApiKeyModal(); break; }
+      console.warn('[MatExtract p'+p+']', msg);
+    }
+  }
+
+  await saveAll();
+  showMatStatus(`✅ ${totalAdded} item(s) importado(s) de ${file.name}.`);
+  setTimeout(() => { renderIsoView(); }, 1200);
+}
+
+/* ── Extração de materiais via Vision API ── */
+/* ── Modal de adição manual ── */
+
+
+/* ── Exportação PDF de materiais ── */
+function clearSupFilters() {
+  _supSearch = ''; _supArea = ''; _supFab = ''; _supPint = ''; _supMon = ''; _supSold = '';
+  renderIsoView();
+}
+
+function dashGoToArea(area) {
+  // Vai para a aba de isométricos filtrando pela área
+  currentSubTab = 'isometricos';
+  renderIsoView();
+  // Aplica o filtro de área após render
+  setTimeout(function() {
+    var sel = document.getElementById('f-area');
+    if (sel) { sel.value = area; filterTable(); }
+  }, 60);
+}
+
+function renderDashboard(discTabs, bc) {
+  const proj = projects.find(p => p.id === currentProjId);
+  const list = currentProjId ? projIsos(currentProjId) : isos;
+  const listFabMon = list.filter(e => !['Referência','Desmontagem','Escopo cancelado','Hold'].includes(e.classif||'Fabricação'));
+  const listFabD   = listFabMon.filter(e => !['Apenas Montagem','Desmontagem','Referência','Escopo cancelado','Hold'].includes(e.classif||'Fabricação'));
+
+  const nTotal = list.length;
+  const afG = listFabD.length ? Math.round(listFabD.reduce((s,e)=>s+fabPct(e),0)/listFabD.length) : 0;
+  const amG = listFabMon.length ? Math.round(listFabMon.reduce((s,e)=>s+monPct(e),0)/listFabMon.length) : 0;
+  const nConcluidas = listFabMon.filter(e => {
+    const isFab = !['Apenas Montagem','Desmontagem','Referência','Escopo cancelado','Hold'].includes(e.classif||'Fabricação');
+    return (!isFab || fabPct(e) >= 100) && monPct(e) >= 100;
+  }).length;
+  const nPintado = list.filter(e => e.paint === 'Pintado').length;
+  const pctConcl = nTotal ? Math.round(nConcluidas/nTotal*100) : 0;
+
+  const areaStats = {};
+  listFabMon.forEach(e => {
+    const a = e.area || 'Sem área';
+    if (!areaStats[a]) areaStats[a] = { fabSum:0, fabCount:0, monSum:0, monCount:0, count:0, done:0 };
+    const isFab = !['Apenas Montagem','Desmontagem','Referência','Escopo cancelado','Hold'].includes(e.classif||'Fabricação');
+    if (isFab) { areaStats[a].fabSum += fabPct(e); areaStats[a].fabCount++; }
+    areaStats[a].monSum += monPct(e);
+    areaStats[a].monCount++;
+    areaStats[a].count++;
+    if ((!isFab || fabPct(e) >= 100) && monPct(e) >= 100) areaStats[a].done++;
+  });
+  const areaKeys = Object.keys(areaStats).sort((a,b) => {
+    const na=parseInt(a)||0, nb=parseInt(b)||0;
+    return na!==nb ? na-nb : String(a).localeCompare(String(b));
+  });
+  const projName = proj ? proj.name : 'Geral';
+  const hoje = new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'short',year:'numeric'});
+
+  const kpiBar = `<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:0;background:#fff;border-bottom:2px solid #e8eef7">
+    ${[
+      {lbl:'⚙️ Fabricação', val:afG+'%', color:'#0B3D91', bar:afG, sub:listFabD.length+' isos'},
+      {lbl:'🔧 Montagem',   val:amG+'%', color:'#0077b6', bar:amG, sub:listFabMon.length+' isos'},
+      {lbl:'✅ Concluídos', val:nConcluidas+'/'+nTotal, color:'#1a8c4e', bar:pctConcl, sub:pctConcl+'% do total'},
+      {lbl:'🎨 Pintura',    val:nPintado+'/'+nTotal, color:'#7b1fa2', bar:nTotal?Math.round(nPintado/nTotal*100):0, sub:(nTotal?Math.round(nPintado/nTotal*100):0)+'%'},
+      {lbl:'📐 Áreas',      val:areaKeys.length, color:'#e65100', bar:100, sub:nTotal+' folhas'},
+    ].map((k,i) => `<div style="padding:16px 18px;${i<4?'border-right:1px solid #e8eef7':''}">
+      <div style="font-size:10px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">${k.lbl}</div>
+      <div style="font-size:26px;font-weight:800;color:${k.color};line-height:1">${k.val}</div>
+      <div style="font-size:10px;color:#aaa;margin:3px 0 8px">${k.sub}</div>
+      <div style="height:4px;background:#f0f4fb;border-radius:2px;overflow:hidden">
+        <div style="height:100%;width:${Math.min(k.bar,100)}%;background:${k.color};border-radius:2px"></div>
+      </div>
+    </div>`).join('')}
+  </div>`;
+
+  const areaRows = areaKeys.map(a => {
+    const st = areaStats[a];
+    const fpc = st.fabCount ? Math.round(st.fabSum/st.fabCount) : 0;
+    const mpc = st.monCount ? Math.round(st.monSum/st.monCount) : 0;
+    const pctD = st.count ? Math.round(st.done/st.count*100) : 0;
+    const fabClr = fpc>=100?'#1a8c4e':fpc>=70?'#c07000':'#0B3D91';
+    const monClr = mpc>=100?'#1a8c4e':mpc>=70?'#c07000':'#0077b6';
+    const statusClr = pctD>=100?'#1a8c4e':pctD>=70?'#c07000':'#1565c0';
+    const statusLbl = pctD>=100?'✅ Concluída':pctD>=70?'⏳ Avançada':'🔵 Em andamento';
+    const escA = String(a).replace(/'/g,"\'");
+    return `<tr onclick="dashGoToArea('${escA}')" style="cursor:pointer;border-bottom:1px solid #f0f4fb" onmouseover="this.style.background='#f8fafd'" onmouseout="this.style.background=''">
+      <td style="padding:10px 16px;font-size:13px;font-weight:700;color:var(--hb)">Área ${a}</td>
+      <td style="padding:10px 12px;text-align:center;font-size:12px;color:#555">${st.count}</td>
+      <td style="padding:10px 12px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <div style="flex:1;height:8px;background:#e8eef7;border-radius:4px;overflow:hidden;min-width:60px"><div style="height:100%;width:${fpc}%;background:${fabClr};border-radius:4px"></div></div>
+          <span style="font-size:12px;font-weight:700;color:${fabClr};min-width:36px;text-align:right">${fpc}%</span>
+        </div>
+      </td>
+      <td style="padding:10px 12px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <div style="flex:1;height:8px;background:#e8eef7;border-radius:4px;overflow:hidden;min-width:60px"><div style="height:100%;width:${mpc}%;background:${monClr};border-radius:4px"></div></div>
+          <span style="font-size:12px;font-weight:700;color:${monClr};min-width:36px;text-align:right">${mpc}%</span>
+        </div>
+      </td>
+      <td style="padding:10px 12px;text-align:center;font-size:11px;font-weight:600;color:${statusClr}">${st.done}/${st.count}</td>
+      <td style="padding:10px 16px;text-align:right">
+        <span style="font-size:10px;font-weight:600;color:${statusClr};background:${statusClr}18;padding:3px 10px;border-radius:20px">${statusLbl}</span>
+      </td>
+    </tr>`;
+  }).join('');
+
+  const areaTable = areaKeys.length ? `<div style="padding:0 16px 20px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <div style="font-size:13px;font-weight:700;color:var(--hb)">Avanço por Área</div>
+      <div style="font-size:10px;color:#aaa">Clique em uma área para ver os isométricos</div>
+    </div>
+    <div style="background:#fff;border:1px solid #e8eef7;border-radius:10px;overflow:hidden;box-shadow:0 1px 6px rgba(0,0,0,.05)">
+      <table style="width:100%;border-collapse:collapse">
+        <thead><tr style="background:#f8fafd;border-bottom:2px solid #e8eef7">
+          <th style="padding:9px 16px;text-align:left;font-size:10px;color:#888;font-weight:600;text-transform:uppercase;letter-spacing:.4px">Área</th>
+          <th style="padding:9px 12px;text-align:center;font-size:10px;color:#888;font-weight:600;text-transform:uppercase;letter-spacing:.4px">Folhas</th>
+          <th style="padding:9px 12px;text-align:left;font-size:10px;color:#888;font-weight:600;text-transform:uppercase;letter-spacing:.4px">⚙️ Fabricação</th>
+          <th style="padding:9px 12px;text-align:left;font-size:10px;color:#888;font-weight:600;text-transform:uppercase;letter-spacing:.4px">🔧 Montagem</th>
+          <th style="padding:9px 12px;text-align:center;font-size:10px;color:#888;font-weight:600;text-transform:uppercase;letter-spacing:.4px">Concluídas</th>
+          <th style="padding:9px 16px;text-align:right;font-size:10px;color:#888;font-weight:600;text-transform:uppercase;letter-spacing:.4px">Status</th>
+        </tr></thead>
+        <tbody>${areaRows}</tbody>
+      </table>
+    </div>
+  </div>` : `<div class="ph-panel"><div style="font-size:32px">📭</div><strong>Nenhum isométrico cadastrado</strong></div>`;
+
+  const header = `<div style="padding:14px 16px 0;display:flex;align-items:center;justify-content:space-between">
+    <div>
+      <div style="font-size:15px;font-weight:700;color:var(--hb)">${projName} — Dashboard de Avanço</div>
+      <div style="font-size:10px;color:#aaa;margin-top:2px">Atualizado em ${hoje} · Clique em uma área para detalhar</div>
+    </div>
+  </div>`;
+
+  document.getElementById('view-isos').innerHTML = bc + discTabs + header + kpiBar + areaTable + '</div>';
+}
+
+/* ════════════ PLANEJAMENTO DE FABRICAÇÃO ════════════ */
+const PROD_INDEX = {"AC|SCH 40|1/2\"": 0.85, "AC|SCH 40|3/4\"": 0.93, "AC|SCH 40|1\"": 1.0, "AC|SCH 40|1 1/4\"": 1.09, "AC|SCH 40|1 1/2\"": 1.1, "AC|SCH 40|2\"": 1.2, "AC|SCH 40|2 1/2\"": 1.43, "AC|SCH 40|3\"": 1.5, "AC|SCH 40|4\"": 1.85, "AC|SCH 40|5\"": 2.12, "AC|SCH 40|6\"": 2.47, "AC|SCH 40|8\"": 3.05, "AC|SCH 40|10\"": 6.5, "AC|SCH 40|12\"": 4.65, "AC|SCH 40|14\"": 5.5, "AC|SCH 40|16\"": 6.6, "AC|SCH 40|18\"": 7.5, "AC|SCH 40|20\"": 8.4, "AC|SCH 40|22\"": 9.14, "AC|SCH 40|24\"": 10.1, "AC|SCH 40|26\"": 12.1, "AC|SCH 40|28\"": 13.8, "AC|SCH 40|30\"": 15.0, "AC GALV.|DIN 2440|1/2\"": 0.85, "AC GALV.|DIN 2440|3/4\"": 0.93, "AC GALV.|DIN 2440|1\"": 1.0, "AC GALV.|DIN 2440|1 1/4\"": 1.09, "AC GALV.|DIN 2440|1 1/2\"": 1.1, "AC GALV.|DIN 2440|2\"": 1.2, "AC GALV.|DIN 2440|2 1/2\"": 1.43, "AC GALV.|DIN 2440|3\"": 1.5, "AC GALV.|DIN 2440|4\"": 1.85, "AC GALV.|DIN 2440|5\"": 2.12, "AC GALV.|DIN 2440|6\"": 2.4, "AC GALV.|DIN 2440|8\"": 3.05, "INOX|10S|1/2\"": 1.3, "INOX|10S|3/4\"": 1.42, "INOX|10S|1\"": 1.53, "INOX|10S|1 1/4\"": 1.67, "INOX|10S|1 1/2\"": 1.68, "INOX|10S|2\"": 1.83, "INOX|10S|2 1/2\"": 2.19, "INOX|10S|3\"": 2.29, "INOX|10S|4\"": 2.84, "INOX|10S|5\"": 3.24, "INOX|10S|6\"": 3.67, "INOX|10S|8\"": 4.66, "INOX|10S|10\"": 5.9, "INOX|10S|12\"": 7.12, "INOX|10S|14\"": 8.42, "INOX|10S|16\"": 10.09, "INOX|10S|18\"": 11.52, "INOX|10S|20\"": 12.85, "INOX|10S|22\"": 13.95, "INOX|10S|24\"": 15.45, "INOX|10S|26\"": 18.51, "INOX|10S|28\"": 21.11, "INOX|10S|30\"": 22.95, "AC|SCH 80|1/2\"": 1.15, "AC|SCH 80|3/4\"": 1.29, "AC|SCH 80|1\"": 1.36, "AC|SCH 80|1 1/4\"": 1.52, "AC|SCH 80|1 1/2\"": 1.54, "AC|SCH 80|2\"": 1.74, "AC|SCH 80|2 1/2\"": 1.99, "AC|SCH 80|3\"": 2.15, "AC|SCH 80|4\"": 2.7, "AC|SCH 80|5\"": 3.3, "AC|SCH 80|6\"": 3.8, "AC|SCH 80|8\"": 4.89, "AC|SCH 80|10\"": 6.45, "AC|SCH 80|12\"": 8.09, "AC|SCH 80|14\"": 9.79, "AC|SCH 80|16\"": 11.49, "AC|SCH 80|18\"": 12.89, "AC|SCH 80|20\"": 15.02, "AC|SCH 80|22\"": 16.74, "AC|SCH 80|24\"": 18.46, "AC|SCH 80|26\"": 22.1, "AC|SCH 80|28\"": 25.2, "AC|SCH 80|30\"": 27.4, "INOX|40S|1/2\"": 1.45, "INOX|40S|3/4\"": 1.58, "INOX|40S|1\"": 1.7, "INOX|40S|1 1/4\"": 1.85, "INOX|40S|1 1/2\"": 1.87, "INOX|40S|2\"": 2.03, "INOX|40S|2 1/2\"": 2.43, "INOX|40S|3\"": 2.55, "INOX|40S|4\"": 3.15, "INOX|40S|5\"": 3.6, "INOX|40S|6\"": 4.08, "INOX|40S|8\"": 5.18, "INOX|40S|10\"": 6.55, "INOX|40S|12\"": 7.91, "INOX|40S|14\"": 9.35, "INOX|40S|16\"": 11.22, "INOX|40S|18\"": 12.8, "INOX|40S|20\"": 14.28, "INOX|40S|22\"": 15.54, "INOX|40S|24\"": 17.17, "INOX|40S|26\"": 20.57, "INOX|40S|28\"": 23.46, "INOX|40S|30\"": 25.5, "ALU|10S|6\"": 10.0, "ALU|10S|10\"": 14.0, "ALU|10S|12\"": 15.54, "ALU|10S|20\"": 18.0};
+const PLAN_HORAS_FAB = 8;   // horas produtivas/dia na fabricação
+const PLAN_HORAS_MON = 6.5; // horas produtivas/dia na montagem
+const PLAN_DIAS_MES  = 22;
+// Índice de referência: ISO 01642 — 56,5m / 139Hh / equipe 3 (2 caldeireiros + 1 soldador)
+const PLAN_IDX_REF   = 139 / 56.5; // 2.460 Hh/m
+let _planRecursos = {};
+let _planFinState  = null; // { valor, prodRec, recursos[] }
+function _planSkRec(){ return 'hyd_plan_rec_'+(currentProjId||'global'); }
+function _planSkFin(){ return 'hyd_plan_fin_'+(currentProjId||'global'); }
+
+function _planLoad() {
+  try { var v = LS.getItem(_planSkRec()); if (v) _planRecursos = JSON.parse(v)||{}; } catch(e){ _planRecursos={}; }
+  try { var v2= LS.getItem(_planSkFin()); if (v2) _planFinState = JSON.parse(v2)||null; } catch(e){ _planFinState=null; }
+}
+function _planSaveRec() {
+  try { LS.setItem(_planSkRec(), JSON.stringify(_planRecursos)); } catch(e){}
+  if (window.storage) { try { window.storage.set(_planSkRec(), JSON.stringify(_planRecursos), false); } catch(e){} }
+}
+function _planSaveFin() {
+  try { LS.setItem(_planSkFin(), JSON.stringify(_planFinState)); } catch(e){}
+  if (window.storage) { try { window.storage.set(_planSkFin(), JSON.stringify(_planFinState), false); } catch(e){} }
+}
+
+function _planMaterial(desc) {
+  var d = (desc||'').toUpperCase();
+  if (/GALV/.test(d)) return 'AC GALV.';
+  if (/INOX|AISI|304|316|A312|A790/.test(d)) return 'INOX';
+  if (/\bALU|ALUM/.test(d)) return 'ALU';
+  return 'AC';
+}
+function _planSch(desc) {
+  var d = (desc||'').toUpperCase();
+  if (/SCH\s*80|S80|\b80\b/.test(d)) return 'SCH 80';
+  if (/SCH\s*40|S40|\b40\b/.test(d)) return 'SCH 40';
+  if (/10S/.test(d)) return '10S';
+  if (/40S/.test(d)) return '40S';
+  if (/DIN\s*2440/.test(d)) return 'DIN 2440';
+  return 'SCH 40';
+}
+function _planDiam(diam) {
+  var d = String(diam||'').replace(/"/g,'').trim().split(/x/i)[0].trim();
+  var m = {'0.5':'1/2','0.75':'3/4','0.875':'7/8','0.625':'5/8'};
+  return (m[d]||d)+'"';
+}
+function _planMetros(quant) {
+  var q = String(quant||'').toLowerCase().replace(',','.');
+  if (q.indexOf('m')===-1) return 0;
+  var n = parseFloat(q.replace(/[^0-9.]/g,''));
+  return Number.isFinite(n) ? n : 0;
+}
+function _planHhIso(isoNum) {
+  var mats = (typeof matsCtrl!=='undefined'?matsCtrl:[]).filter(function(m){
+    return (m.iso||'').trim()===isoNum && (m.classificacao||'')==='fabricacao';
+  });
+  var totalHh=0, totalM=0, detalhes=[];
+  mats.forEach(function(m){
+    var metros = _planMetros(m.quant); if (metros<=0) return;
+    var mat=_planMaterial(m.descricao), sch=_planSch(m.descricao), dia=_planDiam(m.diam);
+    var key=mat+'|'+sch+'|'+dia;
+    var hhm=PROD_INDEX[key]||PROD_INDEX['AC|'+sch+'|'+dia];
+    if (hhm==null) return;
+    var hh=hhm*metros;
+    totalHh+=hh; totalM+=metros;
+    detalhes.push({mat:mat,sch:sch,dia:dia,metros:metros,hhm:hhm,hh:hh});
+  });
+  return {hh:totalHh, metros:totalM, detalhes:detalhes};
+}
+function _planHhIsoMon(isoNum) {
+  var mats = (typeof matsCtrl!=='undefined'?matsCtrl:[]).filter(function(m){
+    return (m.iso||'').trim()===isoNum && (m.classificacao||'')==='montagem';
+  });
+  var totalHh=0, totalM=0;
+  mats.forEach(function(m){
+    var metros = _planMetros(m.quant); if (metros<=0) return;
+    var mat=_planMaterial(m.descricao), sch=_planSch(m.descricao), dia=_planDiam(m.diam);
+    var key=mat+'|'+sch+'|'+dia;
+    var hhm=PROD_INDEX[key]||PROD_INDEX['AC|'+sch+'|'+dia];
+    if (hhm==null) return;
+    totalHh+=hhm*metros; totalM+=metros;
+  });
+  return {hh:totalHh, metros:totalM};
+}
+function _planSafeId(s){ return String(s).replace(/[^a-zA-Z0-9]/g,'_'); }
+
+function planSetByDataset(el) {
+  var sid = el.getAttribute('data-iso');
+  if (!sid) return;
+  // find isoNum by safe id
+  var list = currentProjId ? projIsos(currentProjId) : isos;
+  var iso = list.find(function(e){ return _planSafeId(e.num) === sid; });
+  if (!iso) return;
+  planSetRecurso(iso.num, el.value);
+}
+function planSetRecurso(isoNum, val) {
+  var n=parseInt(val)||0;
+  if (n<=0) delete _planRecursos[isoNum]; else _planRecursos[isoNum]=n;
+  _planSaveRec();
+  var hhData=_planHhIso(isoNum);
+  var rec=_planRecursos[isoNum]||1;
+  var dias=hhData.hh>0?(hhData.hh/(rec*PLAN_HORAS_FAB)):0;
+  var cell=document.getElementById('plan-prazo-'+_planSafeId(isoNum));
+  if (cell) cell.textContent=dias>0?dias.toFixed(1)+' dias':'—';
+  _planRefreshTotals();
+}
+
+function _planRefreshTotals() {
+  var list = currentProjId ? projIsos(currentProjId) : isos;
+  var st = _planFinState || {};
+  // Recursos do dimensionamento financeiro
+  var recFab  = (st.recFab  || []).reduce(function(a,b){return a+(parseInt(b)||0);},0);
+  var recMon  = (st.recMon  || []).reduce(function(a,b){return a+(parseInt(b)||0);},0);
+
+  var totalHhFab = 0, totalHhMon = 0;
+  list.forEach(function(e){
+    var df = _planHhIso(e.num);
+    var dm = _planHhIsoMon(e.num);
+    totalHhFab += df.hh;
+    totalHhMon += dm.hh;
+  });
+  var totalHh = totalHhFab + totalHhMon;
+
+  // Prazo com recursos dimensionados
+  var prazoFab = recFab > 0 && totalHhFab > 0 ? totalHhFab / (recFab * PLAN_HORAS_FAB) : 0;
+  var prazoMon = recMon > 0 && totalHhMon > 0 ? totalHhMon / (recMon * PLAN_HORAS_MON) : 0;
+  var prazoParalelo = Math.max(prazoFab, prazoMon);
+  var prazoSeq = prazoFab + prazoMon;
+
+  var el = function(id, v) { var e = document.getElementById(id); if (e) e.textContent = v; };
+  el('plan-tot-hh', Math.round(totalHhFab) + ' Hh (Fab) + ' + Math.round(totalHhMon) + ' Hh (Mon)');
+  el('plan-tot-paralelo', prazoParalelo > 0 ? Math.ceil(prazoParalelo) + ' dias' : 'Insira recursos');
+  el('plan-tot-seq', prazoSeq > 0 ? Math.ceil(prazoSeq) + ' dias' : '—');
+  el('plan-tot-rec', (recFab + recMon) + ' rec (Fab ' + recFab + ' + Mon ' + recMon + ')');
+}
+
+// ── Financeiro ──
+function _planBRL(n) {
+  if (!n) return '';
+  return Number(n).toLocaleString('pt-BR', {minimumFractionDigits:0, maximumFractionDigits:0});
+}
+function _planParseBRL(s) {
+  // Remove R$, spaces, dots (thousand sep), replace comma with dot
+  var clean = String(s).replace(/R\$\s*/g,'').replace(/\./g,'').replace(',','.').trim();
+  return parseFloat(clean) || 0;
+}
+function _planMaskBRL(el) {
+  // Strip non-digits
+  var raw = el.value.replace(/\D/g,'');
+  if (!raw) { el.value = ''; return; }
+  var n = parseInt(raw, 10);
+  el.value = n.toLocaleString('pt-BR');
+}
+function planMaskBrl(el) {
+  var raw = (el.value || '').replace(/\./g,'').replace(',','.').replace(/[^0-9.]/g,'');
+  var n = parseFloat(raw);
+  if (Number.isFinite(n) && n > 0) {
+    el.value = Math.round(n).toLocaleString('pt-BR');
+  }
+}
+// Prazo em meses com no máximo 2 casas, sem decimais desnecessários
+function _planFmtMeses(m) {
+  if (!Number.isFinite(m) || m <= 0) return '—';
+  var r = Math.ceil(m);
+  return r + (r === 1 ? ' mês' : ' meses');
+}
+
+function planUpdateFin() {
+  var valor   = _planParseBRL((document.getElementById('fin-valor')   ||{}).value||'0');
+  var prodFab = _planParseBRL((document.getElementById('fin-prod-fab')||{}).value||'0');
+  var prodMon = _planParseBRL((document.getElementById('fin-prod-mon')||{}).value||'0');
+  var prodBook= _planParseBRL((document.getElementById('fin-prod-book')||{}).value||'0');
+  function getRec(id) {
+    var el = document.getElementById(id); return el ? (parseInt(el.value)||0) : 0;
+  }
+  // Collect resource rows per scope
+  var recFab = [], recMon = [], recBook = [];
+  (document.querySelectorAll('.fin-row-fab input')||[]).forEach(function(el){ var v=parseInt(el.value)||0; if(v) recFab.push(v); });
+  (document.querySelectorAll('.fin-row-mon input')||[]).forEach(function(el){ var v=parseInt(el.value)||0; if(v) recMon.push(v); });
+  // Book sem recursos
+  var _prevR = (_planFinState||{}).reais||{};
+  _planFinState = { valor:valor, prodFab:prodFab, prodMon:prodMon,
+    recFab:recFab, recMon:recMon, reais:_prevR };
+  _planSaveFin();
+  if (typeof currentSubTab !== 'undefined' && currentSubTab === 'planejamento') {
+    renderIsoView(); // Re-render page to update Hh cards
+  } else {
+    _planRenderFinTable();
+    _planRefreshTotals();
+  }
+}
+
+function planAddRec(scope) {
+  var wrap = document.getElementById('fin-wrap-'+scope); if (!wrap) return;
+  var ln = document.createElement('div');
+  ln.className = 'fin-linha fin-row-'+scope;
+  ln.style.cssText = 'display:flex;align-items:center;gap:8px;margin-bottom:6px';
+  ln.innerHTML = '<input type="number" min="1" value="1" style="width:60px;padding:4px 8px;border:1px solid var(--hbr);border-radius:6px;font-size:12px" onchange="planUpdateFin()">'
+    + '<span style="font-size:10px;color:var(--hmu)">recursos</span>'
+    + '<button onclick="this.parentElement.remove();planUpdateFin()" style="background:#fdecea;border:1px solid #e0c8c8;color:var(--hd);border-radius:5px;padding:2px 8px;cursor:pointer;font-size:10px">✕</button>';
+  wrap.appendChild(ln);
+  planUpdateFin();
+}
+
+function planSaveReal(el) {
+  var mes = parseInt(el.getAttribute('data-mes'));
+  var scope = el.getAttribute('data-scope');
+  var val = (scope==='pct_fab'||scope==='pct_mon') ? Math.min(100,Math.max(0,parseFloat(el.value)||0)) : _planParseBRL(el.value||'0');
+  if (!_planFinState) _planFinState = {};
+  if (!_planFinState.reais) _planFinState.reais = {};
+  if (!_planFinState.reais[mes]) _planFinState.reais[mes] = {};
+  _planFinState.reais[mes][scope] = val > 0 ? val : 0;
+  _planSaveFin();
+}
+
+function _planRenderFinTable() {
+  var tbl = document.getElementById('fin-result-table'); if (!tbl) return;
+  var st = _planFinState || {};
+  var valor = st.valor || 0;
+  if (!valor) { tbl.innerHTML = '<div style="color:var(--hmu);font-size:11px;padding:8px 0">Preencha o Valor do Projeto para calcular.</div>'; return; }
+
+  var vlFab=valor*0.30, vlMon=valor*0.50, vlBook=valor*0.20;
+  var vlMonTotal=vlMon+vlBook; // Book faz parte da Montagem
+  var prodFab=st.prodFab||0, prodMon=st.prodMon||0;
+  var recFab=st.recFab||[], recMon=st.recMon||[];
+  var totalRecFab=recFab.reduce(function(a,b){return a+(parseInt(b)||0);},0);
+  var totalRecMon=recMon.reduce(function(a,b){return a+(parseInt(b)||0);},0);
+  var custoFab=totalRecFab*prodFab, custoMon=totalRecMon*prodMon;
+  var custoTotal=custoFab+custoMon;
+  var orcExec=valor; // Orçamento total
+  var orcDisp=valor; // Book incluso na montagem
+
+  // ── Painel de orçamento ──
+  var orcamento = '<div style="background:linear-gradient(135deg,#071d4a,#0B3D91);border-radius:10px;padding:16px 20px;color:#fff;margin-bottom:16px">'
+    +'<div style="font-size:14px;font-weight:700;margin-bottom:12px">💰 Orçamento do Projeto</div>'
+    +'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px">'
+    +'<div><div style="font-size:9px;opacity:.7;text-transform:uppercase;letter-spacing:.5px">Valor Global</div><div style="font-size:20px;font-weight:800;margin-top:2px">R$ '+_planBRL(valor)+'</div></div>'
+    +'<div style="border-left:1px solid rgba(255,255,255,.2);padding-left:14px"><div style="font-size:9px;opacity:.7;text-transform:uppercase">⚙️ Fabricação (30%)</div><div style="font-size:16px;font-weight:700;margin-top:2px">R$ '+_planBRL(vlFab)+'</div><div style="font-size:10px;opacity:.7">'+totalRecFab+' rec × R$ '+_planBRL(prodFab)+' = R$ '+_planBRL(custoFab)+'/mês</div></div>'
+    +'<div style="border-left:1px solid rgba(255,255,255,.2);padding-left:14px"><div style="font-size:9px;opacity:.7;text-transform:uppercase">🔧 Montagem + Book (70%)</div><div style="font-size:16px;font-weight:700;margin-top:2px">R$ '+_planBRL(vlMonTotal)+'</div><div style="font-size:10px;opacity:.7">'+totalRecMon+' rec × R$ '+_planBRL(prodMon)+' = R$ '+_planBRL(custoMon)+'/mês</div></div>'
+    +'<div style="border-left:1px solid rgba(255,255,255,.2);padding-left:14px"><div style="font-size:9px;opacity:.7;text-transform:uppercase">📚 Book (20%)</div><div style="font-size:16px;font-weight:700;margin-top:2px">R$ '+_planBRL(vlBook)+'</div><div style="font-size:10px;opacity:.7;color:rgba(255,220,100,.9)">Incluso na Montagem</div></div>'
+    +'</div></div>';
+
+  // ── Análise de Viabilidade ──
+  var alerta = '';
+  if (custoTotal > 0) {
+    var monOffset = 1; // Montagem inicia 30 dias (1 mês) após fabricação
+    var mesesFabA = custoFab>0 ? Math.ceil(vlFab/custoFab) : 0;
+    var mesesMonA = custoMon>0 ? Math.ceil(vlMonTotal/custoMon) : 0; // Book incluso
+    var prazoTotal = Math.max(mesesFabA, mesesMonA + monOffset);
+    // Custo real por período: mês 1 só fab, meses 2+ fab+mon
+    var gastoFab = Math.min(vlFab, mesesFabA * custoFab);
+    var gastoMon = Math.min(vlMonTotal, mesesMonA * custoMon);
+    var gastoTotal = gastoFab + gastoMon;
+    var lucro = valor - gastoTotal;
+    var pctLucro = valor>0 ? (lucro/valor*100).toFixed(1) : 0;
+    var viavel = gastoTotal <= valor * 1.001;
+    var corV = viavel ? '#1a8c4e' : 'var(--hd)';
+    var bgV  = viavel ? 'linear-gradient(135deg,#1a8c4e,#27ae60)' : 'linear-gradient(135deg,#c0392b,var(--hd))';
+
+    alerta = '<div style="border-radius:12px;overflow:hidden;margin-bottom:16px;box-shadow:0 4px 16px rgba(0,0,0,.12)">'
+      // Header com resultado
+      +'<div style="background:'+bgV+';padding:14px 20px;color:#fff;display:flex;align-items:center;justify-content:space-between">'
+      +'<div>'
+      +'<div style="font-size:13px;font-weight:800;letter-spacing:.3px">'+(viavel?'✅ PROJETO VIÁVEL':'⛔ PROJEÇÃO DE DÉFICIT')+'</div>'
+      +'<div style="font-size:11px;opacity:.85;margin-top:2px">Montagem inclui Book (20%) · Mês 1: só Fab · Mês 2+: Fab + Mon</div>'
+      +'</div>'
+      +'<div style="text-align:right">'
+      +'<div style="font-size:24px;font-weight:800">'+(viavel?'Lucro':'Prejuízo')+' R$ '+_planBRL(Math.abs(Math.round(lucro)))+'</div>'
+      +'<div style="font-size:13px;opacity:.85">'+pctLucro+'% do valor do projeto</div>'
+      +'</div>'
+      +'</div>'
+      // Grid de detalhes
+      +'<div style="display:grid;grid-template-columns:repeat(5,1fr);background:#f8fafd;border:1px solid #d0d8e8;border-top:none">'
+      +'<div style="padding:12px 14px;border-right:1px solid #e8eef7"><div style="font-size:9px;color:#888;text-transform:uppercase;margin-bottom:4px">Valor Contrato</div><div style="font-size:15px;font-weight:700;color:var(--hb)">R$ '+_planBRL(valor)+'</div></div>'
+      +'<div style="padding:12px 14px;border-right:1px solid #e8eef7"><div style="font-size:9px;color:#888;text-transform:uppercase;margin-bottom:4px">Custo Fab</div><div style="font-size:15px;font-weight:700;color:#0B3D91">R$ '+_planBRL(Math.round(gastoFab))+'</div><div style="font-size:9px;color:#aaa">'+totalRecFab+' rec × R$ '+_planBRL(prodFab)+' × '+mesesFabA+' meses</div></div>'
+      +'<div style="padding:12px 14px;border-right:1px solid #e8eef7"><div style="font-size:9px;color:#888;text-transform:uppercase;margin-bottom:4px">Custo Mon + Book</div><div style="font-size:15px;font-weight:700;color:#0077b6">R$ '+_planBRL(Math.round(gastoMon))+'</div><div style="font-size:9px;color:#aaa">'+totalRecMon+' rec × R$ '+_planBRL(prodMon)+' × '+mesesMonA+' meses</div></div>'
+      +'<div style="padding:12px 14px;border-right:1px solid #e8eef7"><div style="font-size:9px;color:#888;text-transform:uppercase;margin-bottom:4px">Prazo Total</div><div style="font-size:15px;font-weight:700;color:var(--hb)">'+prazoTotal+' '+(prazoTotal===1?'mês':'meses')+'</div><div style="font-size:9px;color:#aaa">Fab até mês '+mesesFabA+' · Mon: mês 2 ao '+(mesesMonA+monOffset)+'</div></div>'
+      +'<div style="padding:12px 14px"><div style="font-size:9px;color:#888;text-transform:uppercase;margin-bottom:4px">Margem</div><div style="font-size:15px;font-weight:700;color:'+corV+'">'+pctLucro+'%</div><div style="font-size:9px;color:#aaa">'+(viavel?'Lucro':'Déficit')+' R$ '+_planBRL(Math.abs(Math.round(lucro)))+'</div></div>'
+      +'</div>'
+      // Recomendação
+      +'<div style="padding:10px 18px;background:'+(viavel?'#d4edda':'#f8d7da')+';border:1px solid '+(viavel?'#c3e6cb':'#f5c6cb')+';border-top:none;font-size:11px;color:'+(viavel?'#155724':'#721c24')+'">'
+      +(viavel
+        ? '💡 Para lucro de <strong>R$ '+_planBRL(Math.round(lucro))+'</strong>: Fabricação com <strong>'+totalRecFab+' recursos</strong> em <strong>'+mesesFabA+' meses</strong> (R$ '+_planBRL(custoFab)+'/mês) · Montagem com <strong>'+totalRecMon+' recursos</strong> em <strong>'+mesesMonA+' meses</strong> iniciando no mês 2 (R$ '+_planBRL(custoMon)+'/mês).'
+        : '💡 Para equilibrar: Fab precisa de no máx <strong>'+(custoFab>0?Math.floor(vlFab/mesesFabA/prodFab):0)+' recursos</strong> ou prazo mín <strong>'+(custoFab>0?Math.ceil(vlFab/custoFab):0)+' meses</strong>. Mon precisa de no máx <strong>'+(custoMon>0?Math.floor(vlMonTotal/mesesMonA/prodMon):0)+' recursos</strong> ou prazo mín <strong>'+(custoMon>0?Math.ceil(vlMonTotal/custoMon):0)+' meses</strong>.'
+      )
+      +'</div></div>';
+  }
+
+  // ── Tabela mês a mês ──
+  if (custoTotal <= 0) {
+    tbl.innerHTML = orcamento + '<div style="color:var(--hmu);font-size:11px;padding:8px 0">Defina recursos e produção para ver o fluxo.</div>';
+    return;
+  }
+
+  var mesesFab = custoFab>0 ? Math.ceil(vlFab/custoFab) : 0;
+  var mesesMon = custoMon>0 ? Math.ceil(vlMonTotal/custoMon) : 0; // Book incluso
+  var monOffset = 1;
+  var maxMeses = Math.max(mesesFab, mesesMon + monOffset, 1);
+
+  // ── Tabela mês a mês ──
+  var fluxo = '<div style="font-size:12px;font-weight:700;color:var(--hb);margin-bottom:8px">📊 Medição Previsto × Real — Mês a Mês</div>'
+    +'<table style="width:100%;border-collapse:collapse;border-radius:10px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.1)">'
+    +'<thead>'
+    +'<tr style="background:linear-gradient(90deg,#071d4a 0%,#0B3D91 100%);color:#fff">'
+    +'<th style="padding:10px 8px;font-size:10px;font-weight:700;text-align:center;width:40px;border-right:1px solid rgba(255,255,255,.1)" rowspan="3">MÊS</th>'
+    +'<th style="padding:10px 8px;font-size:10px;font-weight:700;text-align:center;border-right:1px solid rgba(255,255,255,.15);letter-spacing:.5px" colspan="4">⚙️ FABRICAÇÃO</th>'
+    +'<th style="padding:10px 8px;font-size:10px;font-weight:700;text-align:center;border-right:1px solid rgba(255,255,255,.15);letter-spacing:.5px" colspan="4">🔧 MONTAGEM</th>'
+    +'<th style="padding:10px 8px;font-size:10px;font-weight:700;text-align:center;border-right:1px solid rgba(255,255,255,.1);letter-spacing:.5px" colspan="2">TOTAL</th>'
+    +'<th style="padding:10px 8px;font-size:10px;font-weight:700;text-align:center;letter-spacing:.5px;background:#e6a800;color:#1a1a00" colspan="2" rowspan="2">📈 PROJEÇÃO</th>'
+    +'<th style="padding:10px 8px;font-size:10px;font-weight:700;text-align:center;width:80px;letter-spacing:.5px" rowspan="3">CONSUMO</th>'
+    +'</tr>'
+    +'<tr style="background:linear-gradient(90deg,#0e3a8a,#1a5fd1);color:#fff">'
+    +'<th style="padding:5px 6px;font-size:9px;text-align:center;border-right:1px solid rgba(255,255,255,.1)" colspan="2">Previsto</th>'
+    +'<th style="padding:5px 6px;font-size:9px;text-align:center;border-right:1px solid rgba(255,255,255,.15);background:rgba(0,168,232,.35);color:#fff;font-weight:700" colspan="2">Real</th>'
+    +'<th style="padding:5px 6px;font-size:9px;text-align:center;border-right:1px solid rgba(255,255,255,.1)" colspan="2">Previsto</th>'
+    +'<th style="padding:5px 6px;font-size:9px;text-align:center;border-right:1px solid rgba(255,255,255,.15);background:rgba(0,168,232,.35);color:#fff;font-weight:700" colspan="2">Real</th>'
+    +'<th style="padding:5px 6px;font-size:9px;text-align:center;border-right:1px solid rgba(255,255,255,.1)">Previsto</th>'
+    +'<th style="padding:5px 6px;font-size:9px;text-align:center;border-right:1px solid rgba(255,255,255,.1);background:rgba(0,168,232,.2)">Real</th>'
+    +'</tr>'
+    +'<tr style="background:#1450a3;color:#fff;font-size:9px;font-weight:700">'
+    +'<th style="padding:4px 5px;text-align:center;border-right:1px solid rgba(255,255,255,.1)">R$</th>'
+    +'<th style="padding:4px 5px;text-align:center;border-right:1px solid rgba(255,255,255,.1)">%</th>'
+    +'<th style="padding:4px 5px;text-align:center;border-right:1px solid rgba(255,255,255,.1);background:rgba(0,140,200,.4);color:#fff">R$</th>'
+    +'<th style="padding:4px 5px;text-align:center;border-right:1px solid rgba(255,255,255,.15);background:rgba(0,140,200,.4);color:#fff">%</th>'
+    +'<th style="padding:4px 5px;text-align:center;border-right:1px solid rgba(255,255,255,.1)">R$</th>'
+    +'<th style="padding:4px 5px;text-align:center;border-right:1px solid rgba(255,255,255,.1)">%</th>'
+    +'<th style="padding:4px 5px;text-align:center;border-right:1px solid rgba(255,255,255,.1);background:rgba(0,140,200,.4);color:#fff">R$</th>'
+    +'<th style="padding:4px 5px;text-align:center;border-right:1px solid rgba(255,255,255,.15);background:rgba(0,140,200,.4);color:#fff">%</th>'
+    +'<th style="padding:4px 5px;text-align:center;border-right:1px solid rgba(255,255,255,.1)">R$</th>'
+    +'<th style="padding:4px 5px;text-align:center;border-right:1px solid rgba(255,255,255,.1);background:rgba(0,168,232,.15)">R$</th>'
+    +'<th style="padding:4px 5px;text-align:center;border-right:1px solid rgba(255,255,255,.1);background:#c98000;color:#fff">Saldo</th>'
+    +'<th style="padding:4px 5px;text-align:center;background:#c98000;color:#fff">Término</th>'
+    +'</tr>'
+    +'</thead><tbody>';
+
+  var reais = (st.reais || {});
+  var acumFab=0, acumMon=0, acumRF=0, acumRM=0;
+  var acumPrevFabPct=0, acumPrevMonPct=0;
+
+  for (var mes=1; mes<=maxMeses; mes++) {
+    var gFab = custoFab>0 && acumFab<vlFab ? Math.min(custoFab, vlFab-acumFab) : 0;
+    var gMon = (mes>monOffset && custoMon>0 && acumMon<vlMonTotal) ? Math.min(custoMon, vlMonTotal-acumMon) : 0;
+    if (gFab<0) gFab=0; if (gMon<0) gMon=0;
+    acumFab+=gFab; acumMon+=gMon;
+
+    // Previsto % do escopo
+    var pFabPct = vlFab>0 ? Math.round(gFab/vlFab*100) : 0;
+    var pMonPct = vlMonTotal>0 ? Math.round(gMon/vlMonTotal*100) : 0;
+    acumPrevFabPct += pFabPct;
+    acumPrevMonPct += pMonPct;
+
+    var rm = reais[mes] || {};
+    var rF = rm.fab || 0, rM = rm.mon || 0;
+    var rFpct = rm.pct_fab || 0, rMpct = rm.pct_mon || 0;
+    acumRF += rF; acumRM += rM;
+
+    var acumPrev = acumFab + acumMon;
+    var acumReal = acumRF + acumRM;
+    var saldoReal = orcExec - acumReal;
+    var pctPrev = orcExec>0 ? Math.round(acumPrev/orcExec*100) : 0;
+    var pctReal = orcExec>0 ? Math.round(acumReal/orcExec*100) : 0;
+    var negR = saldoReal < 0;
+
+    var bg = negR ? '#fff0f0' : mes%2===0 ? '#f8fafd' : '#fff';
+    var barColR = pctReal>100?'var(--hd)':pctReal>80?'#c07000':'#1a8c4e';
+    var barColP = pctPrev>100?'var(--hd)':pctPrev>80?'#c07000':'#0B3D91';
+
+    // Mini double bar: previsto (azul) e real (ciano)
+    var dualBar = '<div style="position:relative;height:22px;background:#e8eef7;border-radius:8px;overflow:hidden;min-width:75px">'
+      +'<div style="position:absolute;left:0;top:0;height:100%;width:'+Math.min(pctPrev,100)+'%;background:#0B3D91;opacity:.35;border-radius:8px"></div>'
+      +'<div style="position:absolute;left:0;top:0;height:100%;width:'+Math.min(pctReal,100)+'%;background:'+barColR+';border-radius:8px;opacity:.85"></div>'
+      +'<span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:'+(pctReal>30?'#fff':'#333')+'">'
+      +(pctReal>0?pctReal+'%':'—')+'</span></div>';
+
+    var desvF = rF>0 ? rF-gFab : null;
+    var desvM = rM>0 ? rM-gMon : null;
+
+    fluxo += '<tr style="background:'+bg+';border-bottom:1px solid #e8eef7">'
+      // Mês
+      +'<td style="padding:8px 6px;text-align:center;font-size:14px;font-weight:800;color:var(--hb);border-right:1px solid #e8eef7">'+mes+'</td>'
+      // Fab Previsto R$
+      +'<td style="padding:7px 6px;text-align:right;font-size:10px;color:#555;border-right:1px solid #f0f0f0">'+(gFab>0?'R$ '+_planBRL(Math.round(gFab)):'—')+'</td>'
+      // Fab Previsto %
+      +'<td style="padding:7px 4px;text-align:center;font-size:10px;color:#0B3D91;font-weight:600;border-right:1px solid #e0e8f0">'+(pFabPct>0?pFabPct+'%':'—')+'</td>'
+      // Fab Real R$ (input)
+      +'<td style="padding:3px 2px;background:#f7fbff;border-right:1px solid #f0f0f0"><input type="text" inputmode="numeric" value="'+(rF>0?_planBRL(rF):'')+'" placeholder="—" data-mes="'+mes+'" data-scope="fab" oninput="_planMaskBRL(this)" onchange="planSaveReal(this)" style="width:80px;padding:4px 5px;border:1px solid '+(rF>0?'#0B3D91':'#dde')+';border-radius:5px;font-size:10px;text-align:right;background:'+(rF>0?'#e8f0fb':'#fff')+';outline:none;font-weight:'+(rF>0?'600':'400')+'"></td>'
+      // Fab Real %
+      +'<td style="padding:7px 4px;text-align:center;font-size:10px;font-weight:600;border-right:1px solid #dce8f0;background:#f7fbff;color:'+(desvF===null?'#aaa':desvF>0?'var(--hd)':'#1a8c4e')+'">'+(rFpct>0?rFpct+'%':(rF>0&&vlFab>0?Math.round(rF/vlFab*100)+'%':'—'))+'</td>'
+      // Mon Previsto R$
+      +'<td style="padding:7px 6px;text-align:right;font-size:10px;color:#555;border-right:1px solid #f0f0f0">'+(mes<=monOffset?'<span style="font-size:8px;color:#aaa">Mês '+(monOffset+1)+'</span>':(gMon>0?'R$ '+_planBRL(Math.round(gMon)):'—'))+'</td>'
+      // Mon Previsto %
+      +'<td style="padding:7px 4px;text-align:center;font-size:10px;color:#0077b6;font-weight:600;border-right:1px solid #e0e8f0">'+(pMonPct>0?pMonPct+'%':'—')+'</td>'
+      // Mon Real R$ (input)
+      +'<td style="padding:3px 2px;background:#f5fbff;border-right:1px solid #f0f0f0"><input type="text" inputmode="numeric" value="'+(rM>0?_planBRL(rM):'')+'" placeholder="—" data-mes="'+mes+'" data-scope="mon" oninput="_planMaskBRL(this)" onchange="planSaveReal(this)" style="width:80px;padding:4px 5px;border:1px solid '+(rM>0?'#0077b6':'#dde')+';border-radius:5px;font-size:10px;text-align:right;background:'+(rM>0?'#e3f4fc':'#fff')+';outline:none;font-weight:'+(rM>0?'600':'400')+'"></td>'
+      // Mon Real %
+      +'<td style="padding:7px 4px;text-align:center;font-size:10px;font-weight:600;border-right:1px solid #cde;background:#f5fbff;color:'+(desvM===null?'#aaa':desvM>0?'var(--hd)':'#1a8c4e')+'">'+(rMpct>0?rMpct+'%':(rM>0&&vlMon>0?Math.round(rM/vlMon*100)+'%':'—'))+'</td>'
+      // Total Previsto
+      +'<td style="padding:7px 6px;text-align:right;font-size:10px;font-weight:600;color:#0B3D91;border-right:1px solid #e8eef7">R$ '+_planBRL(Math.round(acumPrev))+'</td>'
+      // Total Real
+      +'<td style="padding:7px 6px;text-align:right;font-size:11px;font-weight:700;color:'+(negR?'#fff':'#1a8c4e')+';'+(negR?'background:var(--hd);border-radius:5px':'')+'">R$ '+_planBRL(Math.abs(Math.round(acumReal)))+(negR?' ⛔':'')+'</td>'
+      // Barra dual
+      +'<td style="padding:4px 6px">'+dualBar+'</td>'
+      +(function(){
+        // Saldo restante do orçamento executável com base no real
+        var saldoR = orcExec - acumReal;
+        var taxaMensal = acumReal > 0 ? acumReal / mes : custoTotal;
+        var mesesRestantes = taxaMensal > 0 ? Math.ceil(saldoR / taxaMensal) : '?';
+        var mesFim = typeof mesesRestantes === 'number' ? mes + mesesRestantes : '?';
+        var saldoColor = saldoR < 0 ? 'var(--hd)' : saldoR < orcExec*0.2 ? '#c07000' : '#1a8c4e';
+        return '<td style="padding:6px 6px;text-align:right;font-size:10px;font-weight:700;color:'+saldoColor+';background:#fffce8;border-right:1px solid #ede">'+(acumReal>0?'R$ '+_planBRL(Math.round(saldoR)):'—')+'</td>'
+          +'<td style="padding:6px 6px;text-align:center;font-size:10px;font-weight:700;background:#fffce8;color:#7a5c00">'+(acumReal>0?'Mês '+mesFim:'—')+'</td>';
+      }())
+      +'</tr>';
+  }
+
+  // Linha Book
+  var saldoFinal = valor - acumFab - acumMon - vlBook;
+  fluxo += '<tr style="background:linear-gradient(90deg,#1a8c4e,#27ae60);color:#fff">'
+    +'<td style="padding:10px 8px;text-align:center;font-size:13px;font-weight:700">📚</td>'
+    +'<td colspan="10" style="padding:10px 8px;font-size:12px;font-weight:600">Book — Entrega documentação</td>'
+    +'<td style="padding:10px 8px;text-align:right;font-size:13px;font-weight:700">R$ '+_planBRL(Math.round(vlBook))+'</td>'
+    +'<td style="padding:4px 8px"><div style="background:rgba(255,255,255,.3);border-radius:8px;height:22px;position:relative"><div style="height:100%;width:100%;background:rgba(255,255,255,.6);border-radius:8px"></div><span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#fff">100%</span></div></td>'
+    +'</tr>';
+
+  fluxo += '</tbody></table>';
+
+  tbl.innerHTML = orcamento + alerta + fluxo;
+}
+
+
+function renderPlanejamento(discTabs, bc) {
+  _planLoad();
+  var list = currentProjId ? projIsos(currentProjId) : isos;
+
+  // ── Cabeçalho e totais físicos ──
+  var header = '<div style="padding:16px 16px 8px">'
+    + '<div style="font-size:16px;font-weight:700;color:var(--hb)">🗓️ Planejamento — Físico × Financeiro</div>'
+    + '</div>';
+
+  var totals = '';
+
+  // ── Cards de Hh ──
+  var finState = _planFinState || {};
+  var _hhHtml = '';
+  var _sumRF = (finState.recFab||[]).reduce(function(a,b){return a+(parseInt(b)||0);},0);
+  var _sumRM = (finState.recMon||[]).reduce(function(a,b){return a+(parseInt(b)||0);},0);
+  if (_sumRF > 0 || _sumRM > 0) {
+    var _pF = finState.prodFab||0, _pM = finState.prodMon||0;
+    var _cF = _sumRF * _pF, _cM = _sumRM * _pM;
+    var _vF = (finState.valor||0)*0.3, _vM = (finState.valor||0)*0.5;
+    var _mF = _cF>0 ? Math.ceil(_vF/_cF) : 0;
+    var _mM = _cM>0 ? Math.ceil(_vM/_cM) : 0;
+    // Use actual resource lines: each line is a team (caldeireiro or soldador)
+    // Show per-line Hh, not artificial split
+    var _recsFab = finState.recFab||[];
+    var _recsMon = finState.recMon||[];
+    var _hTF = _recsFab.reduce(function(s,r){return s+(parseInt(r)||0)*PLAN_HORAS_FAB*PLAN_DIAS_MES*_mF;},0);
+    var _hTM = _recsMon.reduce(function(s,r){return s+(parseInt(r)||0)*PLAN_HORAS_MON*PLAN_DIAS_MES*_mM;},0);
+    var _hG = _hTF + _hTM;
+    function _b(n){return n?Number(n).toLocaleString('pt-BR'):'0';}
+    // Build per-line rows for Fab
+    var _fabRows = _recsFab.map(function(r,i){
+      var hh = (parseInt(r)||0) * PLAN_HORAS_FAB * PLAN_DIAS_MES * _mF;
+      return '<div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0;border-bottom:1px solid #eef">'
+        +'<span style="font-size:10px;color:#555">Equipe '+(i+1)+' ('+r+' rec)</span>'
+        +'<span style="font-size:13px;font-weight:700;color:#0B3D91">'+_b(Math.round(hh))+' Hh</span>'
+        +'</div>';
+    }).join('');
+    var _monRows = _recsMon.map(function(r,i){
+      var hh = (parseInt(r)||0) * PLAN_HORAS_MON * PLAN_DIAS_MES * _mM;
+      return '<div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0;border-bottom:1px solid #eef">'
+        +'<span style="font-size:10px;color:#555">Equipe '+(i+1)+' ('+r+' rec)</span>'
+        +'<span style="font-size:13px;font-weight:700;color:#0077b6">'+_b(Math.round(hh))+' Hh</span>'
+        +'</div>';
+    }).join('');
+
+    _hhHtml = '<div style="padding:0 16px 14px"><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">'
+      // Fab card
+      +'<div style="background:#fff;border:1px solid #d0d8e8;border-radius:10px;padding:14px 16px;border-left:4px solid #0B3D91">'
+      +'<div style="font-size:11px;font-weight:700;color:#0B3D91;margin-bottom:10px">⚙️ Hh Fabricação <span style="font-weight:400;color:#888">('+_mF+(_mF===1?' mês':' meses')+' × 8h × 22d)</span></div>'
+      +_fabRows
+      +'<div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;padding-top:8px;border-top:2px solid #e8eef7">'
+      +'<span style="font-size:11px;font-weight:700;color:var(--hb)">Total Fab</span>'
+      +'<span style="font-size:16px;font-weight:800;color:#0B3D91">'+_b(Math.round(_hTF))+' Hh</span>'
+      +'</div></div>'
+      // Mon card
+      +'<div style="background:#fff;border:1px solid #b0ddf0;border-radius:10px;padding:14px 16px;border-left:4px solid #00A8E8">'
+      +'<div style="font-size:11px;font-weight:700;color:#0077b6;margin-bottom:10px">🔧 Hh Montagem <span style="font-weight:400;color:#888">('+_mM+(_mM===1?' mês':' meses')+' × 6,5h × 22d)</span></div>'
+      +_monRows
+      +'<div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;padding-top:8px;border-top:2px solid #e8eef7">'
+      +'<span style="font-size:11px;font-weight:700;color:var(--hb)">Total Mon</span>'
+      +'<span style="font-size:16px;font-weight:800;color:#0077b6">'+_b(Math.round(_hTM))+' Hh</span>'
+      +'</div></div>'
+      // Total card
+      +'<div style="background:linear-gradient(135deg,#071d4a,#0B3D91);border-radius:10px;padding:14px 16px;color:#fff;display:flex;flex-direction:column;justify-content:center">'
+      +'<div style="font-size:11px;opacity:.8;margin-bottom:8px">📊 Hh Total do Projeto</div>'
+      +'<div style="font-size:28px;font-weight:800">'+_b(Math.round(_hG))+' Hh</div>'
+      +'<div style="margin-top:10px;display:flex;gap:8px">'
+      +'<div style="background:rgba(255,255,255,.15);border-radius:6px;padding:5px 10px;text-align:center">'
+      +'<div style="font-size:9px;opacity:.7">Fabricação</div>'
+      +'<div style="font-size:13px;font-weight:700">'+_b(Math.round(_hTF))+' Hh</div>'
+      +'<div style="font-size:9px;opacity:.6">'+Math.round(_hG>0?_hTF/_hG*100:0)+'%</div>'
+      +'</div>'
+      +'<div style="background:rgba(255,255,255,.15);border-radius:6px;padding:5px 10px;text-align:center">'
+      +'<div style="font-size:9px;opacity:.7">Montagem</div>'
+      +'<div style="font-size:13px;font-weight:700">'+_b(Math.round(_hTM))+' Hh</div>'
+      +'<div style="font-size:9px;opacity:.6">'+Math.round(_hG>0?_hTM/_hG*100:0)+'%</div>'
+      +'</div>'
+      +'</div></div>'
+      +'</div></div>';
+  }
+
+  // ── Card de Disciplina: Estrutura Metálica ──
+  var _estList2 = currentProjId ? estrutura.filter(function(e){ return e.projId === currentProjId; }) : estrutura;
+  var _estHtml = '';
+  if (_estList2.length) {
+    var _eTotal = _estList2.length;
+    var _eFabOk = _estList2.filter(function(e){ return e.fab === 'Fabricado'; }).length;
+    var _eMonOk = _estList2.filter(function(e){ return e.mon === 'Montado'; }).length;
+    var _eGrdOk = _estList2.filter(function(e){ return e.grade === 'Comprado'; }).length;
+    var _eCobOk = _estList2.filter(function(e){ return e.cobertura === 'Comprado'; }).length;
+    var _ePeso  = _estList2.reduce(function(s,e){ return s + (parseFloat(e.peso)||0); }, 0);
+    var _ePFab = Math.round(_eFabOk/_eTotal*100);
+    var _ePMon = Math.round(_eMonOk/_eTotal*100);
+    var _ePGrd = Math.round(_eGrdOk/_eTotal*100);
+    var _ePCob = Math.round(_eCobOk/_eTotal*100);
+    var _eHoje = new Date().toISOString().slice(0,10);
+    var _eAtrasados = _estList2.filter(function(e){
+      var lateGrd = e.grade !== 'Comprado' && e.grade !== 'N/A' && e.grdData && e.grdData < _eHoje;
+      var lateCob = e.cobertura !== 'Comprado' && e.cobertura !== 'N/A' && e.cobData && e.cobData < _eHoje;
+      return lateGrd || lateCob;
+    }).length;
+
+    function _eBar(label, pct, ok, total, color) {
+      return '<div style="margin-bottom:9px">'
+        +'<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:3px">'
+        +'<span style="font-size:10px;color:#555">'+label+'</span>'
+        +'<span style="font-size:11px;font-weight:700;color:'+color+'">'+pct+'% <span style="font-weight:400;color:#999">('+ok+'/'+total+')</span></span>'
+        +'</div>'
+        +'<div style="height:6px;background:#eef1f6;border-radius:4px;overflow:hidden">'
+        +'<div style="height:100%;width:'+pct+'%;background:'+color+';border-radius:4px"></div>'
+        +'</div></div>';
+    }
+
+    _estHtml = '<div style="padding:0 16px 14px"><div style="background:#fff;border:1px solid #d0d8e8;border-left:4px solid #6a1b9a;border-radius:10px;padding:14px 16px">'
+      +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">'
+      +'<div>'
+      +'<div style="font-size:12px;font-weight:700;color:#6a1b9a">🏗️ Estrutura Metálica</div>'
+      +'<div style="font-size:10px;color:#888;margin-top:2px">'+_eTotal+' desenho'+(_eTotal!==1?'s':'')+' · '+_ePeso.toLocaleString('pt-BR',{maximumFractionDigits:1})+' kg total</div>'
+      +'</div>'
+      +(_eAtrasados>0
+        ? '<div style="background:#fdecea;color:var(--hd);font-size:10px;font-weight:700;padding:4px 10px;border-radius:20px">⚠️ '+_eAtrasados+' atrasado'+(_eAtrasados!==1?'s':'')+'</div>'
+        : '<div style="background:#e8f5e9;color:#2e7d32;font-size:10px;font-weight:700;padding:4px 10px;border-radius:20px">✅ Em dia</div>')
+      +'</div>'
+      +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px 20px">'
+      +_eBar('⚙️ Fabricação', _ePFab, _eFabOk, _eTotal, '#0B3D91')
+      +_eBar('🔧 Montagem',   _ePMon, _eMonOk, _eTotal, '#0077b6')
+      +_eBar('▦ Grade de Piso', _ePGrd, _eGrdOk, _eTotal, '#7b1fa2')
+      +_eBar('🏠 Cobertura (Teto)', _ePCob, _eCobOk, _eTotal, '#e65100')
+      +'</div>'
+      +'</div></div>';
+  }
+
+  // ── Seção Físico × Financeiro ──
+
+  function _finRecRows(scope, recs) {
+    return (recs||[1]).map(function(r){
+      return '<div class="fin-linha fin-row-'+scope+'" style="display:flex;align-items:center;gap:6px;margin-bottom:5px">'
+        +'<input type="number" min="1" value="'+r+'" style="width:55px;padding:4px 6px;border:1px solid var(--hbr);border-radius:6px;font-size:11px;text-align:center" onchange="planUpdateFin()">'
+        +'<span style="font-size:9px;color:var(--hmu)">rec.</span>'
+        +'<button onclick="this.parentElement.remove();planUpdateFin()" style="background:#fdecea;border:1px solid #e0c8c8;color:var(--hd);border-radius:4px;padding:2px 6px;cursor:pointer;font-size:9px">✕</button>'
+        +'</div>';
+    }).join('');
+  }
+
+  var finSection = '<div style="margin:0 16px 16px;background:#fff;border:1px solid #d0d8e8;border-radius:12px;overflow:hidden">'
+    +'<div style="background:linear-gradient(100deg,#071d4a,#0B3D91);padding:12px 18px;color:#fff;font-size:13px;font-weight:700">💰 Controle Físico × Financeiro</div>'
+    +'<div style="padding:16px 18px">'
+    // Valor global
+    +'<div style="margin-bottom:16px;max-width:300px"><label class="mats-add-lbl">Valor Global do Projeto (R$)</label>'
+    +'<input id="fin-valor" type="text" inputmode="numeric" class="mats-add-inp" style="font-size:15px;font-weight:700" placeholder="Ex: 300.000" value="'+(finState.valor?_planBRL(finState.valor):'')+'" oninput="_planMaskBRL(this)" onchange="planUpdateFin()" onblur="planUpdateFin()">'
+    +'<div style="font-size:9px;color:var(--hmu);margin-top:4px">30% Fabricação · 50% Montagem · 20% Book</div></div>'
+    // 3 escopos lado a lado
+    +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:16px">'
+    // Fabricação 30%
+    +'<div style="background:#f0f4fb;border:1px solid #d0d8e8;border-radius:10px;padding:12px">'
+    +'<div style="font-size:11px;font-weight:700;color:#0B3D91;margin-bottom:8px">⚙️ Fabricação (30%)'+(finState.valor?' — <span style="font-weight:400">R$ '+_planBRL(finState.valor*0.3)+'</span>':'')+'</div>'
+    +'<label class="mats-add-lbl">Prod. Mensal/Recurso (R$)</label>'
+    +'<input id="fin-prod-fab" type="text" inputmode="numeric" class="mats-add-inp" style="margin-bottom:8px" placeholder="Ex: 15.000" value="'+(finState.prodFab?_planBRL(finState.prodFab):'')+'" oninput="_planMaskBRL(this)" onchange="planUpdateFin()" onblur="planUpdateFin()">'
+    +'<label class="mats-add-lbl">Recursos</label>'
+    +'<div id="fin-wrap-fab">'+_finRecRows('fab', finState.recFab||[4])+'</div>'
+    +'<button onclick="planAddRec(\'fab\')" style="font-size:10px;padding:3px 10px;border-radius:5px;border:1px solid #0B3D91;color:#0B3D91;background:#fff;cursor:pointer">+ Recurso</button>'
+    +'</div>'
+    // Montagem 50%
+    +'<div style="background:#e8f8fd;border:1px solid #b0ddf0;border-radius:10px;padding:12px">'
+    +'<div style="font-size:11px;font-weight:700;color:#0077b6;margin-bottom:8px">🔧 Montagem (50%)'+(finState.valor?' — <span style="font-weight:400">R$ '+_planBRL(finState.valor*0.5)+'</span>':'')+'</div>'
+    +'<label class="mats-add-lbl">Prod. Mensal/Recurso (R$)</label>'
+    +'<input id="fin-prod-mon" type="text" inputmode="numeric" class="mats-add-inp" style="margin-bottom:8px" placeholder="Ex: 15.000" value="'+(finState.prodMon?_planBRL(finState.prodMon):'')+'" oninput="_planMaskBRL(this)" onchange="planUpdateFin()" onblur="planUpdateFin()">'
+    +'<label class="mats-add-lbl">Recursos</label>'
+    +'<div id="fin-wrap-mon">'+_finRecRows('mon', finState.recMon||[4])+'</div>'
+    +'<button onclick="planAddRec(\'mon\')" style="font-size:10px;padding:3px 10px;border-radius:5px;border:1px solid #0077b6;color:#0077b6;background:#fff;cursor:pointer">+ Recurso</button>'
+    +'</div>'
+    // Book 20% — sem recursos, medido na entrega final
+    +'<div style="background:#edf7ed;border:1px solid #a5d6a7;border-radius:10px;padding:12px">'
+    +'<div style="font-size:11px;font-weight:700;color:#1a8c4e;margin-bottom:8px">📚 Book (20%)'+(finState.valor?' — <span style="font-weight:400">R$ '+_planBRL(finState.valor*0.2)+'</span>':'')+'</div>'
+    +'<div style="font-size:10px;color:var(--hmu);line-height:1.5">Documentação técnica.<br>Medido na entrega total do projeto.<br>Sem alocação de recurso mensal.</div>'
+    +'</div>'
+    +'</div>'
+    +'<div id="fin-result-table"></div>'
+    +'</div></div>';
+
+
+    document.getElementById('view-isos').innerHTML = bc + discTabs + header + _hhHtml + _estHtml + finSection + '</div>';
+  _planRefreshTotals();
+  _planRenderFinTable();
 }
 
 function renderIsoView(force) {
