@@ -1146,7 +1146,7 @@ function goView(v, pid) {
 
   document.getElementById('tb-proj').textContent = projects.length;
 
-  if (v === 'projects') renderProjects();
+  if (v === 'projects') { renderProjects(); renderHeader(); }
   else if (v === 'isos') renderIsoView();
   renderHeader();
 }
@@ -1264,7 +1264,7 @@ function renderProjects() {
     </div>`;
 
   if (currentProjId) {
-    renderIsoView();
+    renderIsoView(true); // force=true bypasses the focus guard
     _sbUpdateBadge();
   }
 }
