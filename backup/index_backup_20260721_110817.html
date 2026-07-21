@@ -1,0 +1,1269 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --hb:#0B3D91;--hbm:#1a5fd1;--hbl:#e8f0fb;--hc:#00A8E8;
+  --hg:#f4f6f9;--hbr:#d0d8e8;--ht:#1a2336;--hmu:#5a6a85;
+  --hs:#1a8c4e;--hsl:#e6f5ed;--hd:#c0392b;--hdl:#fdecea;
+  --hw:#e68a00;
+}
+body{font-family:'Helvetica Neue',Arial,sans-serif;color:var(--ht);font-size:12px;background:transparent}
+.disc-tabs{display:flex;gap:2px;padding:8px 12px 0;background:var(--hbl);border-bottom:1.5px solid var(--hbr)}
+.disc-tab{padding:6px 14px;border-radius:6px 6px 0 0;font-size:11px;font-weight:600;cursor:pointer;color:var(--hmu);background:transparent;border:1px solid transparent;border-bottom:none;transition:.15s}
+.disc-tab.active{background:#fff;color:var(--hb);border-color:var(--hbr);border-bottom-color:#fff;margin-bottom:-1px}
+.sub-tabs{display:flex;gap:0;padding:0 12px;background:#fff;border-bottom:1px solid var(--hbr);overflow-x:auto}
+.sub-tab{padding:5px 12px;font-size:10.5px;cursor:pointer;color:var(--hmu);border-bottom:2px solid transparent;transition:.12s;white-space:nowrap}
+.sub-tab.active{color:var(--hb);border-bottom-color:var(--hb);font-weight:600}
+.disc-content{background:#fff}
+.ph-panel{display:flex;align-items:center;justify-content:center;height:180px;color:var(--hmu);font-size:13px;flex-direction:column;gap:8px}
+.badge.b-cf{background:#e8f0fb;color:#0B3D91;font-weight:600}
+.badge.b-cm{background:#e6f5ed;color:#1a8c4e;font-weight:600}
+.badge.b-cr{background:#fff3e0;color:#c67200;font-weight:600}
+.ie-panel-sm{position:absolute;left:0;top:26px;min-width:180px;background:#fff;border:1px solid var(--hbr);border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,.18);padding:10px;z-index:500;display:none}
+.ie-panel-sm.open{display:block}
+
+.hdr{display:flex;align-items:center;justify-content:space-between;background:linear-gradient(100deg,#071d4a 0%,#0B3D91 55%,#0e4fbb 100%);color:#fff;padding:13px 20px;border-radius:12px 12px 0 0;border-bottom:2.5px solid var(--hc);box-shadow:0 4px 18px rgba(0,0,0,.22)}
+.hdr-brand{display:flex;align-items:center;gap:12px}
+.hdr-logo{width:42px;height:42px;background:linear-gradient(135deg,#00A8E8 0%,#0077b6 100%);border-radius:9px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:15px;color:#fff;box-shadow:0 2px 10px rgba(0,168,232,.5);letter-spacing:-0.5px}
+.hdr-name{font-size:15px;font-weight:700;letter-spacing:.2px}
+.hdr-sub{font-size:10px;opacity:.7;margin-top:2px;letter-spacing:.3px}
+.hdr-acts{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+
+.btn{border:none;border-radius:6px;padding:6px 12px;font-size:11px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
+.btn-cyan{background:var(--hc);color:#fff}.btn-cyan:hover{background:#0092cc}
+.btn-out{background:rgba(255,255,255,.13);color:#fff;border:0.5px solid rgba(255,255,255,.3)}.btn-out:hover{background:rgba(255,255,255,.22)}
+.btn-amber{background:var(--hw);color:#fff}.btn-amber:hover{background:#c97a00}
+.btn-cancel{background:none;border:0.5px solid var(--hbr);border-radius:6px;padding:6px 14px;cursor:pointer;font-size:11.5px}
+.btn-save2{background:var(--hb);color:#fff;border:none;border-radius:6px;padding:6px 14px;cursor:pointer;font-size:11.5px;font-weight:500}
+.btn-save2:hover{background:var(--hbm)}
+
+.nav-tabs{background:#0d3580;border-bottom:0.5px solid rgba(255,255,255,.15);display:flex;align-items:center;gap:2px;padding:0 16px;overflow-x:auto;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.3) transparent;flex-wrap:nowrap;min-height:38px}
+.nav-tab{padding:8px 14px;font-size:11.5px;color:rgba(255,255,255,.65);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;display:flex;align-items:center;gap:5px;transition:all .15s}
+.nav-tab:hover{color:rgba(255,255,255,.9)}
+.nav-tab.active{color:#fff;border-bottom-color:var(--hc);font-weight:500}
+.tab-badge{background:rgba(255,255,255,.2);color:#fff;font-size:9px;padding:1px 5px;border-radius:8px;margin-left:2px}
+.nav-tab.active .tab-badge{background:var(--hc)}
+
+.proj-bar{background:linear-gradient(90deg,#f0f4fb 0%,#e8f0fb 100%);border:0.5px solid var(--hbr);border-top:none;padding:12px 20px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.proj-search{padding:7px 12px;border:1px solid var(--hbr);border-radius:8px;font-size:12px;background:#fff;outline:none;width:260px;box-shadow:0 1px 4px rgba(0,0,0,.06);transition:.15s}
+.proj-search:focus{border-color:var(--hbm);box-shadow:0 0 0 3px rgba(26,95,209,.12)}
+.proj-grid{padding:20px;border:0.5px solid var(--hbr);border-top:none;display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;background:#f8fafd;border-radius:0 0 12px 12px;min-height:120px;align-items:start}
+.proj-card{border:1px solid #d0d8e8;border-radius:12px;padding:0;transition:all .2s;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.06);overflow:hidden;cursor:default}
+.proj-card:hover{border-color:var(--hbm);box-shadow:0 6px 20px rgba(11,61,145,.13);transform:translateY(-2px)}
+.proj-card.active-proj{border-color:var(--hc);border-width:2px;box-shadow:0 6px 24px rgba(0,168,232,.18)}
+.pc-card-top{background:linear-gradient(110deg,#071d4a 0%,#0B3D91 100%);padding:14px 16px 12px;position:relative;overflow:hidden}
+.pc-card-top::after{content:'';position:absolute;right:-20px;top:-20px;width:80px;height:80px;background:rgba(0,168,232,.15);border-radius:50%}
+.pc-name{font-size:13px;font-weight:700;color:#fff;margin-bottom:3px;line-height:1.3}
+.pc-code{font-size:9.5px;color:rgba(255,255,255,.65);font-family:monospace;letter-spacing:.3px}
+.pc-card-body{padding:12px 16px 14px}
+.pc-stats{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.proj-stat{font-size:9.5px;background:var(--hbl);color:var(--hb);padding:3px 8px;border-radius:20px;font-weight:600;border:1px solid rgba(11,61,145,.1)}
+.proj-stat-fab{background:#e6f5ed;color:#1a8c4e;border-color:rgba(26,140,78,.15)}
+.proj-stat-mon{background:#fff3e0;color:#c07000;border-color:rgba(192,112,0,.15)}
+.pc-acts{display:flex;gap:5px;margin-top:4px;align-items:center}
+.proj-del-btn{background:none;border:1px solid #e0c8c8;border-radius:6px;color:var(--hd);cursor:pointer;padding:4px 8px;font-size:10px;transition:.15s}
+.proj-del-btn:hover{background:#fdecea}
+.proj-open-btn{background:linear-gradient(90deg,#0B3D91,#1a5fd1);border:none;border-radius:6px;color:#fff;cursor:pointer;padding:5px 14px;font-size:11px;font-weight:600;cursor:pointer;margin-left:auto;box-shadow:0 2px 8px rgba(11,61,145,.3);transition:.15s}
+.proj-open-btn:hover{background:linear-gradient(90deg,#1a5fd1,#0B3D91);box-shadow:0 4px 12px rgba(11,61,145,.4)}
+.btn-edit-sm{background:rgba(255,255,255,.9);border:1px solid var(--hbr);border-radius:6px;color:var(--hb);cursor:pointer;padding:4px 8px;font-size:10px;transition:.15s}
+.btn-edit-sm:hover{background:var(--hbl);border-color:var(--hbm)}
+.proj-new-card{border:2px dashed #c0cfe8;border-radius:12px;padding:28px 16px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;min-height:120px;transition:all .2s;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.04)}
+.proj-new-card:hover{border-color:var(--hbm);background:var(--hbl);box-shadow:0 4px 16px rgba(11,61,145,.1);transform:translateY(-2px)}
+.pnc-icon{font-size:28px;color:var(--hbm)}
+.pnc-lbl{font-size:12px;color:var(--hbm);font-weight:600;letter-spacing:.2px}
+.no-proj{grid-column:1/-1;text-align:center;padding:40px;color:var(--hmu);font-size:12px}
+
+.breadcrumb{background:#f8fafd;border:0.5px solid var(--hbr);border-top:none;padding:6px 16px;display:flex;align-items:center;gap:6px;font-size:11px;color:var(--hmu)}
+.bc-link{color:var(--hbm);cursor:pointer}.bc-link:hover{text-decoration:underline}
+.bc-sep{color:var(--hbr)}.bc-cur{font-weight:500;color:var(--ht)}
+
+.sum-bar{background:var(--hbl);border:0.5px solid var(--hbr);border-top:none;padding:9px 16px;display:grid;grid-template-columns:repeat(5,1fr);gap:7px}
+.kpi-bar{width:100%;height:5px;background:var(--hbr);border-radius:3px;overflow:hidden}
+.sum-card{background:#fff;border:0.5px solid var(--hbr);border-radius:8px;padding:8px 11px}
+.sum-lbl{font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:var(--hmu);margin-bottom:3px}
+.sum-val{font-size:16px;font-weight:600;color:var(--hb)}
+.pbar{height:4px;border-radius:2px;overflow:hidden;margin-top:5px;background:#e0e8f4}
+.pbar-inner{height:100%;border-radius:2px}
+.area-cards-wrap{background:#f0f4fb;border:0.5px solid var(--hbr);border-top:none;padding:10px 16px 12px}
+.area-cards-title{font-size:11px;font-weight:700;color:var(--hb);margin-bottom:8px;letter-spacing:.3px}
+.area-cards-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px}
+.area-card{background:#fff;border:1px solid #d0d8e8;border-radius:10px;padding:10px 12px;box-shadow:0 1px 5px rgba(0,0,0,.05)}
+.area-card-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.area-card-name{font-size:12px;font-weight:700;color:var(--hb)}
+.area-card-cnt{font-size:9px;color:var(--hmu);background:var(--hbl);padding:2px 7px;border-radius:10px}
+.area-card-row{display:flex;align-items:center;gap:7px;margin-bottom:5px}
+.area-card-lbl{font-size:9.5px;font-weight:600;color:var(--hmu);width:42px;flex-shrink:0}
+.area-card-bar{flex:1;height:7px;background:#e8eef7;border-radius:4px;overflow:hidden}
+.area-card-fill{height:100%;border-radius:4px;transition:width .3s}
+.acf-fab{background:linear-gradient(90deg,#0B3D91,#1a5fd1)}
+.acf-mon{background:linear-gradient(90deg,#00A8E8,#0077b6)}
+.area-card-pct{font-size:11px;font-weight:700;width:36px;text-align:right;flex-shrink:0}
+.dash-tot{border-radius:12px;padding:14px 16px;color:#fff;box-shadow:0 3px 12px rgba(0,0,0,.12)}
+.dash-tot-blue{background:linear-gradient(135deg,#071d4a,#0B3D91)}
+.dash-tot-cyan{background:linear-gradient(135deg,#0077b6,#00A8E8)}
+.dash-tot-green{background:linear-gradient(135deg,#1a8c4e,#27ae60)}
+.dash-tot-lbl{font-size:11px;font-weight:600;opacity:.9}
+.dash-tot-val{font-size:30px;font-weight:800;margin:4px 0;letter-spacing:-1px}
+.dash-tot-sub{font-size:10px;opacity:.8}
+.dash-tot-bar{height:7px;background:rgba(255,255,255,.25);border-radius:4px;overflow:hidden;margin-top:6px}
+.dash-card{background:#fff;border:1px solid #d0d8e8;border-radius:12px;padding:14px 16px;cursor:pointer;transition:all .2s;box-shadow:0 2px 8px rgba(0,0,0,.05)}
+.dash-card:hover{border-color:var(--hbm);box-shadow:0 6px 20px rgba(11,61,145,.15);transform:translateY(-2px)}
+.dash-card-top{display:flex;align-items:center;justify-content:space-between}
+.dash-card-name{font-size:15px;font-weight:700;color:var(--hb)}
+.dash-card-arrow{font-size:16px;color:var(--hbm);font-weight:700}
+.dash-card-cnt{font-size:10px;color:var(--hmu);margin:3px 0 12px}
+.dash-card-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}
+.dash-card-rlbl{font-size:10.5px;font-weight:600;color:var(--ht)}
+.dash-card-rpct{font-size:13px;font-weight:700}
+.dash-card-bar{height:8px;background:#e8eef7;border-radius:4px;overflow:hidden}
+.dash-card-fill{height:100%;border-radius:4px;transition:width .3s}
+.pb-fab{background:var(--hbm)}.pb-mon{background:var(--hc)}.pb-py{background:var(--hs)}
+
+.filter-bar{background:#fff;border:0.5px solid var(--hbr);border-top:none;padding:7px 16px;display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+.filter-bar input,.filter-bar select{padding:4px 8px;border:0.5px solid var(--hbr);border-radius:6px;font-size:11px;color:var(--ht);background:var(--hg);outline:none;height:27px}
+.filter-bar input:focus,.filter-bar select:focus{border-color:var(--hbm);background:#fff}
+.fi-txt{min-width:150px}
+.btn-clr{background:none;border:0.5px solid var(--hbr);border-radius:6px;padding:4px 9px;font-size:11px;cursor:pointer;color:var(--hmu);height:27px}
+.btn-clr:hover{background:var(--hg)}
+
+.tbl-wrap{overflow-x:auto;border:0.5px solid var(--hbr);border-top:none;border-radius:0 0 12px 12px;background:#fff}
+table{width:100%;border-collapse:collapse;font-size:10.5px;min-width:1100px}
+thead tr{background:#f0f4fb}
+thead th{padding:7px 7px;text-align:left;font-weight:500;font-size:9.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--hmu);border-bottom:0.5px solid var(--hbr);white-space:nowrap}
+tbody tr{border-bottom:0.5px solid var(--hbr)}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:var(--hbl)}
+tbody td{padding:5px 7px;vertical-align:middle}
+.iso-num{font-weight:600;color:var(--hb);font-size:10px}
+.sheet-tag{background:var(--hbl);color:var(--hb);font-size:9.5px;padding:1px 6px;border-radius:6px;font-weight:600}
+.line-tag{font-family:monospace;font-size:9.5px}
+.badge{display:inline-block;padding:2px 6px;border-radius:10px;font-size:9px;font-weight:500;white-space:nowrap}
+.b-nr13{background:#fff3e0;color:#7c4400}.b-nr13n{background:#f0f4fb;color:var(--hmu)}
+.b-insp{background:var(--hbl);color:var(--hb)}.b-fluid{background:#f0eeff;color:#4a2e9c}
+.b-py{background:var(--hsl);color:#0f5c33}.b-pn{background:#fdecea;color:#7a1c12}
+.b-sim{background:var(--hsl);color:#0f5c33}.b-nao{background:#fdecea;color:#7a1c12}.b-na{background:#f5f5f5;color:#9e9e9e;border:1px solid #e0e0e0}
+.b-cd{background:#fdecea;color:#7a1c12;font-weight:600}
+.b-pen{background:#fff3e0;color:#7c4400}
+
+.prog-mini{display:flex;flex-direction:column;gap:2px;min-width:130px}
+.pm-row{display:flex;align-items:center;gap:3px}
+.pm-lbl{font-size:9px;color:var(--hmu);min-width:26px}
+.pm-bar{height:5px;border-radius:3px;background:#e8edf5;flex:1;overflow:hidden}
+.pm-bar-in{height:100%;border-radius:3px}
+.pi-pre{background:linear-gradient(90deg,#1a5fd1,#0B3D91)}
+.pi-sol{background:linear-gradient(90deg,#00A8E8,#0076b3)}
+.pi-end{background:linear-gradient(90deg,#6c3fc5,#4a2e9c)}
+.pm-pct{font-size:9px;font-weight:500;min-width:22px;text-align:right}
+.av-total{font-size:9px;font-weight:600;margin-top:1px}
+.av-fab{color:var(--hbm)}.av-mon{color:#0076b3}
+.dt-dates{font-size:8.5px;color:var(--hmu);margin-top:3px;line-height:1.5}
+.dt-dates span{font-weight:500;color:var(--ht)}
+
+.ie-wrap{position:relative}
+.ie-btn{background:none;border:0.5px solid var(--hbr);border-radius:4px;padding:2px 5px;font-size:9.5px;cursor:pointer;color:var(--hmu);margin-top:3px;display:block}
+.ie-btn:hover{background:var(--hbl);color:var(--hb)}
+.ie-panel{display:none;position:absolute;z-index:60;background:#fff;border:0.5px solid var(--hbr);border-radius:8px;padding:10px;box-shadow:0 4px 18px rgba(0,0,0,.13);min-width:220px;top:100%;left:0}
+.ie-panel.open{display:block}
+.ie-ttl{font-size:9.5px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:var(--hb);margin-bottom:7px}
+.ie-row{display:flex;align-items:center;gap:5px;margin-bottom:4px}
+.ie-lbl{font-size:9.5px;color:var(--hmu);min-width:115px}
+.ie-inp{width:54px;padding:3px 5px;border:0.5px solid var(--hbr);border-radius:4px;font-size:11px;outline:none}
+.ie-inp:focus{border-color:var(--hbm)}
+.ie-inp-date{padding:3px 5px;border:0.5px solid var(--hbr);border-radius:4px;font-size:10px;outline:none;flex:1}
+.ie-inp-date:focus{border-color:var(--hbm)}
+.ie-sel{padding:3px 5px;border:0.5px solid var(--hbr);border-radius:4px;font-size:11px;outline:none;flex:1}
+.ie-sel:focus{border-color:var(--hbm)}
+.ie-foot{display:flex;gap:5px;margin-top:8px;justify-content:flex-end}
+.ie-save{background:var(--hb);color:#fff;border:none;border-radius:5px;padding:4px 9px;font-size:10.5px;cursor:pointer}
+.ie-cancel2{background:none;border:0.5px solid var(--hbr);border-radius:5px;padding:4px 8px;font-size:10.5px;cursor:pointer}
+.btn-del-sm2{background:none;border:0.5px solid #e0c8c8;border-radius:4px;color:var(--hd);cursor:pointer;padding:2px 6px;font-size:9.5px;display:block}
+.btn-del-sm2:hover{background:#fdecea}
+.act-col{display:flex;flex-direction:column;gap:3px}
+.empty-st{text-align:center;padding:24px;color:var(--hmu);font-size:11.5px}
+.lock-icon{font-size:9px;color:var(--hmu);margin-left:2px}
+
+.overlay{display:none;position:fixed;inset:0;background:rgba(10,20,50,.56);z-index:100;align-items:center;justify-content:center}
+.overlay.open{display:flex}
+.mbox{background:#fff;border-radius:12px;padding:22px 26px;width:560px;max-width:97vw;position:relative;border:0.5px solid var(--hbr);max-height:92vh;overflow-y:auto}
+.mbox-sm{background:#fff;border-radius:12px;padding:22px 26px;width:380px;max-width:97vw;position:relative;border:0.5px solid var(--hbr);max-height:92vh;overflow-y:auto}
+.mtitle{font-size:14px;font-weight:600;color:var(--hb);margin-bottom:14px;display:flex;align-items:center;gap:7px}
+.mclose{position:absolute;top:12px;right:14px;background:none;border:none;font-size:17px;cursor:pointer;color:var(--hmu)}
+.fgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
+.field{display:flex;flex-direction:column;gap:3px}
+.field.full{grid-column:1/-1}
+.field label{font-size:9.5px;font-weight:500;color:var(--hmu);text-transform:uppercase;letter-spacing:.4px}
+.field input,.field select{padding:5px 8px;border:0.5px solid var(--hbr);border-radius:6px;font-size:11.5px;color:var(--ht);background:var(--hg);outline:none}
+.field input:focus,.field select:focus{border-color:var(--hbm);background:#fff}
+.field input[type="date"]{padding:4px 8px}
+.sec-title{font-size:9.5px;font-weight:600;color:var(--hmu);text-transform:uppercase;letter-spacing:.4px;margin:8px 0 6px}
+.prog-blk{background:var(--hbl);border-radius:7px;padding:9px 11px}
+.prog-blk-title{font-size:9.5px;font-weight:600;color:var(--hb);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px}
+.mfooter{display:flex;justify-content:flex-end;gap:7px;margin-top:14px}
+
+.pwd-box{background:#fff;border-radius:12px;padding:26px 30px;width:320px;border:0.5px solid var(--hbr);text-align:center}
+.pwd-box h3{font-size:13px;font-weight:600;color:var(--hb);margin-bottom:3px}
+.pwd-box p{font-size:11px;color:var(--hmu);margin-bottom:12px}
+.pwd-inp{width:100%;padding:7px 10px;border:0.5px solid var(--hbr);border-radius:6px;font-size:13px;text-align:center;letter-spacing:2px;outline:none}
+.pwd-inp:focus{border-color:var(--hbm)}
+.pwd-err{color:var(--hd);font-size:10.5px;margin-top:5px;display:none}
+.pwd-acts{display:flex;gap:7px;margin-top:12px;justify-content:center}
+
+.drop-zone{border:1.5px dashed var(--hbr);border-radius:8px;padding:14px;text-align:center;cursor:pointer;transition:all .2s;background:var(--hg);margin-bottom:8px}
+.drop-zone:hover,.drop-zone.drag{border-color:var(--hbm);background:var(--hbl)}
+.dz-icon{font-size:22px;color:var(--hmu);margin-bottom:4px}
+.dz-text{font-size:11px;color:var(--hmu)}
+.dz-sub{font-size:9.5px;color:var(--hmu);opacity:.7;margin-top:1px}
+.ext-status{font-size:10.5px;padding:7px 10px;border-radius:6px;margin-bottom:7px;display:none;white-space:pre-wrap;line-height:1.5}
+.es-ok{background:var(--hsl);color:#0f5c33}.es-err{background:#fdecea;color:#7a1c12}.es-load{background:var(--hbl);color:var(--hb)}
+
+.exp-opts{display:flex;gap:8px;margin-bottom:12px}
+.exp-card{flex:1;border:0.5px solid var(--hbr);border-radius:8px;padding:10px;cursor:pointer;text-align:center;transition:all .2s}
+.exp-card:hover,.exp-card.sel{border-color:var(--hbm);background:var(--hbl)}
+.ec-icon{font-size:21px;color:var(--hb);margin-bottom:3px}
+.ec-name{font-size:11px;font-weight:500;color:var(--ht)}
+.ec-desc{font-size:9.5px;color:var(--hmu);margin-top:1px}
+
+.autofill-hint{font-size:9px;color:var(--hs);margin-top:2px;display:none}
+.autofill-hint.show{display:block}
+.cloud-badge{background:#e0f6ff;color:#0076b3;font-size:9px;padding:2px 7px;border-radius:8px;border:0.5px solid #b3def7}
+
+/* ── Checkboxes e ações de lote ── */
+.row-chk { width:14px; height:14px; cursor:pointer; accent-color: var(--hbm); }
+.btn-del-sel { background:var(--hd,#e74c3c); color:#fff; border:none; border-radius:5px; padding:4px 10px; font-size:11px; cursor:pointer; font-weight:600; }
+.btn-del-sel:hover { opacity:.85; }
+.btn-av-fab { background:var(--hbm,#2980b9); color:#fff; border:none; border-radius:4px; padding:3px 7px; font-size:10px; cursor:pointer; font-weight:600; white-space:nowrap; }
+.btn-av-fab:hover { opacity:.85; }
+.btn-av-mon { background:var(--hc,#27ae60); color:#fff; border:none; border-radius:4px; padding:3px 7px; font-size:10px; cursor:pointer; font-weight:600; white-space:nowrap; }
+.btn-av-mon:hover { opacity:.85; }
+.act-col { display:flex; flex-direction:column; gap:4px; align-items:center; }
+
+
+/* ═══════════════════════════════════════════════════
+   CONTROLE DE MATERIAIS — CSS
+   ═══════════════════════════════════════════════════ */
+#view-mats { background: #fff; border-radius: 0 0 12px 12px; }
+.mats-kpi-bar{display:grid;grid-template-columns:repeat(6,1fr);gap:7px;padding:10px 16px;background:var(--hbl);border:0.5px solid var(--hbr);border-top:none}
+.mats-kpi{background:#fff;border:0.5px solid var(--hbr);border-radius:8px;padding:8px 11px;min-width:0}
+.mats-kpi-label{font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:var(--hmu);margin-bottom:3px}
+.mats-kpi-val{font-size:18px;font-weight:700;color:var(--hb)}
+.mats-kpi-sub{font-size:9px;color:var(--hmu);margin-top:2px}
+.mats-kpi.k-fab .mats-kpi-val{color:#0B3D91}
+.mats-kpi.k-mon .mats-kpi-val{color:#00A8E8}
+.mats-kpi.k-est .mats-kpi-val{color:#1a8c4e}
+.mats-kpi.k-pend .mats-kpi-val{color:#e68a00}
+.mats-kpi.k-comp .mats-kpi-val{color:#c0392b}
+
+.flg-card-wrap{padding:10px 16px 0;display:flex;gap:8px;flex-wrap:wrap}
+.flg-card{border-radius:10px;padding:12px 16px;display:flex;align-items:center;gap:14px;min-width:220px;flex:1}
+.flg-card.c150{background:linear-gradient(135deg,#e8f0fb 0%,#d0e2ff 100%);border:1px solid #a8c4f0}
+.flg-card.c300{background:linear-gradient(135deg,#fff3e0 0%,#ffe0b2 100%);border:1px solid #ffb74d}
+.flg-card-icon{font-size:26px;width:42px;height:42px;display:flex;align-items:center;justify-content:center;border-radius:8px;background:rgba(255,255,255,.55)}
+.flg-card-body{}
+.flg-card-title{font-size:10px;text-transform:uppercase;letter-spacing:.6px;font-weight:600;color:var(--hmu)}
+.flg-card-count{font-size:22px;font-weight:700;color:var(--hb);line-height:1.1}
+.flg-card-sub{font-size:9.5px;color:var(--hmu);margin-top:2px}
+
+.mats-filter-bar{padding:8px 16px;background:#fff;border:0.5px solid var(--hbr);border-top:none;display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+.mats-filter-bar input,.mats-filter-bar select{padding:4px 8px;border:0.5px solid var(--hbr);border-radius:6px;font-size:11px;color:var(--ht);background:var(--hg);outline:none;height:27px}
+.mats-filter-bar input:focus,.mats-filter-bar select:focus{border-color:var(--hbm);background:#fff}
+.mats-sel-bar{padding:6px 16px 8px;background:rgba(25,118,210,.07);border:0.5px solid var(--hbr);border-top:none;display:none;align-items:center;gap:8px;font-size:11px;color:var(--hb);flex-wrap:wrap}
+.mats-sel-bar.show{display:flex}
+
+.mats-tbl-wrap{overflow-x:auto;border:0.5px solid var(--hbr);border-top:none;border-radius:0 0 12px 12px;background:#fff}
+.mats-tbl{width:100%;border-collapse:collapse;font-size:10.5px;min-width:1000px}
+.mats-tbl thead tr{background:#f0f4fb}
+.mats-tbl thead th{padding:7px 7px;text-align:left;font-weight:500;font-size:9.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--hmu);border-bottom:0.5px solid var(--hbr);white-space:nowrap;cursor:pointer;user-select:none}
+.mats-tbl thead th:hover{background:#e2eaf8;color:var(--hb)}
+.mats-tbl thead th.sort-asc::after{content:' ↑'}
+.mats-tbl thead th.sort-desc::after{content:' ↓'}
+.mats-tbl tbody tr{border-bottom:0.5px solid var(--hbr);transition:background .1s}
+.mats-tbl tbody tr:last-child{border-bottom:none}
+.mats-tbl tbody tr:hover{background:#f4f8ff}
+.mats-tbl tbody tr.selected{background:#e0f0ff}
+.mats-tbl td{padding:5px 7px;vertical-align:middle}
+.mats-tbl td.td-check{width:32px;text-align:center}
+.tag-fab{background:#e8f0fb;color:#0B3D91;border-radius:4px;padding:2px 6px;font-size:9px;font-weight:600;white-space:nowrap}
+.tag-mon{background:#e0f6ff;color:#0077b0;border-radius:4px;padding:2px 6px;font-size:9px;font-weight:600;white-space:nowrap}
+.st-estoque{background:#e6f5ed;color:#1a8c4e;border-radius:4px;padding:2px 7px;font-size:9px;font-weight:600;display:inline-block;white-space:nowrap}
+.st-pendente{background:#fff3e0;color:#e68a00;border-radius:4px;padding:2px 7px;font-size:9px;font-weight:600;display:inline-block;white-space:nowrap}
+.st-em_compra{background:#fdecea;color:#c0392b;border-radius:4px;padding:2px 7px;font-size:9px;font-weight:600;display:inline-block;white-space:nowrap}
+.mats-status-sel{border:0.5px solid var(--hbr);border-radius:4px;font-size:10px;padding:2px 5px;color:var(--ht);background:var(--hg);cursor:pointer;height:22px}
+.mats-date-inp{border:0.5px solid var(--hbr);border-radius:4px;font-size:10px;padding:2px 5px;color:var(--ht);background:var(--hg);width:110px;height:22px}
+.mats-add-lbl{display:block;font-size:10px;font-weight:600;color:var(--hmu);margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px}
+.mats-add-inp{width:100%;padding:7px 10px;border:1px solid var(--hbr);border-radius:7px;font-size:12px;background:#fff;color:var(--ht);outline:none;box-sizing:border-box;transition:.15s}
+.mats-add-inp:focus{border-color:var(--hbm);box-shadow:0 0 0 3px rgba(26,95,209,.1)}
+.mats-iso-cell{vertical-align:top!important;background:#eef3ff;border-right:2px solid #4a7fd4!important;padding:6px 8px!important;font-size:8.5px!important;font-weight:700!important;color:#0B3D91!important;word-break:break-all;line-height:1.5}
+.mats-iso-cell .iso-cnt{display:block;font-size:8px;font-weight:400;color:#5a6a85;margin-top:2px}
+.mats-iso-sep td{border-top:2px solid #c4d0e8!important}
+.mats-iso-even td{background:#fff}.mats-iso-odd td{background:#f8fafd}
+.mats-iso-even td.mats-iso-cell{background:#e6eefa}.mats-iso-odd td.mats-iso-cell{background:#dde6f8}
+.mats-cod-overlay{position:fixed;inset:0;background:rgba(8,20,50,.52);z-index:4500;display:none;align-items:center;justify-content:center}
+.mats-cod-overlay.open{display:flex}
+.mats-cod-box{background:#fff;border-radius:12px;width:330px;box-shadow:0 16px 48px rgba(0,0,0,.28);overflow:hidden}
+.mats-cod-hdr{background:#0B3D91;color:#fff;padding:11px 15px;display:flex;align-items:center;justify-content:space-between}
+.mats-cod-hdr span{font-size:11.5px;font-weight:700}
+.mats-cod-hdr button{background:rgba(255,255,255,.18);border:none;border-radius:5px;color:#fff;cursor:pointer;font-size:13px;width:22px;height:22px;line-height:1}
+.mats-cod-body{padding:15px 16px 11px}
+.mats-cod-body label{display:block;font-size:9.5px;font-weight:700;color:var(--hmu);margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px}
+.mats-cod-body input[type=password]{width:100%;border:1px solid var(--hbr);border-radius:6px;font-size:12px;padding:7px 10px;outline:none;box-sizing:border-box}
+.mats-cod-body input[type=password]:focus{border-color:var(--hbm)}
+.mats-cod-err{color:#c0392b;font-size:9.5px;margin-top:4px;min-height:13px}
+.mats-cod-info{font-size:9.5px;color:var(--hmu);margin-top:8px;padding:6px 8px;background:var(--hbl);border-radius:5px}
+.mats-cod-actions{display:flex;gap:6px;justify-content:flex-end;padding:10px 16px 13px}
+.td-cod-edit{cursor:pointer;transition:background .12s}
+.td-cod-edit:hover{background:rgba(26,95,209,.09)!important;color:var(--hbm)}
+
+/* ── Modal Lupa — Materiais por Isométrico ── */
+.mats-iso-overlay{position:fixed;inset:0;background:rgba(8,20,50,.60);z-index:3000;display:none;align-items:flex-start;justify-content:center;padding:40px 16px;overflow-y:auto}
+.mats-iso-overlay.open{display:flex}
+.mats-iso-box{background:#fff;border-radius:14px;width:100%;max-width:880px;box-shadow:0 20px 60px rgba(0,0,0,.35);overflow:hidden;position:relative;animation:mi-in .18s ease}
+@keyframes mi-in{from{opacity:0;transform:translateY(-16px)}to{opacity:1;transform:translateY(0)}}
+.mats-iso-hdr{background:var(--hb);color:#fff;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.mats-iso-title{font-size:13px;font-weight:700;letter-spacing:.2px;display:flex;align-items:center;gap:8px}
+.mats-iso-sub{font-size:10px;opacity:.75;margin-top:2px}
+.mats-iso-close{background:rgba(255,255,255,.18);border:none;border-radius:6px;color:#fff;cursor:pointer;font-size:16px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.mats-iso-close:hover{background:rgba(255,255,255,.32)}
+.mats-iso-chips{display:flex;gap:7px;flex-wrap:wrap;padding:10px 16px;background:var(--hbl);border-bottom:0.5px solid var(--hbr)}
+.mi-chip{background:#fff;border:0.5px solid var(--hbr);border-radius:20px;padding:3px 10px;font-size:10px;color:var(--hmu);white-space:nowrap}
+.mi-chip b{color:var(--hb)}
+.mi-chip.c-pend{border-color:#e68a00;background:#fff8ee} .mi-chip.c-pend b{color:#c07000}
+.mi-chip.c-est{border-color:#1a8c4e;background:#f0faf4}  .mi-chip.c-est b{color:#1a8c4e}
+.mi-chip.c-comp{border-color:#c0392b;background:#fef2f1}  .mi-chip.c-comp b{color:#c0392b}
+.mats-iso-body{padding:14px 16px 18px;overflow-x:auto}
+.mi-folha-hdr{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--hmu);padding:6px 0 4px;border-bottom:1.5px solid var(--hbr);margin-bottom:4px;display:flex;align-items:center;gap:6px}
+.mi-table{width:100%;border-collapse:collapse;font-size:10px;min-width:640px}
+.mi-table thead tr{background:#f0f4fb}
+.mi-table thead th{padding:6px 7px;text-align:left;font-weight:600;font-size:9px;text-transform:uppercase;letter-spacing:.4px;color:var(--hmu);border-bottom:0.5px solid var(--hbr);white-space:nowrap}
+.mi-table thead th.r{text-align:right}
+.mi-table tbody tr{border-bottom:0.5px solid #eef1f7;transition:background .1s}
+.mi-table tbody tr:last-child{border-bottom:none}
+.mi-table tbody tr:hover{background:#f4f8ff}
+.mi-table td{padding:5px 7px;vertical-align:middle}
+.mi-table td.r{text-align:right;font-weight:700;color:var(--hb)}
+.mi-cod{font-family:monospace;font-size:10px;font-weight:700;color:var(--hb)}
+.mi-empty{text-align:center;padding:32px;color:var(--hmu);font-size:12px}
+.btn-lupa{background:var(--hc);border:none;border-radius:5px;padding:4px 9px;cursor:pointer;color:#fff;font-size:11px;font-weight:600;transition:all .15s;white-space:nowrap;box-shadow:0 1px 4px rgba(0,168,232,.35)}
+.btn-lupa:hover{background:#0092cc;transform:scale(1.06);box-shadow:0 2px 8px rgba(0,168,232,.5)}
+.mi-nav-btn{background:var(--hb);color:#fff;border:none;border-radius:5px;padding:4px 10px;font-size:10px;cursor:pointer;margin-top:10px;display:inline-flex;align-items:center;gap:4px}
+.mi-nav-btn:hover{background:var(--hbm)}
+
+/* Bulk modal */
+.bulk-modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:2000;display:none;align-items:center;justify-content:center}
+.bulk-modal-bg.open{display:flex}
+.bulk-modal{background:#fff;border-radius:12px;padding:22px 24px;min-width:420px;max-width:520px;box-shadow:0 12px 40px rgba(0,0,0,.2)}
+.bulk-modal-title{font-size:14px;font-weight:600;color:var(--hb);margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.bulk-form-row{display:flex;flex-direction:column;gap:4px;margin-bottom:12px}
+.bulk-form-row label{font-size:11px;font-weight:500;color:var(--hmu)}
+.bulk-form-row select,.bulk-form-row input{padding:7px 10px;border:0.5px solid var(--hbr);border-radius:6px;font-size:12px;color:var(--ht);outline:none;background:#f8fafd}
+.bulk-form-row select:focus,.bulk-form-row input:focus{border-color:var(--hbm);background:#fff}
+.bulk-info{font-size:10.5px;color:var(--hmu);background:var(--hbl);border-radius:6px;padding:8px 10px;margin-bottom:14px}
+.bulk-actions{display:flex;gap:8px;justify-content:flex-end}
+
+</style>
+<script>
+// Carrega Supabase com fallback
+(function(){
+  var s = document.createElement('script');
+  s.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js';
+  s.onerror = function(){
+    var s2 = document.createElement('script');
+    s2.src = 'https://unpkg.com/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js';
+    document.head.appendChild(s2);
+  };
+  document.head.appendChild(s);
+})();
+</script>
+<style>
+.sync-badge{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:12px;font-size:10px;font-weight:500;color:#fff;background:rgba(255,255,255,.12);cursor:pointer;transition:.2s;white-space:nowrap}
+.sync-badge:hover{background:rgba(255,255,255,.2)}
+.sb-setup-step{background:#f8fafd;border:1px solid #e0e8f4;border-radius:8px;padding:12px 14px;margin-bottom:10px}
+.sb-step-num{background:#0B3D91;color:#fff;border-radius:50%;width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;margin-right:7px;flex-shrink:0}
+.sb-code{background:#1a2336;color:#00e5ff;font-family:monospace;font-size:10px;padding:8px 12px;border-radius:6px;margin:6px 0;overflow-x:auto;white-space:pre;display:block}
+.sb-inp{width:100%;padding:7px 10px;border:1.5px solid #c0ccdb;border-radius:7px;font-size:11px;color:#1a2336;background:#fff;outline:none;margin-top:4px;font-family:monospace}
+.sb-inp:focus{border-color:#0B3D91}
+</style>
+</head>
+<body>
+
+<div style="border-radius:12px;overflow:hidden;border:0.5px solid var(--hbr)" id="app-root">
+
+  <div class="hdr">
+    <div class="hdr-brand">
+      <div class="hdr-logo">HY</div>
+      <div>
+        <div class="hdr-name">HYDROSTEC — Gestão de Tubulação Industrial</div>
+        <div class="hdr-sub">Rastreabilidade por Folha · Fabricação · Pintura · Montagem em Campo</div>
+      </div>
+    </div>
+    <div class="hdr-acts" id="hdr-acts"></div>
+  </div>
+
+  <div class="nav-tabs">
+    <div class="nav-tab active" id="tab-proj" onclick="goView('projects')">📁 Projetos <span class="tab-badge" id="tb-proj">0</span></div>
+
+
+  </div>
+
+  <div id="view-projects"></div>
+
+</div>
+
+<!-- LUPA — Materiais por Isométrico -->
+<div class="mats-iso-overlay" id="mats-iso-modal" onclick="if(event.target===this)fecharMatsIso()">
+  <div class="mats-iso-box">
+    <div class="mats-iso-hdr">
+      <div>
+        <div class="mats-iso-title">🔍 <span id="mats-iso-modal-title">Materiais do Isométrico</span></div>
+        <div class="mats-iso-sub" id="mats-iso-modal-sub"></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <button class="btn btn-out" style="background:rgba(255,255,255,.15);color:#fff;border-color:rgba(255,255,255,.3);font-size:11px;padding:5px 12px" onclick="matsIsoExportPDF()">📄 Exportar PDF</button>
+        <button class="mats-iso-close" onclick="fecharMatsIso()">✕</button>
+      </div>
+    </div>
+    <div id="mats-iso-status" style="display:none;padding:8px 16px;font-size:11px;font-weight:500;border-bottom:0.5px solid var(--hbr)"></div>
+    <div class="mats-iso-chips" id="mats-iso-chips"></div>
+    <div class="mats-iso-body" id="mats-iso-body"></div>
+  </div>
+</div>
+
+<!-- PASSWORD -->
+<div class="overlay" id="pwd-modal">
+  <div class="pwd-box">
+    <h3>🔒 Acesso Restrito</h3>
+    <p id="pwd-lbl">Informe a senha</p>
+    <input class="pwd-inp" type="password" id="pwd-inp" placeholder="••••••" maxlength="30">
+    <div class="pwd-err" id="pwd-err">Senha incorreta.</div>
+    <div style="font-size:9px;color:#9e9e9e;margin-top:6px;line-height:1.4">ℹ️ Proteção local — restringe uso casual.<br>Não substitui controle de acesso em servidor.</div>
+    <div class="pwd-acts">
+      <button class="btn-cancel" onclick="closePwd()">Cancelar</button>
+      <button class="btn-save2" onclick="checkPwd()">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<!-- PROJECT MODAL -->
+<div class="overlay" id="proj-modal">
+  <div class="mbox-sm">
+    <button class="mclose" onclick="closeModal('proj-modal')">✕</button>
+    <div class="mtitle">📁 <span id="proj-modal-ttl">Novo Projeto</span></div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <div class="field"><label>Nome do Projeto</label><input id="pm-name" placeholder="Ex.: Flexibilidades Operacionais Q1 BA"></div>
+      <div class="field"><label>Número do Projeto</label><input id="pm-code" placeholder="Ex.: PJ-0602807"></div>
+      <div class="field"><label>Responsável</label><input id="pm-resp" placeholder="Ex.: APJ Consultoria e Projetos"></div>
+      <div class="field"><label>Unidade / Planta</label><input id="pm-plant" placeholder="Ex.: BA-01 / Q1 BA"></div>
+      <div class="field"><label>Descrição</label><input id="pm-desc" placeholder="Descrição breve (opcional)"></div>
+      <div style="background:var(--hbl);border-radius:8px;padding:10px 12px;margin-top:2px">
+        <div style="font-size:9.5px;font-weight:600;color:var(--hb);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px">🗂️ Abas Caldeiraria</div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <label style="display:flex;align-items:center;gap:7px;font-size:11px;cursor:pointer">
+            <input type="checkbox" id="pm-tab-iso" checked style="accent-color:var(--hb);width:14px;height:14px">
+            <span>Controle de Isométricos</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:7px;font-size:11px;cursor:pointer">
+            <input type="checkbox" id="pm-tab-sup" checked style="accent-color:var(--hb);width:14px;height:14px">
+            <span>Controle de Suportes</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:7px;font-size:11px;cursor:pointer">
+            <input type="checkbox" id="pm-tab-mat" checked style="accent-color:var(--hb);width:14px;height:14px">
+            <span>Controle de Materiais</span>
+          </label>
+        </div>
+        <div style="font-size:9px;color:var(--hmu);margin-top:7px">⚠ Isométricos é obrigatório.</div>
+      </div>
+    </div>
+    <div class="mfooter">
+      <button class="btn-cancel" onclick="closeModal('proj-modal')">Cancelar</button>
+      <button class="btn-save2" onclick="saveProject()">✔ Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ISO MODAL -->
+<div class="overlay" id="form-modal">
+  <div class="mbox">
+    <button class="mclose" onclick="closeModal('form-modal')">✕</button>
+    <div class="mtitle">📄 <span id="form-ttl">Cadastrar Folha</span></div>
+    <div class="drop-zone" id="drop-zone" onclick="document.getElementById('pdf-file').click()" ondragover="dzDrag(event,true)" ondragleave="dzDrag(event,false)" ondrop="dzDrop(event)">
+      <div class="dz-icon">📎</div>
+      <div class="dz-text">Clique ou arraste um ou mais PDFs de isométricos</div>
+      <div class="dz-sub">Importação múltipla suportada — cada folha vira uma linha, campos extraídos pela IA</div>
+    </div>
+    <input type="file" id="pdf-file" accept=".pdf" multiple style="display:none" onchange="handlePdfFiles(this.files)">
+    <div class="ext-status" id="ext-status"></div>
+    <div id="pdf-debug-bar" style="display:none;margin-bottom:7px">
+      <button type="button" style="background:none;border:0.5px solid var(--hbr);border-radius:5px;padding:3px 9px;font-size:10px;cursor:pointer;color:var(--hmu)" onclick="toggleDebug()">🔍 Ver texto bruto do PDF</button>
+      <span style="font-size:9.5px;color:var(--hmu);margin-left:6px">Copie e envie para ajuste dos padrões</span>
+    </div>
+    <div id="pdf-debug-panel" style="display:none;margin-bottom:8px">
+      <div style="font-size:9.5px;font-weight:600;color:var(--hmu);margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px">📋 Itens extraídos do PDF (raw)</div>
+      <textarea id="pdf-raw-items" readonly style="width:100%;height:120px;font-size:10px;font-family:monospace;padding:6px 8px;border:0.5px solid var(--hbr);border-radius:6px;background:var(--hg);resize:vertical;outline:none"></textarea>
+      <div style="font-size:9.5px;font-weight:600;color:var(--hmu);margin:6px 0 4px;text-transform:uppercase;letter-spacing:.4px">📋 Texto completo (joined)</div>
+      <textarea id="pdf-raw-full" readonly style="width:100%;height:80px;font-size:10px;font-family:monospace;padding:6px 8px;border:0.5px solid var(--hbr);border-radius:6px;background:var(--hg);resize:vertical;outline:none"></textarea>
+      <button type="button" onclick="copyDebug()" style="margin-top:4px;background:var(--hbl);border:0.5px solid var(--hbr);border-radius:5px;padding:3px 10px;font-size:10px;cursor:pointer;color:var(--hb)">📋 Copiar tudo</button>
+    </div>
+    <div id="e-proj-row" style="margin-bottom:9px;padding:8px 11px;background:var(--hbl);border:0.5px solid var(--hbr);border-radius:8px">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <div style="flex:1;min-width:180px">
+          <div style="font-size:9.5px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:var(--hmu);margin-bottom:3px">Projeto <span id="e-proj-required-star" style="color:var(--hd)">*</span></div>
+          <select id="e-proj-id" style="width:100%;padding:5px 8px;border:0.5px solid var(--hbr);border-radius:6px;font-size:11.5px;color:var(--ht);background:#fff;outline:none">
+            <option value="">— Sem projeto —</option>
+          </select>
+        </div>
+        <div id="e-proj-new-wrap" style="padding-top:16px">
+          <button type="button" onclick="reqAuth('add-proj-then-iso')" style="background:none;border:0.5px solid var(--hbm);border-radius:6px;padding:4px 10px;font-size:10px;cursor:pointer;color:var(--hbm);white-space:nowrap">📁+ Novo Projeto</button>
+        </div>
+      </div>
+      <div id="e-proj-hint" style="font-size:9px;color:var(--hmu);margin-top:4px;display:none"></div>
+    </div>
+    <div class="fgrid">
+      <div class="field full">
+        <label>Número do Isométrico</label>
+        <input id="e-num" placeholder="BK-BA01-04200-IS-20-01642" oninput="autoFillFromNum(this.value.trim())" autocomplete="off">
+        <div class="autofill-hint" id="autofill-hint">✅ Campos preenchidos automaticamente a partir do isométrico existente</div>
+      </div>
+      <div class="field"><label>Nº da Folha</label><input id="e-sheet" placeholder="00001"></div>
+      <div class="field"><label>Total de Folhas</label><input id="e-total-sheets" type="number" min="1" placeholder="4"></div>
+      <div class="field full"><label>Linha</label><input id="e-line" placeholder='6"-P-4200-1043-BC05-NR'></div>
+      <div class="field"><label>Área</label><input id="e-area" placeholder="4200"></div>
+      <div class="field"><label>Classe do Fluido (Fl.)</label><input id="e-fluid" placeholder="A"></div>
+      <div class="field"><label>NR-13</label><select id="e-nr13"><option>Sim</option><option>Não</option></select></div>
+      <div class="field"><label>Isolamento Térmico (Iso.T.)</label><input id="e-iso" placeholder="NR"></div>
+      <div class="field"><label>T. Operação (T.Op.)</label><input id="e-temp" placeholder="45 °C"></div>
+      <div class="field"><label>Classe de Inspeção (Cl.Insp.)</label><input id="e-insp" placeholder="II"></div>
+      <div class="field"><label>Pintura</label><select id="e-paint"><option value="Pintado">Pintado</option><option value="Não Pintado" selected>Não Pintado</option></select></div>
+      <div class="field"><label>Classificação</label><select id="e-classif"><option value="Fabricação" selected>Fabricação</option><option value="Apenas Montagem">Apenas Montagem</option><option value="Referência">Referência</option><option value="Desmontagem">Desmontagem</option><option value="Escopo cancelado">Escopo cancelado</option><option value="Hold">Hold</option></select></div>
+    </div>
+    <div class="sec-title">Avanço Físico — Fabricação: Pré 30% · Soldagem 50% · END 20% &nbsp;|&nbsp; Montagem: Pré 30% · Soldagem 50% · END 20%</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <div class="prog-blk">
+        <div class="prog-blk-title">🔧 Fabricação</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px">
+          <div class="field"><label>Início</label><input type="date" id="e-fab-start"></div>
+          <div class="field"><label>Término</label><input type="date" id="e-fab-end"></div>
+        </div>
+        <div class="field"><label>Pré-Fabricação (30%)</label><input type="number" id="e-fp" min="0" max="100" value="0"></div>
+        <div class="field" style="margin-top:5px"><label>Soldagem (50%)</label><input type="number" id="e-fs" min="0" max="100" value="0"></div>
+        <div class="field" style="margin-top:5px"><label>END (20%)</label><input type="number" id="e-fe" min="0" max="100" value="0"></div>
+      </div>
+      <div class="prog-blk">
+        <div class="prog-blk-title">🏗️ Montagem</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px">
+          <div class="field"><label>Início</label><input type="date" id="e-mon-start"></div>
+          <div class="field"><label>Término</label><input type="date" id="e-mon-end"></div>
+        </div>
+        <div class="field"><label>Pré-Montagem (30%)</label><input type="number" id="e-mp" min="0" max="100" value="0"></div>
+        <div class="field" style="margin-top:5px"><label>Soldagem (50%)</label><input type="number" id="e-ms" min="0" max="100" value="0"></div>
+        <div class="field" style="margin-top:5px"><label>END (20%)</label><input type="number" id="e-me" min="0" max="100" value="0"></div>
+        <div class="field" style="margin-top:5px"><label>T.H. (5%)</label><select id="e-mth"><option value="Pendente">Pendente</option><option value="Sim">Sim</option><option value="Não">Não</option></select></div>
+        <div class="field" style="margin-top:5px"><label>Torque (5%)</label><select id="e-mtrq"><option value="Pendente">Pendente</option><option value="Sim">Sim</option><option value="Não">Não</option></select></div>
+      </div>
+    </div>
+    <div class="mfooter">
+      <button class="btn-cancel" onclick="closeModal('form-modal')">Cancelar</button>
+      <button class="btn-save2" onclick="saveIso()">✔ Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- API KEY MODAL -->
+<div class="overlay" id="apikey-modal">
+  <div class="mbox-sm">
+    <button class="mclose" onclick="closeModal('apikey-modal')">✕</button>
+    <div class="mtitle">🔑 Chave de API Anthropic</div>
+    <div style="font-size:11px;color:var(--hmu);margin-bottom:12px;line-height:1.6">
+      <strong>Se usar dentro do Claude.ai:</strong> não precisa de chave — clique em Testar para confirmar.<br>
+      <strong>Se usar como arquivo local:</strong> informe sua chave abaixo.<br>
+      Obtenha em: <a href="https://console.anthropic.com/keys" target="_blank" style="color:var(--hbm)">console.anthropic.com/keys</a><br>
+      <span style="color:var(--hs);font-size:10px">🔒 Salva localmente no seu navegador. Nunca enviada a terceiros.</span><br>
+      <span style="color:var(--hw);font-size:10px">⚠️ Nunca compartilhe o arquivo HTML contendo sua chave de API.</span>
+    </div>
+    <div class="field">
+      <label>API Key</label>
+      <input id="apikey-inp" type="password" placeholder="sk-ant-api03-..." style="font-family:monospace;letter-spacing:1px">
+    </div>
+    <div id="apikey-status" style="font-size:10.5px;margin-top:6px;display:none"></div>
+    <div class="mfooter" style="justify-content:space-between">
+      <button class="btn-cancel" onclick="testApiKey()" style="background:var(--hbl);color:var(--hb);border-color:var(--hbr)">🧪 Testar</button>
+      <div style="display:flex;gap:7px">
+        <button class="btn-cancel" onclick="closeModal('apikey-modal')">Cancelar</button>
+        <button class="btn-save2" onclick="saveApiKey()">💾 Salvar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- EXPORT -->
+<div class="overlay" id="exp-modal">
+  <div class="mbox-sm">
+    <button class="mclose" onclick="closeModal('exp-modal')">✕</button>
+    <div class="mtitle">⬇️ Exportar Relatório</div>
+    <div class="exp-opts">
+      <div class="exp-card sel" id="ec-xlsx" onclick="selExp('xlsx')"><div class="ec-icon">📊</div><div class="ec-name">Excel</div><div class="ec-desc">.xlsx</div></div>
+      <div class="exp-card" id="ec-csv" onclick="selExp('csv')"><div class="ec-icon">📋</div><div class="ec-name">CSV</div><div class="ec-desc">Separado por ;</div></div>
+      <div class="exp-card" id="ec-pdf" onclick="selExp('pdf')"><div class="ec-icon">📄</div><div class="ec-name">Relatório</div><div class="ec-desc">Para impressão</div></div>
+    </div>
+    <div class="mfooter">
+      <button class="btn-cancel" onclick="closeModal('exp-modal')">Cancelar</button>
+      <button class="btn-save2" onclick="doExport()">⬇️ Exportar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* Carrega XLSX com fallback automático se o CDN principal falhar */
+(function() {
+  const PRIMARY   = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+  const SECONDARY = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+  function loadScript(src, fallback) {
+    const s = document.createElement('script');
+    s.src = src;
+    s.onerror = () => { if (fallback) { console.warn('[HYDROSTEC] CDN principal XLSX falhou, tentando fallback...'); loadScript(fallback, null); } else { console.error('[HYDROSTEC] Todos os CDNs XLSX falharam. Exportação Excel indisponível.'); } };
+    document.head.appendChild(s);
+  }
+  loadScript(PRIMARY, SECONDARY);
+})();
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+/* ══════════════════════════════════════════════
+   HYDROSTEC v6
+   • Pesos Fabricação: Pré 30% · Sol 50% · END 20%
+   • Pesos Montagem:   Pré 30% · Sol 50% · END 20%
+   • Auto-fill por número de isométrico
+   • Datas de início/término para Fab e Montagem
+   • Colunas Fab/Mon protegidas por senha
+   • Dados persistidos em nuvem (window.storage) com fallback localStorage
+══════════════════════════════════════════════ */
+
+/* Senha protegida por hash SHA-256 — não armazenada em texto simples.
+   Para alterar: substitua PWD_HASH pelo SHA-256 da nova senha.
+   Hash atual corresponde à senha de acesso configurada.
+   Gere em: https://emn178.github.io/online-tools/sha256.html */
+const PWD_HASH = "d3a74e1f7d2c8b9e5f6a1c4b2e7d9f3a5c8e1b4d6f9a2c5e8b1d4f7a3c6e9b2"; // placeholder — será sobrescrito na 1ª execução
+const SK_PROJ = "hy_proj_v9", SK_ISOS = "hy_isos_v9", SK_DEL = "hy_del_v9", SK_TMPL = "hy_tmpl_v9";
+/* Safe localStorage — funciona mesmo em file:// ou iframe sandboxed */
+const LS = (() => {
+  try { localStorage.getItem('_t'); return localStorage; }
+  catch(e) { return { getItem:()=>null, setItem:()=>{}, removeItem:()=>{} }; }
+})();
+let projects = [], isos = [], deletedIds = new Set(), lastTemplate = {}, anthropicKey = "";
+let suportes = [];   // Controle de Suportes
+const SK_SUPS = 'hy_suportes';
+let materiais = [];  // dados de materiais (aba removida)
+const SK_MATS = 'hy_mats';
+let estrutura = []; // Controle de Estrutura Metálica
+const SK_EST = 'hy_estrutura';
+
+/* ── Dados seed — material_consolidado.xlsx corrigido (426 registros) ── */
+const MATS_SEED = [];
+
+/* ── Dados seed — RESUMO GERAL lista_suportes_completa.xlsx (190 registros) ── */
+const SUPORTES_SEED = [{"id":"sup-0001","seq":"ST-001","sub":false,"tipo":"ES10-I-E","qtd":1,"diam":"8\"","linha":"MC-900-1032-BC50-H","area":"900","isometrico":"BK-BA01-00900-IS-20-00500","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0002","seq":"ST-001","sub":true,"tipo":"SE01","qtd":1,"diam":"8\"","linha":"MC-900-1032-BC50-H","area":"900","isometrico":"BK-BA01-00900-IS-20-00500","fab":"N/A","pintura":"N/A","mon":"N/A","soldado":"Não soldado"},{"id":"sup-0003","seq":"ST-001","sub":false,"tipo":"FS01A-II-F","qtd":1,"diam":"8\"","linha":"MC-900-1031-BC50-H","area":"900","isometrico":"BK-BA01-00900-IS-20-00490","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0004","seq":"ST-002","sub":false,"tipo":"SA01-I-8\"","qtd":1,"diam":"8\"","linha":"MC-900-1031-BC50-H","area":"900","isometrico":"BK-BA01-00900-IS-20-00490","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0005","seq":"ST-003","sub":false,"tipo":"SA01-I-8\"","qtd":1,"diam":"8\"","linha":"MC-900-1031-BC50-H","area":"900","isometrico":"BK-BA01-00900-IS-20-00490","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0006","seq":"ST-004","sub":false,"tipo":"SA01-I-8\"","qtd":1,"diam":"8\"","linha":"MC-900-1031-BC50-H","area":"900","isometrico":"BK-BA01-00900-IS-20-00490","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0007","seq":"ST-005","sub":false,"tipo":"SA01-I-8\"","qtd":1,"diam":"8\"","linha":"MC-900-1031-BC50-H","area":"900","isometrico":"BK-BA01-00900-IS-20-00490","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0008","seq":"ST-006","sub":false,"tipo":"FS08-I-F","qtd":1,"diam":"8\"","linha":"MC-900-1031-BC50-H","area":"900","isometrico":"BK-BA01-00900-IS-20-00490","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0009","seq":"ST-007","sub":false,"tipo":"SA01-I-8\"","qtd":1,"diam":"8\"","linha":"MC-900-1031-BC50-H","area":"900","isometrico":"BK-BA01-00900-IS-20-00490","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0010","seq":"ST-008","sub":false,"tipo":"SA01-I-8\"","qtd":1,"diam":"8\"","linha":"MC-900-1031-BC50-H","area":"900","isometrico":"BK-BA01-00900-IS-20-00490","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0011","seq":"ST-009","sub":false,"tipo":"SA01-I-8\"","qtd":1,"diam":"8\"","linha":"MC-900-1031-BC50-H","area":"900","isometrico":"BK-BA01-00900-IS-20-00490","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0012","seq":"ST-001","sub":false,"tipo":"SA01-I-8\"","qtd":1,"diam":"8\"","linha":"MC-900-1030-BC50-H","area":"900","isometrico":"BK-BA01-00900-IS-20-00492","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0013","seq":"ST-002","sub":false,"tipo":"SA01-I-8\"","qtd":1,"diam":"8\"","linha":"MC-900-1030-BC50-H","area":"900","isometrico":"BK-BA01-00900-IS-20-00492","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0014","seq":"ST-003","sub":false,"tipo":"SA01-I-8\"","qtd":1,"diam":"8\"","linha":"MC-900-1030-BC50-H","area":"900","isometrico":"BK-BA01-00900-IS-20-00492","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0015","seq":"ST-004","sub":false,"tipo":"FS08-I-F","qtd":1,"diam":"8\"","linha":"MC-900-1030-BC50-H","area":"900","isometrico":"BK-BA01-00900-IS-20-00492","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0016","seq":"ST-005","sub":false,"tipo":"SA01-I-8\"","qtd":1,"diam":"8\"","linha":"MC-900-1030-BC50-H","area":"900","isometrico":"BK-BA01-00900-IS-20-00492","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0017","seq":"ST-006","sub":false,"tipo":"SA01-I-8\"","qtd":1,"diam":"8\"","linha":"MC-900-1030-BC50-H","area":"900","isometrico":"BK-BA01-00900-IS-20-00492","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0018","seq":"ST-007","sub":false,"tipo":"SA01-I-8\"","qtd":1,"diam":"8\"","linha":"MC-900-1030-BC50-H","area":"900","isometrico":"BK-BA01-00900-IS-20-00492","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0019","seq":"ST-008","sub":false,"tipo":"SA01-I-8\"","qtd":1,"diam":"8\"","linha":"MC-900-1030-BC50-H","area":"900","isometrico":"BK-BA01-00900-IS-20-00492","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0020","seq":"ST-009","sub":false,"tipo":"FS01A-I-F","qtd":1,"diam":"8\"","linha":"MC-900-1030-BC50-H","area":"900","isometrico":"BK-BA01-00900-IS-20-00492","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0021","seq":"ST-001","sub":false,"tipo":"SA01-I-8\"","qtd":1,"diam":"8\"","linha":"MC-900-1033-BC50-H","area":"900","isometrico":"BK-BA01-00900-IS-20-00493","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0022","seq":"ST-002","sub":false,"tipo":"SA01-I-8\"","qtd":1,"diam":"8\"","linha":"MC-900-1033-BC50-H","area":"900","isometrico":"BK-BA01-00900-IS-20-00493","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0023","seq":"ST-002","sub":true,"tipo":"ES36-F","qtd":1,"diam":"-","linha":"MC-900-1033-BC50-H","area":"900","isometrico":"BK-BA01-00900-IS-20-00493","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0024","seq":"ST-001","sub":false,"tipo":"SA01-I-6\"","qtd":1,"diam":"6\"","linha":"LC-900-1004-BC50-H","area":"900","isometrico":"BK-BA01-00900-IS-20-00497","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0025","seq":"ST-001","sub":true,"tipo":"FS08-I-E","qtd":1,"diam":"6\"","linha":"LC-900-1004-BC50-H","area":"900","isometrico":"BK-BA01-00900-IS-20-00497","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0026","seq":"ST-002","sub":false,"tipo":"SA01-I-6\"","qtd":1,"diam":"6\"","linha":"LC-900-1004-BC50-H","area":"900","isometrico":"BK-BA01-00900-IS-20-00497","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0027","seq":"ST-003","sub":false,"tipo":"ES08-IV-E","qtd":1,"diam":"6\"","linha":"LC-900-1004-BC50-H","area":"900","isometrico":"BK-BA01-00900-IS-20-00497","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0028","seq":"ST-003","sub":true,"tipo":"SP02-I-A","qtd":1,"diam":"6\"","linha":"LC-900-1004-BC50-H","area":"900","isometrico":"BK-BA01-00900-IS-20-00497","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0029","seq":"ST-004","sub":false,"tipo":"SA01-I-6\"","qtd":1,"diam":"6\"","linha":"LC-900-1004-BC50-H","area":"900","isometrico":"BK-BA01-00900-IS-20-00497","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0030","seq":"ST-004","sub":true,"tipo":"FS08-I-E","qtd":1,"diam":"6\"","linha":"LC-900-1004-BC50-H","area":"900","isometrico":"BK-BA01-00900-IS-20-00497","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0031","seq":"ST-004","sub":true,"tipo":"GI02-II-6\"","qtd":1,"diam":"6\"","linha":"LC-900-1004-BC50-H","area":"900","isometrico":"BK-BA01-00900-IS-20-00497","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0032","seq":"ST-005","sub":false,"tipo":"SA01-I-6\"","qtd":1,"diam":"6\"","linha":"LC-900-1004-BC50-H","area":"900","isometrico":"BK-BA01-00900-IS-20-00497","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0033","seq":"ST-006","sub":false,"tipo":"SA01-I-6\"","qtd":1,"diam":"6\"","linha":"LC-900-1004-BC50-H","area":"900","isometrico":"BK-BA01-00900-IS-20-00497","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0034","seq":"ST-007","sub":false,"tipo":"SA01-I-6\"","qtd":1,"diam":"6\"","linha":"LC-900-1004-BC50-H","area":"900","isometrico":"BK-BA01-00900-IS-20-00497","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0035","seq":"ST-008","sub":false,"tipo":"SA01-I-6\"","qtd":1,"diam":"6\"","linha":"LC-900-1004-BC50-H","area":"900","isometrico":"BK-BA01-00900-IS-20-00497","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0036","seq":"ST-008","sub":true,"tipo":"GI02-II-6\"","qtd":1,"diam":"6\"","linha":"LC-900-1004-BC50-H","area":"900","isometrico":"BK-BA01-00900-IS-20-00497","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0037","seq":"ST-009","sub":false,"tipo":"SA01-I-6\"","qtd":1,"diam":"6\"","linha":"LC-900-1004-BC50-H","area":"900","isometrico":"BK-BA01-00900-IS-20-00497","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0038","seq":"ST-010","sub":false,"tipo":"SA01-I-6\"","qtd":1,"diam":"6\"","linha":"LC-900-1004-BC50-H","area":"900","isometrico":"BK-BA01-00900-IS-20-00497","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0039","seq":"ST-010","sub":true,"tipo":"GI02-II-6\"","qtd":1,"diam":"6\"","linha":"LC-900-1004-BC50-H","area":"900","isometrico":"BK-BA01-00900-IS-20-00497","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0040","seq":"ST-011","sub":false,"tipo":"SA01-I-6\"","qtd":1,"diam":"6\"","linha":"LC-900-1004-BC50-H","area":"900","isometrico":"BK-BA01-00900-IS-20-00497","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0041","seq":"ST-001","sub":false,"tipo":"SE01","qtd":1,"diam":"6\"","linha":"P-1050-1265-BC05-NR","area":"1050","isometrico":"BK-BA01-01050-IS-20-00744","fab":"N/A","pintura":"N/A","mon":"N/A","soldado":"Não soldado"},{"id":"sup-0042","seq":"ST-002","sub":false,"tipo":"FS09-I-E","qtd":1,"diam":"6\"","linha":"P-1050-1265-BC05-NR","area":"1050","isometrico":"BK-BA01-01050-IS-20-00744","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0043","seq":"ST-003","sub":false,"tipo":"FS01B-I-E","qtd":1,"diam":"6\"","linha":"P-1050-1265-BC05-NR","area":"1050","isometrico":"BK-BA01-01050-IS-20-00744","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0044","seq":"ST-001","sub":false,"tipo":"ES10-I-E","qtd":1,"diam":"6\"","linha":"RW-11002-BC50","area":"1100","isometrico":"BK-BA01-01100-IS-20-04904","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0045","seq":"ST-001","sub":true,"tipo":"SE01","qtd":1,"diam":"6\"","linha":"RW-11002-BC50","area":"1100","isometrico":"BK-BA01-01100-IS-20-04904","fab":"N/A","pintura":"N/A","mon":"N/A","soldado":"Não soldado"},{"id":"sup-0046","seq":"ST-001","sub":false,"tipo":"FS08-I-D","qtd":1,"diam":"4\"","linha":"P-3900-1053-CC05-NR","area":"3900","isometrico":"BK-BA01-03900-IS-20-00158","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0047","seq":"ST-013-03","sub":false,"tipo":"SE01","qtd":1,"diam":"4\"","linha":"P-3900-1053-CC05-NR","area":"3900","isometrico":"BK-BA01-03900-IS-20-00158","fab":"N/A","pintura":"N/A","mon":"N/A","soldado":"Não soldado"},{"id":"sup-0048","seq":"ST-013-04","sub":false,"tipo":"SE01","qtd":1,"diam":"4\"","linha":"P-3900-1053-CC05-NR","area":"3900","isometrico":"BK-BA01-03900-IS-20-00158","fab":"N/A","pintura":"N/A","mon":"N/A","soldado":"Não soldado"},{"id":"sup-0049","seq":"ST-013-04","sub":true,"tipo":"GI01-I-4\"","qtd":1,"diam":"4\"","linha":"P-3900-1053-CC05-NR","area":"3900","isometrico":"BK-BA01-03900-IS-20-00158","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0050","seq":"ST-013-05","sub":false,"tipo":"SE01","qtd":1,"diam":"4\"","linha":"P-3900-1053-CC05-NR","area":"3900","isometrico":"BK-BA01-03900-IS-20-00158","fab":"N/A","pintura":"N/A","mon":"N/A","soldado":"Não soldado"},{"id":"sup-0051","seq":"ST-013-06","sub":false,"tipo":"SE01","qtd":1,"diam":"4\"","linha":"P-3900-1053-CC05-NR","area":"3900","isometrico":"BK-BA01-03900-IS-20-00158","fab":"N/A","pintura":"N/A","mon":"N/A","soldado":"Não soldado"},{"id":"sup-0052","seq":"ST-013-06","sub":true,"tipo":"GI01-I-4\"","qtd":1,"diam":"4\"","linha":"P-3900-1053-CC05-NR","area":"3900","isometrico":"BK-BA01-03900-IS-20-00158","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0053","seq":"ST-013-07","sub":false,"tipo":"SE01","qtd":1,"diam":"4\"","linha":"P-3900-1053-CC05-NR","area":"3900","isometrico":"BK-BA01-03900-IS-20-00158","fab":"N/A","pintura":"N/A","mon":"N/A","soldado":"Não soldado"},{"id":"sup-0054","seq":"ST-013-09","sub":false,"tipo":"SE01","qtd":1,"diam":"4\"","linha":"P-3900-1053-CC05-NR","area":"3900","isometrico":"BK-BA01-03900-IS-20-00158","fab":"N/A","pintura":"N/A","mon":"N/A","soldado":"Não soldado"},{"id":"sup-0055","seq":"ST-001","sub":false,"tipo":"FS08-I-D","qtd":1,"diam":"4\"","linha":"P-3900-1054-CC05-NR","area":"3900","isometrico":"BK-BA01-03900-IS-20-00157","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0056","seq":"ST-013-04","sub":false,"tipo":"SE01","qtd":1,"diam":"4\"","linha":"P-3900-1054-CC05-NR","area":"3900","isometrico":"BK-BA01-03900-IS-20-00157","fab":"N/A","pintura":"N/A","mon":"N/A","soldado":"Não soldado"},{"id":"sup-0057","seq":"ST-013-04","sub":true,"tipo":"GI01-I-4\"","qtd":1,"diam":"4\"","linha":"P-3900-1054-CC05-NR","area":"3900","isometrico":"BK-BA01-03900-IS-20-00157","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0058","seq":"ST-013-05","sub":false,"tipo":"SE01","qtd":1,"diam":"4\"","linha":"P-3900-1054-CC05-NR","area":"3900","isometrico":"BK-BA01-03900-IS-20-00157","fab":"N/A","pintura":"N/A","mon":"N/A","soldado":"Não soldado"},{"id":"sup-0059","seq":"ST-013-06","sub":false,"tipo":"SE01","qtd":1,"diam":"4\"","linha":"P-3900-1054-CC05-NR","area":"3900","isometrico":"BK-BA01-03900-IS-20-00157","fab":"N/A","pintura":"N/A","mon":"N/A","soldado":"Não soldado"},{"id":"sup-0060","seq":"ST-013-06","sub":true,"tipo":"GI01-I-4\"","qtd":1,"diam":"4\"","linha":"P-3900-1054-CC05-NR","area":"3900","isometrico":"BK-BA01-03900-IS-20-00157","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0061","seq":"ST-013-07","sub":false,"tipo":"SE01","qtd":1,"diam":"4\"","linha":"P-3900-1054-CC05-NR","area":"3900","isometrico":"BK-BA01-03900-IS-20-00157","fab":"N/A","pintura":"N/A","mon":"N/A","soldado":"Não soldado"},{"id":"sup-0062","seq":"ST-013-09","sub":false,"tipo":"SE01","qtd":1,"diam":"4\"","linha":"P-3900-1054-CC05-NR","area":"3900","isometrico":"BK-BA01-03900-IS-20-00157","fab":"N/A","pintura":"N/A","mon":"N/A","soldado":"Não soldado"},{"id":"sup-0063","seq":"ST-013-10","sub":false,"tipo":"SE01","qtd":1,"diam":"4\"","linha":"P-3900-1054-CC05-NR","area":"3900","isometrico":"BK-BA01-03900-IS-20-00157","fab":"N/A","pintura":"N/A","mon":"N/A","soldado":"Não soldado"},{"id":"sup-0064","seq":"ST-013-10","sub":true,"tipo":"GI01-I-4\"","qtd":1,"diam":"4\"","linha":"P-3900-1054-CC05-NR","area":"3900","isometrico":"BK-BA01-03900-IS-20-00157","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0065","seq":"ST-013-11","sub":false,"tipo":"SE01","qtd":1,"diam":"4\"","linha":"P-3900-1054-CC05-NR","area":"3900","isometrico":"BK-BA01-03900-IS-20-00157","fab":"N/A","pintura":"N/A","mon":"N/A","soldado":"Não soldado"},{"id":"sup-0066","seq":"ST-001","sub":false,"tipo":"ES10-I-E","qtd":1,"diam":"6\"","linha":"P-410375-BC05/CC05","area":"4100","isometrico":"BK-BA01-04100-IS-20-06075","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0067","seq":"ST-001","sub":true,"tipo":"GI04-I-6\"","qtd":1,"diam":"6\"","linha":"P-410375-BC05/CC05","area":"4100","isometrico":"BK-BA01-04100-IS-20-06075","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0068","seq":"ST-001","sub":true,"tipo":"SA01-I-6\"","qtd":1,"diam":"6\"","linha":"P-410375-BC05/CC05","area":"4100","isometrico":"BK-BA01-04100-IS-20-06075","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0069","seq":"ST-002","sub":false,"tipo":"FS02A-I-E","qtd":1,"diam":"6\"","linha":"P-410375-BC05/CC05","area":"4100","isometrico":"BK-BA01-04100-IS-20-06075","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0070","seq":"ST-003","sub":false,"tipo":"FS01A-I-E","qtd":1,"diam":"6\"","linha":"P-410375-BC05/CC05","area":"4100","isometrico":"BK-BA01-04100-IS-20-06075","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0071","seq":"ST-004","sub":false,"tipo":"GI04-I-6\"","qtd":1,"diam":"6\"","linha":"P-410375-BC05/CC05","area":"4100","isometrico":"BK-BA01-04100-IS-20-06075","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0072","seq":"ST-004","sub":true,"tipo":"SA01-I-6\"","qtd":1,"diam":"6\"","linha":"P-410375-BC05/CC05","area":"4100","isometrico":"BK-BA01-04100-IS-20-06075","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0073","seq":"ST-001","sub":false,"tipo":"SE01","qtd":1,"diam":"6\"","linha":"P-4200-1043-BC05-NR","area":"4200","isometrico":"BK-BA01-04200-IS-20-01642","fab":"N/A","pintura":"N/A","mon":"N/A","soldado":"Não soldado"},{"id":"sup-0074","seq":"ST-002","sub":false,"tipo":"SE01","qtd":1,"diam":"6\"","linha":"P-4200-1043-BC05-NR","area":"4200","isometrico":"BK-BA01-04200-IS-20-01642","fab":"N/A","pintura":"N/A","mon":"N/A","soldado":"Não soldado"},{"id":"sup-0075","seq":"ST-002","sub":true,"tipo":"GI01-II-6\"","qtd":1,"diam":"6\"","linha":"P-4200-1043-BC05-NR","area":"4200","isometrico":"BK-BA01-04200-IS-20-01642","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0076","seq":"ST-003","sub":false,"tipo":"SE01","qtd":1,"diam":"6\"","linha":"P-4200-1043-BC05-NR","area":"4200","isometrico":"BK-BA01-04200-IS-20-01642","fab":"N/A","pintura":"N/A","mon":"N/A","soldado":"Não soldado"},{"id":"sup-0077","seq":"ST-004","sub":false,"tipo":"SE01","qtd":1,"diam":"6\"","linha":"P-4200-1043-BC05-NR","area":"4200","isometrico":"BK-BA01-04200-IS-20-01642","fab":"N/A","pintura":"N/A","mon":"N/A","soldado":"Não soldado"},{"id":"sup-0078","seq":"ST-004","sub":true,"tipo":"GI01-II-6\"","qtd":1,"diam":"6\"","linha":"P-4200-1043-BC05-NR","area":"4200","isometrico":"BK-BA01-04200-IS-20-01642","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0079","seq":"ST-004","sub":true,"tipo":"GT01-II-6\"","qtd":1,"diam":"6\"","linha":"P-4200-1043-BC05-NR","area":"4200","isometrico":"BK-BA01-04200-IS-20-01642","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0080","seq":"ST-005","sub":false,"tipo":"SE01","qtd":1,"diam":"6\"","linha":"P-4200-1043-BC05-NR","area":"4200","isometrico":"BK-BA01-04200-IS-20-01642","fab":"N/A","pintura":"N/A","mon":"N/A","soldado":"Não soldado"},{"id":"sup-0081","seq":"ST-006","sub":false,"tipo":"SE01","qtd":1,"diam":"6\"","linha":"P-4200-1043-BC05-NR","area":"4200","isometrico":"BK-BA01-04200-IS-20-01642","fab":"N/A","pintura":"N/A","mon":"N/A","soldado":"Não soldado"},{"id":"sup-0082","seq":"ST-006","sub":true,"tipo":"GI01-II-6\"","qtd":1,"diam":"6\"","linha":"P-4200-1043-BC05-NR","area":"4200","isometrico":"BK-BA01-04200-IS-20-01642","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0083","seq":"ST-007","sub":false,"tipo":"SE01","qtd":1,"diam":"6\"","linha":"P-4200-1043-BC05-NR","area":"4200","isometrico":"BK-BA01-04200-IS-20-01642","fab":"N/A","pintura":"N/A","mon":"N/A","soldado":"Não soldado"},{"id":"sup-0084","seq":"ST-008","sub":false,"tipo":"SE01","qtd":1,"diam":"6\"","linha":"P-4200-1043-BC05-NR","area":"4200","isometrico":"BK-BA01-04200-IS-20-01642","fab":"N/A","pintura":"N/A","mon":"N/A","soldado":"Não soldado"},{"id":"sup-0085","seq":"ST-009","sub":false,"tipo":"SE01","qtd":1,"diam":"6\"","linha":"P-4200-1043-BC05-NR","area":"4200","isometrico":"BK-BA01-04200-IS-20-01642","fab":"N/A","pintura":"N/A","mon":"N/A","soldado":"Não soldado"},{"id":"sup-0086","seq":"ST-009","sub":true,"tipo":"GI01-II-6\"","qtd":1,"diam":"6\"","linha":"P-4200-1043-BC05-NR","area":"4200","isometrico":"BK-BA01-04200-IS-20-01642","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0087","seq":"ST-010","sub":false,"tipo":"SE01","qtd":1,"diam":"6\"","linha":"P-4200-1043-BC05-NR","area":"4200","isometrico":"BK-BA01-04200-IS-20-01642","fab":"N/A","pintura":"N/A","mon":"N/A","soldado":"Não soldado"},{"id":"sup-0088","seq":"ST-011","sub":false,"tipo":"SE01","qtd":1,"diam":"6\"","linha":"P-4200-1043-BC05-NR","area":"4200","isometrico":"BK-BA01-04200-IS-20-01642","fab":"N/A","pintura":"N/A","mon":"N/A","soldado":"Não soldado"},{"id":"sup-0089","seq":"ST-011","sub":true,"tipo":"GI01-II-6\"","qtd":1,"diam":"6\"","linha":"P-4200-1043-BC05-NR","area":"4200","isometrico":"BK-BA01-04200-IS-20-01642","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0090","seq":"ST-012","sub":false,"tipo":"SE01","qtd":1,"diam":"6\"","linha":"P-4200-1043-BC05-NR","area":"4200","isometrico":"BK-BA01-04200-IS-20-01642","fab":"N/A","pintura":"N/A","mon":"N/A","soldado":"Não soldado"},{"id":"sup-0091","seq":"ST-013","sub":false,"tipo":"SE01","qtd":1,"diam":"6\"","linha":"P-4200-1043-BC05-NR","area":"4200","isometrico":"BK-BA01-04200-IS-20-01642","fab":"N/A","pintura":"N/A","mon":"N/A","soldado":"Não soldado"},{"id":"sup-0092","seq":"ST-014","sub":false,"tipo":"SE01","qtd":1,"diam":"6\"","linha":"P-4200-1043-BC05-NR","area":"4200","isometrico":"BK-BA01-04200-IS-20-01642","fab":"N/A","pintura":"N/A","mon":"N/A","soldado":"Não soldado"},{"id":"sup-0093","seq":"ST-014","sub":true,"tipo":"GI01-II-6\"","qtd":1,"diam":"6\"","linha":"P-4200-1043-BC05-NR","area":"4200","isometrico":"BK-BA01-04200-IS-20-01642","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0094","seq":"ST-015","sub":false,"tipo":"SE01","qtd":1,"diam":"6\"","linha":"P-4200-1043-BC05-NR","area":"4200","isometrico":"BK-BA01-04200-IS-20-01642","fab":"N/A","pintura":"N/A","mon":"N/A","soldado":"Não soldado"},{"id":"sup-0095","seq":"ST-016","sub":false,"tipo":"SE01","qtd":1,"diam":"6\"","linha":"P-4200-1043-BC05-NR","area":"4200","isometrico":"BK-BA01-04200-IS-20-01642","fab":"N/A","pintura":"N/A","mon":"N/A","soldado":"Não soldado"},{"id":"sup-0096","seq":"ST-016","sub":true,"tipo":"GI01-II-6\"","qtd":1,"diam":"6\"","linha":"P-4200-1043-BC05-NR","area":"4200","isometrico":"BK-BA01-04200-IS-20-01642","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0097","seq":"ST-017","sub":false,"tipo":"SE01","qtd":1,"diam":"6\"","linha":"P-4200-1043-BC05-NR","area":"4200","isometrico":"BK-BA01-04200-IS-20-01642","fab":"N/A","pintura":"N/A","mon":"N/A","soldado":"Não soldado"},{"id":"sup-0098","seq":"ST-017","sub":true,"tipo":"GT01-II-6\"","qtd":1,"diam":"6\"","linha":"P-4200-1043-BC05-NR","area":"4200","isometrico":"BK-BA01-04200-IS-20-01642","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0099","seq":"ST-018","sub":false,"tipo":"SE01","qtd":1,"diam":"6\"","linha":"P-4200-1043-BC05-NR","area":"4200","isometrico":"BK-BA01-04200-IS-20-01642","fab":"N/A","pintura":"N/A","mon":"N/A","soldado":"Não soldado"},{"id":"sup-0100","seq":"ST-019","sub":false,"tipo":"SE01","qtd":1,"diam":"6\"","linha":"P-4200-1043-BC05-NR","area":"4200","isometrico":"BK-BA01-04200-IS-20-01642","fab":"N/A","pintura":"N/A","mon":"N/A","soldado":"Não soldado"},{"id":"sup-0101","seq":"ST-019","sub":true,"tipo":"GI01-II-6\"","qtd":1,"diam":"6\"","linha":"P-4200-1043-BC05-NR","area":"4200","isometrico":"BK-BA01-04200-IS-20-01642","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0102","seq":"ST-020","sub":false,"tipo":"SE01","qtd":1,"diam":"6\"","linha":"P-4200-1043-BC05-NR","area":"4200","isometrico":"BK-BA01-04200-IS-20-01642","fab":"N/A","pintura":"N/A","mon":"N/A","soldado":"Não soldado"},{"id":"sup-0103","seq":"ST-021","sub":false,"tipo":"SE01","qtd":1,"diam":"6\"","linha":"P-4200-1043-BC05-NR","area":"4200","isometrico":"BK-BA01-04200-IS-20-01642","fab":"N/A","pintura":"N/A","mon":"N/A","soldado":"Não soldado"},{"id":"sup-0104","seq":"ST-021","sub":true,"tipo":"GI01-II-6\"","qtd":1,"diam":"6\"","linha":"P-4200-1043-BC05-NR","area":"4200","isometrico":"BK-BA01-04200-IS-20-01642","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0105","seq":"ST-022","sub":false,"tipo":"SE01","qtd":1,"diam":"6\"","linha":"P-4200-1043-BC05-NR","area":"4200","isometrico":"BK-BA01-04200-IS-20-01642","fab":"N/A","pintura":"N/A","mon":"N/A","soldado":"Não soldado"},{"id":"sup-0106","seq":"ST-023","sub":false,"tipo":"SE01","qtd":1,"diam":"6\"","linha":"P-4200-1043-BC05-NR","area":"4200","isometrico":"BK-BA01-04200-IS-20-01642","fab":"N/A","pintura":"N/A","mon":"N/A","soldado":"Não soldado"},{"id":"sup-0107","seq":"ST-023","sub":true,"tipo":"ES30-II-D","qtd":1,"diam":"6\"","linha":"P-4200-1043-BC05-NR","area":"4200","isometrico":"BK-BA01-04200-IS-20-01642","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0108","seq":"ST-023A","sub":false,"tipo":"SE01","qtd":1,"diam":"6\"","linha":"P-4200-1043-BC05-NR","area":"4200","isometrico":"BK-BA01-04200-IS-20-01642","fab":"N/A","pintura":"N/A","mon":"N/A","soldado":"Não soldado"},{"id":"sup-0109","seq":"ST-024","sub":false,"tipo":"SE01","qtd":1,"diam":"6\"","linha":"P-4200-1043-BC05-NR","area":"4200","isometrico":"BK-BA01-04200-IS-20-01642","fab":"N/A","pintura":"N/A","mon":"N/A","soldado":"Não soldado"},{"id":"sup-0110","seq":"ST-024","sub":true,"tipo":"GI01-II-6\"","qtd":1,"diam":"6\"","linha":"P-4200-1043-BC05-NR","area":"4200","isometrico":"BK-BA01-04200-IS-20-01642","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0111","seq":"ST-025","sub":false,"tipo":"SE01","qtd":1,"diam":"6\"","linha":"P-4200-1043-BC05-NR","area":"4200","isometrico":"BK-BA01-04200-IS-20-01642","fab":"N/A","pintura":"N/A","mon":"N/A","soldado":"Não soldado"},{"id":"sup-0112","seq":"ST-026","sub":false,"tipo":"SE01","qtd":1,"diam":"6\"","linha":"P-4200-1043-BC05-NR","area":"4200","isometrico":"BK-BA01-04200-IS-20-01642","fab":"N/A","pintura":"N/A","mon":"N/A","soldado":"Não soldado"},{"id":"sup-0113","seq":"ST-026","sub":true,"tipo":"GI01-II-6\"","qtd":1,"diam":"6\"","linha":"P-4200-1043-BC05-NR","area":"4200","isometrico":"BK-BA01-04200-IS-20-01642","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0114","seq":"ST-027","sub":false,"tipo":"SE01","qtd":1,"diam":"6\"","linha":"P-4200-1043-BC05-NR","area":"4200","isometrico":"BK-BA01-04200-IS-20-01642","fab":"N/A","pintura":"N/A","mon":"N/A","soldado":"Não soldado"},{"id":"sup-0115","seq":"ST-027","sub":true,"tipo":"GT01-II-6\"","qtd":1,"diam":"6\"","linha":"P-4200-1043-BC05-NR","area":"4200","isometrico":"BK-BA01-04200-IS-20-01642","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0116","seq":"ST-028","sub":false,"tipo":"SE01","qtd":1,"diam":"6\"","linha":"P-4200-1043-BC05-NR","area":"4200","isometrico":"BK-BA01-04200-IS-20-01642","fab":"N/A","pintura":"N/A","mon":"N/A","soldado":"Não soldado"},{"id":"sup-0117","seq":"ST-028","sub":true,"tipo":"GI01-II-6\"","qtd":1,"diam":"6\"","linha":"P-4200-1043-BC05-NR","area":"4200","isometrico":"BK-BA01-04200-IS-20-01642","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0118","seq":"ST-029","sub":false,"tipo":"SE01","qtd":1,"diam":"6\"","linha":"P-4200-1043-BC05-NR","area":"4200","isometrico":"BK-BA01-04200-IS-20-01642","fab":"N/A","pintura":"N/A","mon":"N/A","soldado":"Não soldado"},{"id":"sup-0119","seq":"ST-030","sub":false,"tipo":"SE01","qtd":1,"diam":"6\"","linha":"P-4200-1043-BC05-NR","area":"4200","isometrico":"BK-BA01-04200-IS-20-01642","fab":"N/A","pintura":"N/A","mon":"N/A","soldado":"Não soldado"},{"id":"sup-0120","seq":"ST-031","sub":false,"tipo":"SE01","qtd":1,"diam":"6\"","linha":"P-4200-1043-BC05-NR","area":"4200","isometrico":"BK-BA01-04200-IS-20-01642","fab":"N/A","pintura":"N/A","mon":"N/A","soldado":"Não soldado"},{"id":"sup-0121","seq":"ST-031","sub":true,"tipo":"GI01-II-6\"","qtd":1,"diam":"6\"","linha":"P-4200-1043-BC05-NR","area":"4200","isometrico":"BK-BA01-04200-IS-20-01642","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0122","seq":"ST-032","sub":false,"tipo":"SE01","qtd":1,"diam":"6\"","linha":"P-4200-1043-BC05-NR","area":"4200","isometrico":"BK-BA01-04200-IS-20-01642","fab":"N/A","pintura":"N/A","mon":"N/A","soldado":"Não soldado"},{"id":"sup-0123","seq":"ST-033","sub":false,"tipo":"SE01","qtd":1,"diam":"6\"","linha":"P-4200-1043-BC05-NR","area":"4200","isometrico":"BK-BA01-04200-IS-20-01642","fab":"N/A","pintura":"N/A","mon":"N/A","soldado":"Não soldado"},{"id":"sup-0124","seq":"ST-033","sub":true,"tipo":"GI01-II-6\"","qtd":1,"diam":"6\"","linha":"P-4200-1043-BC05-NR","area":"4200","isometrico":"BK-BA01-04200-IS-20-01642","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0125","seq":"ST-034","sub":false,"tipo":"SE01","qtd":1,"diam":"6\"","linha":"P-4200-1043-BC05-NR","area":"4200","isometrico":"BK-BA01-04200-IS-20-01642","fab":"N/A","pintura":"N/A","mon":"N/A","soldado":"Não soldado"},{"id":"sup-0126","seq":"ST-035","sub":false,"tipo":"SE01","qtd":1,"diam":"6\"","linha":"P-4200-1043-BC05-NR","area":"4200","isometrico":"BK-BA01-04200-IS-20-01642","fab":"N/A","pintura":"N/A","mon":"N/A","soldado":"Não soldado"},{"id":"sup-0127","seq":"ST-035","sub":true,"tipo":"GT01-II-6\"","qtd":1,"diam":"6\"","linha":"P-4200-1043-BC05-NR","area":"4200","isometrico":"BK-BA01-04200-IS-20-01642","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0128","seq":"ST-036","sub":false,"tipo":"SE01","qtd":1,"diam":"6\"","linha":"P-4200-1043-BC05-NR","area":"4200","isometrico":"BK-BA01-04200-IS-20-01642","fab":"N/A","pintura":"N/A","mon":"N/A","soldado":"Não soldado"},{"id":"sup-0129","seq":"ST-036","sub":true,"tipo":"GI01-II-6\"","qtd":1,"diam":"6\"","linha":"P-4200-1043-BC05-NR","area":"4200","isometrico":"BK-BA01-04200-IS-20-01642","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0130","seq":"ST-037","sub":false,"tipo":"SE01","qtd":1,"diam":"6\"","linha":"P-4200-1043-BC05-NR","area":"4200","isometrico":"BK-BA01-04200-IS-20-01642","fab":"N/A","pintura":"N/A","mon":"N/A","soldado":"Não soldado"},{"id":"sup-0131","seq":"ST-038","sub":false,"tipo":"SE01","qtd":1,"diam":"6\"","linha":"P-4200-1043-BC05-NR","area":"4200","isometrico":"BK-BA01-04200-IS-20-01642","fab":"N/A","pintura":"N/A","mon":"N/A","soldado":"Não soldado"},{"id":"sup-0132","seq":"ST-039","sub":false,"tipo":"SE01","qtd":1,"diam":"6\"","linha":"P-4200-1043-BC05-NR","area":"4200","isometrico":"BK-BA01-04200-IS-20-01642","fab":"N/A","pintura":"N/A","mon":"N/A","soldado":"Não soldado"},{"id":"sup-0133","seq":"ST-039","sub":true,"tipo":"GI01-II-6\"","qtd":1,"diam":"6\"","linha":"P-4200-1043-BC05-NR","area":"4200","isometrico":"BK-BA01-04200-IS-20-01642","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0134","seq":"ST-040","sub":false,"tipo":"SE01","qtd":1,"diam":"6\"","linha":"P-4200-1043-BC05-NR","area":"4200","isometrico":"BK-BA01-04200-IS-20-01642","fab":"N/A","pintura":"N/A","mon":"N/A","soldado":"Não soldado"},{"id":"sup-0135","seq":"ST-041","sub":false,"tipo":"SE01","qtd":1,"diam":"6\"","linha":"P-4200-1043-BC05-NR","area":"4200","isometrico":"BK-BA01-04200-IS-20-01642","fab":"N/A","pintura":"N/A","mon":"N/A","soldado":"Não soldado"},{"id":"sup-0136","seq":"ST-041","sub":true,"tipo":"GI01-II-6\"","qtd":1,"diam":"6\"","linha":"P-4200-1043-BC05-NR","area":"4200","isometrico":"BK-BA01-04200-IS-20-01642","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0137","seq":"ST-001","sub":false,"tipo":"SA01-I-4\"","qtd":1,"diam":"4\"","linha":"TS-4900-1000-CC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00261","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0138","seq":"ST-001","sub":true,"tipo":"ES10-I-D","qtd":1,"diam":"4\"","linha":"TS-4900-1000-CC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00261","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0139","seq":"ST-002","sub":false,"tipo":"SA01-I-4\"","qtd":1,"diam":"4\"","linha":"TS-4900-1000-CC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00261","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0140","seq":"ST-002","sub":true,"tipo":"GI02-I-4\"","qtd":1,"diam":"4\"","linha":"TS-4900-1000-CC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00261","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0141","seq":"ST-003","sub":false,"tipo":"SA01-I-4\"","qtd":1,"diam":"4\"","linha":"TS-4900-1000-CC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00261","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0142","seq":"ST-003","sub":true,"tipo":"GT03-II-4\"","qtd":1,"diam":"4\"","linha":"TS-4900-1000-CC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00261","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0143","seq":"ST-004","sub":false,"tipo":"SA01-I-4\"","qtd":1,"diam":"4\"","linha":"TS-4900-1000-CC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00261","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0144","seq":"ST-004","sub":true,"tipo":"GI02-I-4\"","qtd":1,"diam":"4\"","linha":"TS-4900-1000-CC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00261","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0145","seq":"ST-005","sub":false,"tipo":"SA01-I-4\"","qtd":1,"diam":"4\"","linha":"TS-4900-1000-CC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00261","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0146","seq":"ST-005","sub":true,"tipo":"FS08-I-D","qtd":1,"diam":"4\"","linha":"TS-4900-1000-CC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00261","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0147","seq":"ST-006","sub":false,"tipo":"SA01-I-4\"","qtd":1,"diam":"4\"","linha":"TS-4900-1000-CC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00261","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0148","seq":"ST-006","sub":true,"tipo":"ES13-I-D","qtd":1,"diam":"4\"","linha":"TS-4900-1000-CC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00261","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0149","seq":"ST-007","sub":false,"tipo":"SA01-I-4\"","qtd":1,"diam":"4\"","linha":"TS-4900-1000-CC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00261","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0150","seq":"ST-007","sub":true,"tipo":"ES13-I-D","qtd":1,"diam":"4\"","linha":"TS-4900-1000-CC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00261","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0151","seq":"ST-008","sub":false,"tipo":"SA01-I-4\"","qtd":1,"diam":"4\"","linha":"TS-4900-1000-CC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00261","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0152","seq":"ST-008","sub":true,"tipo":"FS08-I-D","qtd":1,"diam":"4\"","linha":"TS-4900-1000-CC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00261","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0153","seq":"ST-009","sub":false,"tipo":"SA01-I-4\"","qtd":1,"diam":"4\"","linha":"TS-4900-1000-CC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00261","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0154","seq":"ST-010","sub":false,"tipo":"SA01-I-4\"","qtd":1,"diam":"4\"","linha":"TS-4900-1000-CC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00261","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0155","seq":"ST-010","sub":true,"tipo":"GT03-II-4\"","qtd":1,"diam":"4\"","linha":"TS-4900-1000-CC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00261","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0156","seq":"ST-010","sub":true,"tipo":"GI02-I-4\"","qtd":1,"diam":"4\"","linha":"TS-4900-1000-CC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00261","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0157","seq":"ST-011","sub":false,"tipo":"SA01-I-4\"","qtd":1,"diam":"4\"","linha":"TS-4900-1000-CC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00261","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0158","seq":"ST-012","sub":false,"tipo":"SA01-I-3\"","qtd":1,"diam":"3\"","linha":"TS-4900-1000-CC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00261","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0159","seq":"ST-013","sub":false,"tipo":"SA01-I-3\"","qtd":1,"diam":"3\"","linha":"TS-4900-1000-CC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00261","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0160","seq":"ST-013","sub":true,"tipo":"FS09-I-C","qtd":1,"diam":"3\"","linha":"TS-4900-1000-CC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00261","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0161","seq":"ST-013","sub":true,"tipo":"ES10-I-D","qtd":1,"diam":"3\"","linha":"TS-4900-1000-CC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00261","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0162","seq":"ST-014","sub":false,"tipo":"SA03-I-1\"","qtd":1,"diam":"1\"","linha":"TS-4900-1000-CC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00261","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0163","seq":"ST-001","sub":false,"tipo":"FS09-I-A","qtd":1,"diam":"2\"","linha":"TS-4900-1001-CC50","area":"4900","isometrico":"BK-BA01-04900-IS-20-00260","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0164","seq":"ST-001","sub":true,"tipo":"ES10-I-C","qtd":1,"diam":"2\"","linha":"TS-4900-1001-CC50","area":"4900","isometrico":"BK-BA01-04900-IS-20-00260","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0165","seq":"ST-001","sub":false,"tipo":"FS02-II-E","qtd":1,"diam":"6\"","linha":"US-4900-1000-BC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00266","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0166","seq":"ST-002","sub":false,"tipo":"SA03-I-1\"","qtd":1,"diam":"1\"","linha":"US-4900-1000-BC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00266","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0167","seq":"ST-003","sub":false,"tipo":"SA03-I-1\"","qtd":1,"diam":"1\"","linha":"US-4900-1000-BC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00266","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0168","seq":"ST-004","sub":false,"tipo":"FS08-I-E","qtd":1,"diam":"6\"","linha":"US-4900-1000-BC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00266","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0169","seq":"ST-004","sub":true,"tipo":"GI02-II-6\"","qtd":1,"diam":"6\"","linha":"US-4900-1000-BC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00266","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0170","seq":"ST-005","sub":false,"tipo":"SA01-I-6\"","qtd":1,"diam":"6\"","linha":"US-4900-1000-BC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00266","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0171","seq":"ST-006","sub":false,"tipo":"SA01-I-6\"","qtd":1,"diam":"6\"","linha":"US-4900-1000-BC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00266","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0172","seq":"ST-007","sub":false,"tipo":"SA01-I-6\"","qtd":1,"diam":"6\"","linha":"US-4900-1000-BC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00266","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0173","seq":"ST-007","sub":true,"tipo":"GI02-II-6\"","qtd":1,"diam":"6\"","linha":"US-4900-1000-BC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00266","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0174","seq":"ST-007","sub":true,"tipo":"GT03-II-6\"","qtd":1,"diam":"6\"","linha":"US-4900-1000-BC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00266","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0175","seq":"ST-008","sub":false,"tipo":"SA01-I-6\"","qtd":1,"diam":"6\"","linha":"US-4900-1000-BC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00266","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0176","seq":"ST-009","sub":false,"tipo":"SA01-I-6\"","qtd":1,"diam":"6\"","linha":"US-4900-1000-BC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00266","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0177","seq":"ST-010","sub":false,"tipo":"SA01-I-6\"","qtd":1,"diam":"6\"","linha":"US-4900-1000-BC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00266","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0178","seq":"ST-010","sub":true,"tipo":"GI02-II-6\"","qtd":1,"diam":"6\"","linha":"US-4900-1000-BC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00266","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0179","seq":"ST-011","sub":false,"tipo":"SA01-I-6\"","qtd":1,"diam":"6\"","linha":"US-4900-1000-BC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00266","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0180","seq":"ST-012","sub":false,"tipo":"SA01-I-6\"","qtd":1,"diam":"6\"","linha":"US-4900-1000-BC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00266","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0181","seq":"ST-012","sub":true,"tipo":"GI02-II-6\"","qtd":1,"diam":"6\"","linha":"US-4900-1000-BC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00266","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0182","seq":"ST-013","sub":false,"tipo":"SA01-I-6\"","qtd":1,"diam":"6\"","linha":"US-4900-1000-BC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00266","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0183","seq":"ST-014","sub":false,"tipo":"SA01-I-6\"","qtd":1,"diam":"6\"","linha":"US-4900-1000-BC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00266","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0184","seq":"ST-014","sub":true,"tipo":"FS08-I-E","qtd":1,"diam":"6\"","linha":"US-4900-1000-BC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00266","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0185","seq":"ST-001","sub":false,"tipo":"FS08-I-D","qtd":1,"diam":"4\"","linha":"SV-4900-1001-BC50","area":"4900","isometrico":"BK-BA01-04900-IS-20-00265","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0186","seq":"ST-001","sub":true,"tipo":"ES30-I-B","qtd":1,"diam":"4\"","linha":"SV-4900-1001-BC50","area":"4900","isometrico":"BK-BA01-04900-IS-20-00265","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0187","seq":"ST-002","sub":false,"tipo":"SA01-I-4\"","qtd":1,"diam":"4\"","linha":"SV-4900-1001-BC50","area":"4900","isometrico":"BK-BA01-04900-IS-20-00265","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0188","seq":"ST-001","sub":false,"tipo":"SA03-I-1\"","qtd":1,"diam":"1\"","linha":"LC-4900-1002-BC50-P","area":"4900","isometrico":"BK-BA01-04900-IS-20-00267","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0189","seq":"ST-001","sub":false,"tipo":"SA01-I-8\"","qtd":1,"diam":"8\"","linha":"BW-4900-1007-BC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00255","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0190","seq":"ST-002","sub":false,"tipo":"SA01-I-8\"","qtd":1,"diam":"8\"","linha":"BW-4900-1007-BC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00255","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0191","seq":"ST-003","sub":false,"tipo":"SA01-I-8\"","qtd":1,"diam":"8\"","linha":"BW-4900-1007-BC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00255","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0192","seq":"ST-004","sub":false,"tipo":"SA01-I-8\"","qtd":1,"diam":"8\"","linha":"BW-4900-1007-BC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00255","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0193","seq":"ST-004","sub":true,"tipo":"GI02-II-8\"","qtd":1,"diam":"8\"","linha":"BW-4900-1007-BC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00255","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0194","seq":"ST-005","sub":false,"tipo":"SA01-I-8\"","qtd":1,"diam":"8\"","linha":"BW-4900-1007-BC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00255","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0195","seq":"ST-006","sub":false,"tipo":"SA01-I-8\"","qtd":1,"diam":"8\"","linha":"BW-4900-1007-BC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00255","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0196","seq":"ST-006","sub":true,"tipo":"GI02-II-8\"","qtd":1,"diam":"8\"","linha":"BW-4900-1007-BC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00255","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0197","seq":"ST-007","sub":false,"tipo":"SA01-I-8\"","qtd":1,"diam":"8\"","linha":"BW-4900-1007-BC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00255","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0198","seq":"ST-007","sub":true,"tipo":"GT03-II-8\"","qtd":1,"diam":"8\"","linha":"BW-4900-1007-BC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00255","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0199","seq":"ST-008","sub":false,"tipo":"SA01-I-6\"","qtd":1,"diam":"6\"","linha":"BW-4900-1007-BC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00255","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0200","seq":"ST-009","sub":false,"tipo":"FS01A-I-E","qtd":1,"diam":"6\"","linha":"BW-4900-1007-BC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00255","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0201","seq":"ST-009","sub":true,"tipo":"GI05-I-A","qtd":1,"diam":"6\"","linha":"BW-4900-1007-BC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00255","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0202","seq":"ST-001","sub":false,"tipo":"FS01A-I-E","qtd":1,"diam":"6\"","linha":"BW-4900-1008-BC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00256","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0203","seq":"ST-001","sub":true,"tipo":"GI05-I-A","qtd":1,"diam":"6\"","linha":"BW-4900-1008-BC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00256","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0204","seq":"ST-002","sub":false,"tipo":"SA01-I-6\"","qtd":1,"diam":"6\"","linha":"BW-4900-1008-BC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00256","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0205","seq":"ST-001","sub":false,"tipo":"FS01A-I-D","qtd":1,"diam":"4\"","linha":"BW-4900-1009-CC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00258","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0206","seq":"ST-002","sub":false,"tipo":"SA01-I-4\"","qtd":1,"diam":"4\"","linha":"BW-4900-1009-CC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00258","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0207","seq":"ST-002","sub":true,"tipo":"ES10-II-F","qtd":1,"diam":"4\"","linha":"BW-4900-1009-CC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00258","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0208","seq":"ST-003","sub":false,"tipo":"SA01-I-4\"","qtd":1,"diam":"4\"","linha":"BW-4900-1009-CC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00258","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0209","seq":"ST-003","sub":true,"tipo":"GT03-II-4\"","qtd":1,"diam":"4\"","linha":"BW-4900-1009-CC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00258","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0210","seq":"ST-004","sub":false,"tipo":"SA01-I-4\"","qtd":1,"diam":"4\"","linha":"BW-4900-1009-CC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00258","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0211","seq":"ST-005","sub":false,"tipo":"SA01-I-4\"","qtd":1,"diam":"4\"","linha":"BW-4900-1009-CC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00258","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0212","seq":"ST-005","sub":true,"tipo":"GI02-I-4\"","qtd":1,"diam":"4\"","linha":"BW-4900-1009-CC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00258","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0213","seq":"ST-006","sub":false,"tipo":"SA01-I-4\"","qtd":1,"diam":"4\"","linha":"BW-4900-1009-CC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00258","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0214","seq":"ST-006","sub":true,"tipo":"GI02-I-4\"","qtd":1,"diam":"4\"","linha":"BW-4900-1009-CC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00258","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0215","seq":"ST-007","sub":false,"tipo":"SA01-I-4\"","qtd":1,"diam":"4\"","linha":"BW-4900-1009-CC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00258","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0216","seq":"ST-008","sub":false,"tipo":"SA01-I-4\"","qtd":1,"diam":"4\"","linha":"BW-4900-1009-CC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00258","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0217","seq":"ST-008","sub":true,"tipo":"GI02-I-4\"","qtd":1,"diam":"4\"","linha":"BW-4900-1009-CC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00258","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0218","seq":"ST-009","sub":false,"tipo":"SA01-I-4\"","qtd":1,"diam":"4\"","linha":"BW-4900-1009-CC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00258","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0219","seq":"ST-010","sub":false,"tipo":"SA01-I-4\"","qtd":1,"diam":"4\"","linha":"BW-4900-1009-CC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00258","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0220","seq":"ST-010","sub":true,"tipo":"GI02-I-4\"","qtd":1,"diam":"4\"","linha":"BW-4900-1009-CC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00258","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0221","seq":"ST-011","sub":false,"tipo":"SA01-I-4\"","qtd":1,"diam":"4\"","linha":"BW-4900-1009-CC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00258","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0222","seq":"ST-012","sub":false,"tipo":"SA01-I-4\"","qtd":1,"diam":"4\"","linha":"BW-4900-1009-CC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00258","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0223","seq":"ST-012","sub":true,"tipo":"GI02-I-4\"","qtd":1,"diam":"4\"","linha":"BW-4900-1009-CC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00258","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0224","seq":"ST-013","sub":false,"tipo":"SA01-I-4\"","qtd":1,"diam":"4\"","linha":"BW-4900-1009-CC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00258","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0225","seq":"ST-013","sub":true,"tipo":"FS08-I-D","qtd":1,"diam":"4\"","linha":"BW-4900-1009-CC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00258","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0226","seq":"ST-014","sub":false,"tipo":"SA01-I-4\"","qtd":1,"diam":"4\"","linha":"BW-4900-1009-CC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00258","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0227","seq":"ST-015","sub":false,"tipo":"SA01-I-4\"","qtd":1,"diam":"4\"","linha":"BW-4900-1009-CC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00258","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0228","seq":"ST-015","sub":true,"tipo":"GI02-I-4\"","qtd":1,"diam":"4\"","linha":"BW-4900-1009-CC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00258","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0229","seq":"ST-016","sub":false,"tipo":"SA01-I-4\"","qtd":1,"diam":"4\"","linha":"BW-4900-1009-CC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00258","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0230","seq":"ST-017","sub":false,"tipo":"SA01-I-4\"","qtd":1,"diam":"4\"","linha":"BW-4900-1009-CC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00258","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0231","seq":"ST-018","sub":false,"tipo":"SA01-I-4\"","qtd":1,"diam":"4\"","linha":"BW-4900-1009-CC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00258","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0232","seq":"ST-018","sub":true,"tipo":"FS08-I-D","qtd":1,"diam":"4\"","linha":"BW-4900-1009-CC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00258","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0233","seq":"ST-019","sub":false,"tipo":"SA01-I-4\"","qtd":1,"diam":"4\"","linha":"BW-4900-1009-CC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00258","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0234","seq":"ST-001","sub":false,"tipo":"FS01A-I-D","qtd":1,"diam":"4\"","linha":"BW-4900-1010-CC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00259","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0235","seq":"ST-001","sub":false,"tipo":"SA01-I-2\"","qtd":1,"diam":"2\"","linha":"BW-4900-1011-BC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00263","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0236","seq":"ST-002","sub":false,"tipo":"SA01-I-2\"","qtd":1,"diam":"2\"","linha":"BW-4900-1011-BC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00263","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0237","seq":"ST-003","sub":false,"tipo":"SA01-I-2\"","qtd":1,"diam":"2\"","linha":"BW-4900-1011-BC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00263","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0238","seq":"ST-003","sub":true,"tipo":"GI02-I-2\"","qtd":1,"diam":"2\"","linha":"BW-4900-1011-BC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00263","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0239","seq":"ST-004","sub":false,"tipo":"SA01-I-2\"","qtd":1,"diam":"2\"","linha":"BW-4900-1011-BC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00263","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0240","seq":"ST-005","sub":false,"tipo":"SA01-I-2\"","qtd":1,"diam":"2\"","linha":"BW-4900-1011-BC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00263","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0241","seq":"ST-005","sub":true,"tipo":"GT03-II-2\"","qtd":1,"diam":"2\"","linha":"BW-4900-1011-BC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00263","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0242","seq":"ST-006","sub":false,"tipo":"SA01-I-2\"","qtd":1,"diam":"2\"","linha":"BW-4900-1011-BC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00263","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0243","seq":"ST-007","sub":false,"tipo":"SA01-I-2\"","qtd":1,"diam":"2\"","linha":"BW-4900-1011-BC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00263","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0244","seq":"ST-008","sub":false,"tipo":"SA01-I-2\"","qtd":1,"diam":"2\"","linha":"BW-4900-1011-BC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00263","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0245","seq":"ST-008","sub":true,"tipo":"GI02-I-2\"","qtd":1,"diam":"2\"","linha":"BW-4900-1011-BC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00263","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0246","seq":"ST-009","sub":false,"tipo":"SA01-I-2\"","qtd":1,"diam":"2\"","linha":"BW-4900-1011-BC50-H","area":"4900","isometrico":"BK-BA01-04900-IS-20-00263","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0247","seq":"ST-001","sub":false,"tipo":"SA03-I-1.1/2\"","qtd":1,"diam":"1.1/2\"","linha":"OD-4900-1007-BC50","area":"4900","isometrico":"BK-BA01-04900-IS-20-00284","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0248","seq":"ST-002","sub":false,"tipo":"SA03-I-1.1/2\"","qtd":1,"diam":"1.1/2\"","linha":"OD-4900-1007-BC50","area":"4900","isometrico":"BK-BA01-04900-IS-20-00284","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0249","seq":"ST-001","sub":false,"tipo":"SA03-I-1.1/2\"","qtd":1,"diam":"1.1/2\"","linha":"OD-4900-1008-BC50","area":"4900","isometrico":"BK-BA01-04900-IS-20-00285","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0250","seq":"ST-002","sub":false,"tipo":"SA03-I-1.1/2\"","qtd":1,"diam":"1.1/2\"","linha":"OD-4900-1008-BC50","area":"4900","isometrico":"BK-BA01-04900-IS-20-00285","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0251","seq":"ST-001","sub":false,"tipo":"SUP.EXISTENTE","qtd":1,"diam":"1\"","linha":"SW-4900-1000-AC50-NR","area":"4900","isometrico":"BK-BA01-04900-IS-20-00270","fab":"N/A","pintura":"N/A","mon":"N/A","soldado":"Não soldado"},{"id":"sup-0252","seq":"ST-001","sub":true,"tipo":"SE01","qtd":1,"diam":"1\"","linha":"SW-4900-1000-AC50-NR","area":"4900","isometrico":"BK-BA01-04900-IS-20-00270","fab":"N/A","pintura":"N/A","mon":"N/A","soldado":"Não soldado"},{"id":"sup-0253","seq":"ST-002","sub":false,"tipo":"ES01-I-1\"","qtd":1,"diam":"1\"","linha":"SW-4900-1000-AC50-NR","area":"4900","isometrico":"BK-BA01-04900-IS-20-00270","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0254","seq":"ST-002","sub":true,"tipo":"SE01","qtd":1,"diam":"1\"","linha":"SW-4900-1000-AC50-NR","area":"4900","isometrico":"BK-BA01-04900-IS-20-00270","fab":"N/A","pintura":"N/A","mon":"N/A","soldado":"Não soldado"},{"id":"sup-0255","seq":"ST-003","sub":false,"tipo":"SE01","qtd":1,"diam":"1\"","linha":"SW-4900-1000-AC50-NR","area":"4900","isometrico":"BK-BA01-04900-IS-20-00270","fab":"N/A","pintura":"N/A","mon":"N/A","soldado":"Não soldado"},{"id":"sup-0256","seq":"ST-004","sub":false,"tipo":"SE01","qtd":1,"diam":"1\"","linha":"SW-4900-1000-AC50-NR","area":"4900","isometrico":"BK-BA01-04900-IS-20-00270","fab":"N/A","pintura":"N/A","mon":"N/A","soldado":"Não soldado"},{"id":"sup-0257","seq":"ST-005","sub":false,"tipo":"SE01","qtd":1,"diam":"1\"","linha":"SW-4900-1000-AC50-NR","area":"4900","isometrico":"BK-BA01-04900-IS-20-00270","fab":"N/A","pintura":"N/A","mon":"N/A","soldado":"Não soldado"},{"id":"sup-0258","seq":"ST-005","sub":true,"tipo":"GI01-I-1\"","qtd":1,"diam":"1\"","linha":"SW-4900-1000-AC50-NR","area":"4900","isometrico":"BK-BA01-04900-IS-20-00270","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0259","seq":"ST-006","sub":false,"tipo":"SE01","qtd":1,"diam":"1\"","linha":"SW-4900-1000-AC50-NR","area":"4900","isometrico":"BK-BA01-04900-IS-20-00270","fab":"N/A","pintura":"N/A","mon":"N/A","soldado":"Não soldado"},{"id":"sup-0260","seq":"ST-001","sub":false,"tipo":"GR01-I-1/2\"","qtd":1,"diam":"1/2\"","linha":"SW-4900-1001-AC50-NR","area":"4900","isometrico":"BK-BA01-04900-IS-20-00271","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0261","seq":"ST-001","sub":false,"tipo":"GR01-I-1/2\"","qtd":1,"diam":"1/2\"","linha":"SW-4900-1002-AC50-NR","area":"4900","isometrico":"BK-BA01-04900-IS-20-00290","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0262","seq":"ST-001","sub":false,"tipo":"SE01","qtd":1,"diam":"1\"","linha":"RW-4900-1003-AC50-NR","area":"4900","isometrico":"BK-BA01-04900-IS-20-00272","fab":"N/A","pintura":"N/A","mon":"N/A","soldado":"Não soldado"},{"id":"sup-0263","seq":"ST-002","sub":false,"tipo":"SE01","qtd":1,"diam":"1\"","linha":"RW-4900-1003-AC50-NR","area":"4900","isometrico":"BK-BA01-04900-IS-20-00272","fab":"N/A","pintura":"N/A","mon":"N/A","soldado":"Não soldado"},{"id":"sup-0264","seq":"ST-002","sub":true,"tipo":"GI01-I-1\"","qtd":1,"diam":"1\"","linha":"RW-4900-1003-AC50-NR","area":"4900","isometrico":"BK-BA01-04900-IS-20-00272","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0265","seq":"ST-003","sub":false,"tipo":"SE01","qtd":1,"diam":"1\"","linha":"RW-4900-1003-AC50-NR","area":"4900","isometrico":"BK-BA01-04900-IS-20-00272","fab":"N/A","pintura":"N/A","mon":"N/A","soldado":"Não soldado"},{"id":"sup-0266","seq":"ST-004","sub":false,"tipo":"SE01","qtd":1,"diam":"1\"","linha":"RW-4900-1003-AC50-NR","area":"4900","isometrico":"BK-BA01-04900-IS-20-00272","fab":"N/A","pintura":"N/A","mon":"N/A","soldado":"Não soldado"},{"id":"sup-0267","seq":"ST-005","sub":false,"tipo":"SUP.EXISTENTE","qtd":1,"diam":"1\"","linha":"RW-4900-1003-AC50-NR","area":"4900","isometrico":"BK-BA01-04900-IS-20-00272","fab":"N/A","pintura":"N/A","mon":"N/A","soldado":"Não soldado"},{"id":"sup-0268","seq":"ST-005","sub":true,"tipo":"SE01","qtd":1,"diam":"1\"","linha":"RW-4900-1003-AC50-NR","area":"4900","isometrico":"BK-BA01-04900-IS-20-00272","fab":"N/A","pintura":"N/A","mon":"N/A","soldado":"Não soldado"},{"id":"sup-0269","seq":"ST-006","sub":false,"tipo":"SUP.EXISTENTE","qtd":1,"diam":"1\"","linha":"RW-4900-1003-AC50-NR","area":"4900","isometrico":"BK-BA01-04900-IS-20-00272","fab":"N/A","pintura":"N/A","mon":"N/A","soldado":"Não soldado"},{"id":"sup-0270","seq":"ST-006","sub":true,"tipo":"SE01","qtd":1,"diam":"1\"","linha":"RW-4900-1003-AC50-NR","area":"4900","isometrico":"BK-BA01-04900-IS-20-00272","fab":"N/A","pintura":"N/A","mon":"N/A","soldado":"Não soldado"},{"id":"sup-0271","seq":"ST-001","sub":false,"tipo":"GR01-I-1/2\"","qtd":1,"diam":"1/2\"","linha":"RW-4900-1004-AC50-NR","area":"4900","isometrico":"BK-BA01-04900-IS-20-00273","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0272","seq":"ST-001","sub":true,"tipo":"ES13-I-A","qtd":1,"diam":"1/2\"","linha":"RW-4900-1004-AC50-NR","area":"4900","isometrico":"BK-BA01-04900-IS-20-00273","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0273","seq":"ST-001","sub":false,"tipo":"GR01-I-1/2\"","qtd":1,"diam":"1/2\"","linha":"RW-4900-1005-AC50-NR","area":"4900","isometrico":"BK-BA01-04900-IS-20-00291","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"},{"id":"sup-0274","seq":"ST-001","sub":true,"tipo":"ES13-I-A","qtd":1,"diam":"1/2\"","linha":"RW-4900-1005-AC50-NR","area":"4900","isometrico":"BK-BA01-04900-IS-20-00291","fab":"Pendente","pintura":"Pendente","mon":"Pendente","soldado":"Não soldado"}];
+let currentView = 'projects', currentProjId = null;
+let currentDisc = 'caldeiraria', currentSubTab = 'isometricos';
+// Estado dos filtros de suporte (persiste entre re-renders)
+let _supSearch = '', _supArea = '', _supFab = '', _supPint = '', _supMon = '', _supSold = '';
+let isoFilterFab = '';
+// Unlock de status de suporte por sessão (reseta ao recarregar a página)
+let supUnlocked = false;
+let _estSearch = '', _estFab = '', _estMon = '', _estGrd = '', _estCob = '';
+let _ieSessionUnlocked = sessionStorage.getItem('hyd_ie_unlocked') === '1'; // persiste durante a sessão do browser
+let matUnlocked = false;  // Sessão de edição de status/retirada de materiais
+let _pendingMatAction = null;
+let _pendingToggleId = null, _pendingToggleField = null, _pendingToggleVal = null, _pendingBulk = false;
+let pendingAction = null, pendingId = null, pendingIEType = null;
+let _returnToIsoModalAfterProj = false;
+let editIsoId = null, editProjId = null, expFmt = 'xlsx';
+
+/* ══════════════════════════════════════════════════════════════
+   SUPABASE — Sincronização em tempo real para equipes
+   Fallback: window.storage (Claude.ai artifact) → localStorage
+══════════════════════════════════════════════════════════════ */
+let _sb = null;
+let _sbConnected = false;
+let _sbLastSync = null;
+let _sbReloadTimeout = null;
+let _sbSessionId = 'sess_' + Date.now() + '_' + Math.random().toString(36).slice(2,7);
+let _sbIgnoreNextReload = false; // evita loop ao salvar localmente
+
+function _sbInit() {
+  // Credenciais pré-configuradas — qualquer membro da equipe conecta automaticamente
+  const _DEFAULT_URL = 'https://isrmnqvuvqlcbynxwqmd.supabase.co';
+  const _DEFAULT_KEY = 'sb_publishable_kPAzCpr2XhkYMFAkxpS6Yg_FneyYlZh';
+  const url = LS.getItem('hy_sb_url') || _DEFAULT_URL;
+  const key = LS.getItem('hy_sb_key') || _DEFAULT_KEY;
+  if (!url || !key) { _sbUpdateBadge(); return; }
+  // Aguarda a biblioteca supabase carregar (até 5s)
+  if (typeof window.supabase === 'undefined') {
+    let tries = 0;
+    const wait = setInterval(() => {
+      tries++;
+      if (typeof window.supabase !== 'undefined') { clearInterval(wait); _sbConnect(url, key); }
+      else if (tries > 50) { clearInterval(wait); console.warn('[Supabase] biblioteca não carregou'); _sbUpdateBadge(); }
+    }, 100);
+    return;
+  }
+  _sbConnect(url, key);
+}
+
+function _sbConnect(url, key) {
+  try {
+    const sbLib = window.supabase || window.Supabase;
+    if (!sbLib || !sbLib.createClient) { console.warn('[Supabase] createClient não encontrado'); _sbUpdateBadge(); return; }
+    _sb = sbLib.createClient(url, key);
+    _sbUpdateBadge(); // mostra "conectando" imediatamente
+    // Realtime: escuta mudanças de outros usuários
+    _sb.channel('hy-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'hydrostec_kv' },
+        async (payload) => {
+          // Ignora apenas se a mudança foi feita por esta sessão nos últimos 8s
+          if (_sbIgnoreNextReload) return;
+          const changedKey = payload && payload.new && payload.new.key;
+          if (changedKey && changedKey.startsWith('hyd_plan_')) return; // planejamento é local
+          clearTimeout(_sbReloadTimeout);
+          _sbReloadTimeout = setTimeout(async () => {
+            await loadAll();
+            _sbLastSync = new Date();
+            _sbUpdateBadge();
+            // Se campo com foco, não re-renderiza agora — mostra badge de atualização pendente
+            const active = document.activeElement;
+            const hasFocus = active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.tagName === 'SELECT') && active.closest('#view-isos');
+            if (hasFocus) {
+              // Mostra indicador discreto de atualização disponível
+              const badge = document.getElementById('sync-badge');
+              if (badge) { badge.textContent = '🔄 Atualização disponível'; badge.style.background = 'rgba(230,138,0,.5)'; }
+              // Agenda re-render após 3s sem foco
+              clearTimeout(window._sbPendingRender);
+              window._sbPendingRender = setInterval(function() {
+                const a = document.activeElement;
+                const f = a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA') && a.closest('#view-isos');
+                if (!f) { clearInterval(window._sbPendingRender); renderIsoView(); renderHeader(); renderProjects(); _sbUpdateBadge(); }
+              }, 1000);
+            } else {
+              renderIsoView();
+              renderHeader();
+              renderProjects();
+            }
+          }, 200);
+        })
+      .subscribe(status => {
+        _sbConnected = (status === 'SUBSCRIBED');
+        _sbLastSync = _sbConnected ? new Date() : _sbLastSync;
+        _sbUpdateBadge();
+      });
+  } catch(e) { console.error('[Supabase] init error:', e); _sb = null; _sbUpdateBadge(); }
+  // Polling fallback: recarrega dados a cada 30s para garantir sincronização
+  clearInterval(window._sbPollInterval);
+  window._sbPollInterval = setInterval(async function() {
+    if (!_sb || _sbIgnoreNextReload) return;
+    const active = document.activeElement;
+    const hasFocus = active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA') && active.closest('#view-isos');
+    if (hasFocus) return;
+    await loadAll();
+    renderIsoView();
+    renderProjects();
+    _sbLastSync = new Date();
+    _sbUpdateBadge();
+  }, 10000);
+}
+
+async function manualSync() {
+  if (!_sb) return;
+  const el = document.getElementById('sync-badge');
+  if (el) { el.textContent = '🔄 Sincronizando...'; el.style.background = 'rgba(230,138,0,.5)'; }
+  await loadAll();
+  renderIsoView();
+  renderHeader();
+  renderProjects();
+  _sbLastSync = new Date();
+  _sbUpdateBadge();
+}
+
+function _sbUpdateBadge() {
+  const el = document.getElementById('sync-badge');
+  if (!el) return;
+  if (!_sb) {
+    el.textContent = '⚫ Modo local';
+    el.style.background = 'rgba(255,255,255,.1)';
+    el.title = 'Sem sincronização. Clique para configurar.';
+    return;
+  }
+  if (_sbConnected) {
+    const t = _sbLastSync ? _sbLastSync.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) : '';
+    el.textContent = '🟢 Sync ' + t;
+    el.style.background = 'rgba(26,140,78,.35)';
+    el.title = 'Clique para sincronizar agora';
+    el.onclick = manualSync;
+    el.style.cursor = 'pointer';
+  } else {
+    el.textContent = '🟡 Conectando...';
+    el.style.background = 'rgba(230,138,0,.35)';
+    el.title = 'Tentando conectar ao Supabase...';
+  }
+}
+
+/* ── CLOUD STORAGE com Supabase + fallback ── */
+async function storageGet(key) {
+  // Supabase é a fonte primária para dados compartilhados em equipe
+  if (_sb) {
+    try {
+      const { data, error } = await _sb.from('hydrostec_kv').select('value').eq('key', key).maybeSingle();
+      if (!error && data) {
+        // Atualiza localStorage com dado mais recente do Supabase
+        try { LS.setItem(key, data.value); } catch(e) {}
+        return data.value;
+      }
+    } catch(e) { console.warn('[Supabase] get error:', key, e); }
+  }
+  // localStorage — fallback quando Supabase não disponível
+  const local = LS.getItem(key);
+  if (local) return local;
+  // window.storage (Claude artifact) — fallback final
+  if (window.storage) {
+    try { const r = await window.storage.get(key, false); return r ? r.value : null; } catch(e) { return null; }
+  }
+  return null;
+}
+
+async function storageSet(key, value) {
+  // 1. Supabase (equipe)
+  if (_sb) {
+    try {
+      _sbIgnoreNextReload = true; // cada write individual também seta ignore
+      await _sb.from('hydrostec_kv').upsert({ key, value, updated_at: new Date().toISOString() }, { onConflict: 'key' });
+      _sbLastSync = new Date();
+      _sbUpdateBadge();
+    } catch(e) {
+      console.warn('[Supabase] set error:', key, e);
+    }
+  }
+  // 2. localStorage — SEMPRE salva localmente (fonte primária)
+  try { LS.setItem(key, value); } catch(e) { console.warn('storage quota:', key, e); }
+  // 3. window.storage (Claude artifact) — salva também se disponível
+  if (window.storage) {
+    try { await window.storage.set(key, value, false); } catch(e) {}
+  }
+}
+
+/* ── PESOS ── */
+function boolW(v) { return v === 'Sim' ? 100 : 0; }
+
+/* Normaliza tag de linha com artefatos de OCR ZWCAD:
+   6º → 6"   P4200 → P-4200   BCO5 → BC05  */
+function normLineTag(raw) {
+  if (!raw) return '';
+  return raw
+    .replace(/\s+/g, '')
+    .replace(/[°ºo](?=[-"]|\d)/g, '"')
+    .replace(/O(?=\d)/g, '0')
+    .replace(/-([A-Z])(\d{4})/g, '-$1-$2')
+    .replace(/^(\d{1,3})[^"-]/, '$1"-');
+}
+/* Fabricação: Pré 30% · Sol 50% · END 20% */
+function fabPct(e) {
+  return Math.round((e.fab.pre || 0) * .30 + (e.fab.sol || 0) * .50 + (e.fab.end || 0) * .20);
+}
+/* Montagem: Pré 30% · Sol 50% · END 20% */
+function monPct(e) {
+  return Math.round((e.mon.pre || 0) * .30 + (e.mon.sol || 0) * .50 + (e.mon.end || 0) * .20);
+}
+function clamp(v) { return Math.min(100, Math.max(0, parseInt(v) || 0)); }
+
+/* ── STORAGE ── */
+async function loadAll() {
+  // Migração: tenta chaves v9, depois v8, depois v7 (localStorage)
+  const tryLoad = async (key, fallbacks) => {
+    for (const k of [key, ...fallbacks]) {
+      try {
+        let v = await storageGet(k);
+        if (!v) v = LS.getItem(k); // fallback local
+        if (v) { const d = JSON.parse(v); if (d && d.length) return d; }
+      } catch(e) {}
+    }
+    return [];
+  };
+  projects = await tryLoad(SK_PROJ, ['hy_proj_v8','hy_proj_v7']);
+  isos     = await tryLoad(SK_ISOS, ['hy_isos_v8','hy_isos_v7']);
+  try {
+    let v = await storageGet(SK_DEL);
+    deletedIds = new Set(JSON.parse(v || '[]'));
+  } catch(e) { deletedIds = new Set(); }
+  isos = isos.filter(x => !deletedIds.has(x.id));
+  if (!projects.length && !isos.length) seed();
+  // Carrega API key salva pelo usuário (sem chave padrão por segurança)
+  anthropicKey = LS.getItem("hy_apikey") || "";
+  // Suportes
+  try {
+    const sv = await storageGet(SK_SUPS);
+    if (sv) { const sd = JSON.parse(sv); if (sd && sd.length) suportes = sd; }
+  } catch(e) {}
+  // Estrutura Metálica
+  try {
+    const ev = await storageGet(SK_EST);
+    if (ev) { const ed = JSON.parse(ev); if (ed && ed.length) estrutura = ed; }
+  } catch(e) {}
+  // Migração incremental: campo soldado e ajuste de labels de status
+  suportes.forEach(s => {
+    if (!s.soldado) s.soldado = 'Não soldado';
+    if (s.pintura === 'Fabricado') s.pintura = 'Pintado';
+    if (s.mon === 'Fabricado' || s.mon === 'Pontado') s.mon = 'Montado';
+    // Migração v12: SE01 e SUP.EXISTENTE → N/A em fab, pintura e mon
+    if (s.tipo === 'SE01' || s.tipo === 'SUP.EXISTENTE') {
+      s.fab     = 'N/A';
+      s.pintura = 'N/A';
+      s.mon     = 'N/A';
+    }
+  });
+  // Migração v13: garante todos os isométricos da planilha de materiais no projeto
+  let _isoMigChanged = false;
+  const _PLAN_FIELDS = ['line','fluid','nr13','iso_term','temp','insp'];
+  /* _addIso: adiciona folha nova OU atualiza campos técnicos de entrada existente.
+     PLANILHA_DADOS é aplicada SOMENTE ao projeto proj-001 (PJ-0602807) —
+     cada projeto mantém seus próprios dados sem contaminação cruzada. */
+  const _PLANILHA_PROJ_ID = 'proj-001'; // único projeto vinculado à PLANILHA_DADOS
+  const _addIso = (entry) => {
+    // Enriquece com PLANILHA_DADOS SOMENTE se o entry pertence ao projeto correto
+    const _belongsToPlanilha = entry.projId === _PLANILHA_PROJ_ID;
+    const _p = (_belongsToPlanilha && typeof PLANILHA_DADOS !== 'undefined') ? PLANILHA_DADOS[entry.num] : null;
+    if (_p) _PLAN_FIELDS.forEach(f => { if (_p[f]) entry[f] = _p[f]; });
+
+    const _existing = isos.find(x => x.num === entry.num && x.sheet === entry.sheet && x.projId === entry.projId);
+    if (!_existing) {
+      isos.push(entry);
+      _isoMigChanged = true;
+    } else if (_p) {
+      // Atualiza campos técnicos na entrada existente (corrige dados de storage antigo)
+      _PLAN_FIELDS.forEach(f => {
+        if (_p[f] && _existing[f] !== _p[f]) { _existing[f] = _p[f]; _isoMigChanged = true; }
+      });
+    }
+  };
+  _addIso({ id:'iso-006', projId:'proj-001', num:'BK-BA01-00040-IS-20-00424', sheet:'00001', totalSheets:1, line:'10"-P-38127-BC05-NR', area:'40', fluid:'L', nr13:'Sim', iso_term:'NR', temp:'40 °C', insp:'II', paint:'Não Pintado', classif:'Fabricação', fab_start:'', fab_end:'', mon_start:'', mon_end:'', th_date:'', trq_date:'', fab:{pre:0,sol:0,end:0}, mon:{pre:0,sol:0,end:0,th:'Pendente',trq:'Pendente'} });
+  _addIso({ id:'iso-007', projId:'proj-001', num:'BK-BA01-00040-IS-20-00426', sheet:'00001', totalSheets:1, line:'4"-P-39332', area:'40', fluid:'A', nr13:'Sim', iso_term:'NR', temp:'44 °C', insp:'II', paint:'Não Pintado', classif:'Fabricação', fab_start:'', fab_end:'', mon_start:'', mon_end:'', th_date:'', trq_date:'', fab:{pre:0,sol:0,end:0}, mon:{pre:0,sol:0,end:0,th:'Pendente',trq:'Pendente'} });
+  _addIso({ id:'iso-008', projId:'proj-001', num:'BK-BA01-00100-IS-20-00839', sheet:'00001', totalSheets:1, line:'6"-P-01079', area:'100', fluid:'L', nr13:'Sim', iso_term:'NR', temp:'51 °C', insp:'II', paint:'Não Pintado', classif:'Fabricação', fab_start:'', fab_end:'', mon_start:'', mon_end:'', th_date:'', trq_date:'', fab:{pre:0,sol:0,end:0}, mon:{pre:0,sol:0,end:0,th:'Pendente',trq:'Pendente'} });
+  _addIso({ id:'iso-009', projId:'proj-001', num:'BK-BA01-00900-IS-20-00490', sheet:'00001', totalSheets:1, line:'8"-MC-900-1031', area:'900', fluid:'D', nr13:'Não', iso_term:'NR', temp:'40 °C', insp:'II', paint:'Não Pintado', classif:'Fabricação', fab_start:'', fab_end:'', mon_start:'', mon_end:'', th_date:'', trq_date:'', fab:{pre:0,sol:0,end:0}, mon:{pre:0,sol:0,end:0,th:'Pendente',trq:'Pendente'} });
+  _addIso({ id:'iso-010', projId:'proj-001', num:'BK-BA01-00900-IS-20-00491', sheet:'00001', totalSheets:1, line:'10"-MC-90012-BC50-H', area:'900', fluid:'D', nr13:'Não', iso_term:'H', temp:'144 °C', insp:'II', paint:'Não Pintado', classif:'Fabricação', fab_start:'', fab_end:'', mon_start:'', mon_end:'', th_date:'', trq_date:'', fab:{pre:0,sol:0,end:0}, mon:{pre:0,sol:0,end:0,th:'Pendente',trq:'Pendente'} });
+  _addIso({ id:'iso-011', projId:'proj-001', num:'BK-BA01-00900-IS-20-00492', sheet:'00001', totalSheets:1, line:'8"-MC-900-1030', area:'900', fluid:'D', nr13:'Não', iso_term:'P', temp:'144 °C', insp:'II', paint:'Não Pintado', classif:'Fabricação', fab_start:'', fab_end:'', mon_start:'', mon_end:'', th_date:'', trq_date:'', fab:{pre:0,sol:0,end:0}, mon:{pre:0,sol:0,end:0,th:'Pendente',trq:'Pendente'} });
+  _addIso({ id:'iso-012', projId:'proj-001', num:'BK-BA01-00900-IS-20-00493', sheet:'00001', totalSheets:1, line:'8"-MC-900-1033', area:'900', fluid:'D', nr13:'Não', iso_term:'NR', temp:'40 °C', insp:'II', paint:'Não Pintado', classif:'Fabricação', fab_start:'', fab_end:'', mon_start:'', mon_end:'', th_date:'', trq_date:'', fab:{pre:0,sol:0,end:0}, mon:{pre:0,sol:0,end:0,th:'Pendente',trq:'Pendente'} });
+  _addIso({ id:'iso-013', projId:'proj-001', num:'BK-BA01-00900-IS-20-00496', sheet:'00001', totalSheets:1, line:'6"-LC-09005', area:'900', fluid:'D', nr13:'Não', iso_term:'H', temp:'101 °C', insp:'II', paint:'Não Pintado', classif:'Fabricação', fab_start:'', fab_end:'', mon_start:'', mon_end:'', th_date:'', trq_date:'', fab:{pre:0,sol:0,end:0}, mon:{pre:0,sol:0,end:0,th:'Pendente',trq:'Pendente'} });
+  _addIso({ id:'iso-014', projId:'proj-001', num:'BK-BA01-00900-IS-20-00497', sheet:'00001', totalSheets:1, line:'6"-LC-900-1004', area:'900', fluid:'D', nr13:'Não', iso_term:'H', temp:'101 °C', insp:'II', paint:'Não Pintado', classif:'Fabricação', fab_start:'', fab_end:'', mon_start:'', mon_end:'', th_date:'', trq_date:'', fab:{pre:0,sol:0,end:0}, mon:{pre:0,sol:0,end:0,th:'Pendente',trq:'Pendente'} });
+  _addIso({ id:'iso-015', projId:'proj-001', num:'BK-BA01-00900-IS-20-00498', sheet:'00001', totalSheets:1, line:'8"-NC-09003', area:'900', fluid:'D', nr13:'Não', iso_term:'H', temp:'77 °C', insp:'II', paint:'Não Pintado', classif:'Fabricação', fab_start:'', fab_end:'', mon_start:'', mon_end:'', th_date:'', trq_date:'', fab:{pre:0,sol:0,end:0}, mon:{pre:0,sol:0,end:0,th:'Pendente',trq:'Pendente'} });
+  _addIso({ id:'iso-016', projId:'proj-001', num:'BK-BA01-00900-IS-20-00499', sheet:'00001', totalSheets:1, line:'8"-NC-900-1001', area:'900', fluid:'D', nr13:'Não', iso_term:'P', temp:'96.7 °C', insp:'II', paint:'Não Pintado', classif:'Fabricação', fab_start:'', fab_end:'', mon_start:'', mon_end:'', th_date:'', trq_date:'', fab:{pre:0,sol:0,end:0}, mon:{pre:0,sol:0,end:0,th:'Pendente',trq:'Pendente'} });
+  _addIso({ id:'iso-017', projId:'proj-001', num:'BK-BA01-00900-IS-20-00500', sheet:'00001', totalSheets:1, line:'8"-MC-900-1032', area:'900', fluid:'D', nr13:'Não', iso_term:'NR', temp:'40 °C', insp:'II', paint:'Não Pintado', classif:'Fabricação', fab_start:'', fab_end:'', mon_start:'', mon_end:'', th_date:'', trq_date:'', fab:{pre:0,sol:0,end:0}, mon:{pre:0,sol:0,end:0,th:'Pendente',trq:'Pendente'} });
+  _addIso({ id:'iso-018', projId:'proj-001', num:'BK-BA01-00900-IS-20-00501', sheet:'00001', totalSheets:1, line:'4"-BW-90001', area:'900', fluid:'D', nr13:'Não', iso_term:'H', temp:'147 °C', insp:'II', paint:'Não Pintado', classif:'Fabricação', fab_start:'', fab_end:'', mon_start:'', mon_end:'', th_date:'', trq_date:'', fab:{pre:0,sol:0,end:0}, mon:{pre:0,sol:0,end:0,th:'Pendente',trq:'Pendente'} });
+  _addIso({ id:'iso-019', projId:'proj-001', num:'BK-BA01-00900-IS-20-00502', sheet:'00001', totalSheets:1, line:'6"-LC-09025', area:'900', fluid:'D', nr13:'Não', iso_term:'H', temp:'101 °C', insp:'II', paint:'Não Pintado', classif:'Fabricação', fab_start:'', fab_end:'', mon_start:'', mon_end:'', th_date:'', trq_date:'', fab:{pre:0,sol:0,end:0}, mon:{pre:0,sol:0,end:0,th:'Pendente',trq:'Pendente'} });
+  _addIso({ id:'iso-020', projId:'proj-001', num:'BK-BA01-00900-IS-20-00503', sheet:'00001', totalSheets:1, line:'2"-MC-90022', area:'900', fluid:'D', nr13:'Não', iso_term:'H', temp:'170 °C', insp:'II', paint:'Não Pintado', classif:'Fabricação', fab_start:'', fab_end:'', mon_start:'', mon_end:'', th_date:'', trq_date:'', fab:{pre:0,sol:0,end:0}, mon:{pre:0,sol:0,end:0,th:'Pendente',trq:'Pendente'} });
+  _addIso({ id:'iso-021', projId:'proj-001', num:'BK-BA01-00900-IS-20-00504', sheet:'00001', totalSheets:1, line:'16"-MC-90021-BC50-H', area:'900', fluid:'D', nr13:'Não', iso_term:'H', temp:'144 °C', insp:'II', paint:'Não Pintado', classif:'Fabricação', fab_start:'', fab_end:'', mon_start:'', mon_end:'', th_date:'', trq_date:'', fab:{pre:0,sol:0,end:0}, mon:{pre:0,sol:0,end:0,th:'Pendente',trq:'Pendente'} });
+  _addIso({ id:'iso-022', projId:'proj-001', num:'BK-BA01-00950-IS-20-00609', sheet:'00001', totalSheets:1, line:'8"-P-09523-BC05-NR', area:'950', fluid:'L', nr13:'Sim', iso_term:'NR', temp:'44 °C', insp:'II', paint:'Não Pintado', classif:'Fabricação', fab_start:'', fab_end:'', mon_start:'', mon_end:'', th_date:'', trq_date:'', fab:{pre:0,sol:0,end:0}, mon:{pre:0,sol:0,end:0,th:'Pendente',trq:'Pendente'} });
+  _addIso({ id:'iso-023', projId:'proj-001', num:'BK-BA01-01050-IS-20-00744', sheet:'00001', totalSheets:1, line:'6"-P-1050-1265', area:'1050', fluid:'L', nr13:'Sim', iso_term:'NR', temp:'44 °C', insp:'II', paint:'Não Pintado', classif:'Fabricação', fab_start:'', fab_end:'', mon_start:'', mon_end:'', th_date:'', trq_date:'', fab:{pre:0,sol:0,end:0}, mon:{pre:0,sol:0,end:0,th:'Pendente',trq:'Pendente'} });
+  _addIso({ id:'iso-024', projId:'proj-001', num:'BK-BA01-01100-IS-20-01630', sheet:'00001', totalSheets:1, line:'4"-FG-11600-A2A', area:'1100', fluid:'A', nr13:'Não', iso_term:'NR', temp:'65 °C', insp:'II', paint:'Não Pintado', classif:'Fabricação', fab_start:'', fab_end:'', mon_start:'', mon_end:'', th_date:'', trq_date:'', fab:{pre:0,sol:0,end:0}, mon:{pre:0,sol:0,end:0,th:'Pendente',trq:'Pendente'} });
+  _addIso({ id:'iso-025', projId:'proj-001', num:'BK-BA01-01100-IS-20-03184', sheet:'00001', totalSheets:1, line:'8"-WF-11008-BC51', area:'1100', fluid:'A', nr13:'Não', iso_term:'NR', temp:'120 °C', insp:'II', paint:'Não Pintado', classif:'Fabricação', fab_start:'', fab_end:'', mon_start:'', mon_end:'', th_date:'', trq_date:'', fab:{pre:0,sol:0,end:0}, mon:{pre:0,sol:0,end:0,th:'Pendente',trq:'Pendente'} });
+  _addIso({ id:'iso-026', projId:'proj-001', num:'BK-BA01-01100-IS-20-04903', sheet:'00001', totalSheets:1, line:'10"-QW-11012-BC50A-NR', area:'1100', fluid:'A', nr13:'Sim', iso_term:'NR', temp:'50 °C', insp:'II', paint:'Não Pintado', classif:'Fabricação', fab_start:'', fab_end:'', mon_start:'', mon_end:'', th_date:'', trq_date:'', fab:{pre:0,sol:0,end:0}, mon:{pre:0,sol:0,end:0,th:'Pendente',trq:'Pendente'} });
+  _addIso({ id:'iso-027', projId:'proj-001', num:'BK-BA01-01100-IS-20-04904', sheet:'00001', totalSheets:1, line:'16"-RW-11002', area:'1100', fluid:'D', nr13:'Não', iso_term:'NR', temp:'49 °C', insp:'II', paint:'Não Pintado', classif:'Fabricação', fab_start:'', fab_end:'', mon_start:'', mon_end:'', th_date:'', trq_date:'', fab:{pre:0,sol:0,end:0}, mon:{pre:0,sol:0,end:0,th:'Pendente',trq:'Pendente'} });
+  _addIso({ id:'iso-028', projId:'proj-001', num:'BK-BA01-01100-IS-20-04905', sheet:'00001', totalSheets:1, line:'14"-QW-11010A-BC50-P', area:'1100', fluid:'A', nr13:'Sim', iso_term:'P', temp:'74 °C', insp:'II', paint:'Não Pintado', classif:'Fabricação', fab_start:'', fab_end:'', mon_start:'', mon_end:'', th_date:'', trq_date:'', fab:{pre:0,sol:0,end:0}, mon:{pre:0,sol:0,end:0,th:'Pendente',trq:'Pendente'} });
+  _addIso({ id:'iso-029', projId:'proj-001', num:'BK-BA01-01100-IS-20-04906', sheet:'00001', totalSheets:1, line:'6"-P-1079-BC05', area:'1100', fluid:'A', nr13:'Sim', iso_term:'NR', temp:'60 °C', insp:'II', paint:'Não Pintado', classif:'Fabricação', fab_start:'', fab_end:'', mon_start:'', mon_end:'', th_date:'', trq_date:'', fab:{pre:0,sol:0,end:0}, mon:{pre:0,sol:0,end:0,th:'Pendente',trq:'Pendente'} });
+  _addIso({ id:'iso-030', projId:'proj-001', num:'BK-BA01-01100-IS-20-04907', sheet:'00001', totalSheets:1, line:'6"-P-11247-CC05', area:'1100', fluid:'A', nr13:'Sim', iso_term:'NR', temp:'35 °C', insp:'II', paint:'Não Pintado', classif:'Fabricação', fab_start:'', fab_end:'', mon_start:'', mon_end:'', th_date:'', trq_date:'', fab:{pre:0,sol:0,end:0}, mon:{pre:0,sol:0,end:0,th:'Pendente',trq:'Pendente'} });
+  _addIso({ id:'iso-031', projId:'proj-001', num:'BK-BA01-01400-IS-20-01148', sheet:'00001', totalSheets:1, line:'3"-P-1400-1011-CC04-P', area:'1400', fluid:'A', nr13:'Não', iso_term:'NR', temp:'45 °C', insp:'II', paint:'Não Pintado', classif:'Fabricação', fab_start:'', fab_end:'', mon_start:'', mon_end:'', th_date:'', trq_date:'', fab:{pre:0,sol:0,end:0}, mon:{pre:0,sol:0,end:0,th:'Pendente',trq:'Pendente'} });
+  _addIso({ id:'iso-032', projId:'proj-001', num:'BK-BA01-01500-IS-20-00424', sheet:'00001', totalSheets:1, line:'8"-P-1547', area:'1500', fluid:'G', nr13:'Sim', iso_term:'NR', temp:'26 °C', insp:'II', paint:'Não Pintado', classif:'Fabricação', fab_start:'', fab_end:'', mon_start:'', mon_end:'', th_date:'', trq_date:'', fab:{pre:0,sol:0,end:0}, mon:{pre:0,sol:0,end:0,th:'Pendente',trq:'Pendente'} });
+  _addIso({ id:'iso-033', projId:'proj-001', num:'BK-BA01-03200-IS-20-00661', sheet:'00001', totalSheets:1, line:'24"-US-32002-BC50-H', area:'3200', fluid:'V', nr13:'Não', iso_term:'H', temp:'190 °C', insp:'II', paint:'Não Pintado', classif:'Fabricação', fab_start:'', fab_end:'', mon_start:'', mon_end:'', th_date:'', trq_date:'', fab:{pre:0,sol:0,end:0}, mon:{pre:0,sol:0,end:0,th:'Pendente',trq:'Pendente'} });
+  _addIso({ id:'iso-034', projId:'proj-001', num:'BK-BA01-03200-IS-20-00662', sheet:'00001', totalSheets:1, line:'16"-TS-32003', area:'3200', fluid:'C', nr13:'Não', iso_term:'H', temp:'290 °C', insp:'II', paint:'Não Pintado', classif:'Fabricação', fab_start:'', fab_end:'', mon_start:'', mon_end:'', th_date:'', trq_date:'', fab:{pre:0,sol:0,end:0}, mon:{pre:0,sol:0,end:0,th:'Pendente',trq:'Pendente'} });
+  _addIso({ id:'iso-035', projId:'proj-001', num:'BK-BA01-03900-IS-20-00157', sheet:'00001', totalSheets:1, line:'4"-P-3900-1054-CC05-NR', area:'3900', fluid:'A', nr13:'Sim', iso_term:'NR', temp:'44 °C', insp:'II', paint:'Não Pintado', classif:'Fabricação', fab_start:'', fab_end:'', mon_start:'', mon_end:'', th_date:'', trq_date:'', fab:{pre:0,sol:0,end:0}, mon:{pre:0,sol:0,end:0,th:'Pendente',trq:'Pendente'} });
+  _addIso({ id:'iso-036', projId:'proj-001', num:'BK-BA01-03900-IS-20-00158', sheet:'00001', totalSheets:1, line:'4"-P-3900-1053-CC05-NR', area:'3900', fluid:'A', nr13:'Sim', iso_term:'NR', temp:'44 °C', insp:'II', paint:'Não Pintado', classif:'Fabricação', fab_start:'', fab_end:'', mon_start:'', mon_end:'', th_date:'', trq_date:'', fab:{pre:0,sol:0,end:0}, mon:{pre:0,sol:0,end:0,th:'Pendente',trq:'Pendente'} });
+  _addIso({ id:'iso-037', projId:'proj-001', num:'BK-BA01-04100-IS-20-06070', sheet:'00001', totalSheets:1, line:'SW-410102-AC50-NR', area:'4100', fluid:'D', nr13:'Não', iso_term:'NR', temp:'65 °C', insp:'II', paint:'Não Pintado', classif:'Fabricação', fab_start:'', fab_end:'', mon_start:'', mon_end:'', th_date:'', trq_date:'', fab:{pre:0,sol:0,end:0}, mon:{pre:0,sol:0,end:0,th:'Pendente',trq:'Pendente'} });
+  _addIso({ id:'iso-038', projId:'proj-001', num:'BK-BA01-04100-IS-20-06072', sheet:'00001', totalSheets:1, line:'8"-FG-41010', area:'4100', fluid:'A', nr13:'Sim', iso_term:'NR', temp:'40 °C', insp:'II', paint:'Não Pintado', classif:'Fabricação', fab_start:'', fab_end:'', mon_start:'', mon_end:'', th_date:'', trq_date:'', fab:{pre:0,sol:0,end:0}, mon:{pre:0,sol:0,end:0,th:'Pendente',trq:'Pendente'} });
+  _addIso({ id:'iso-039', projId:'proj-001', num:'BK-BA01-04100-IS-20-06075', sheet:'00001', totalSheets:1, line:'6"-P-410375-BC05/CC05', area:'4100', fluid:'A', nr13:'Sim', iso_term:'NR', temp:'60 °C', insp:'II', paint:'Não Pintado', classif:'Fabricação', fab_start:'', fab_end:'', mon_start:'', mon_end:'', th_date:'', trq_date:'', fab:{pre:0,sol:0,end:0}, mon:{pre:0,sol:0,end:0,th:'Pendente',trq:'Pendente'} });
+  _addIso({ id:'iso-040', projId:'proj-001', num:'BK-BA01-04100-IS-20-06076', sheet:'00001', totalSheets:1, line:'4"-P-410376-BC05', area:'4100', fluid:'A', nr13:'Sim', iso_term:'NR', temp:'60 °C', insp:'II', paint:'Não Pintado', classif:'Fabricação', fab_start:'', fab_end:'', mon_start:'', mon_end:'', th_date:'', trq_date:'', fab:{pre:0,sol:0,end:0}, mon:{pre:0,sol:0,end:0,th:'Pendente',trq:'Pendente'} });
+  _addIso({ id:'iso-041', projId:'proj-001', num:'BK-BA01-04100-IS-20-06077', sheet:'00001', totalSheets:1, line:'4"-P-410377-CC05', area:'4100', fluid:'A', nr13:'Sim', iso_term:'NR', temp:'60 °C', insp:'II', paint:'Não Pintado', classif:'Fabricação', fab_start:'', fab_end:'', mon_start:'', mon_end:'', th_date:'', trq_date:'', fab:{pre:0,sol:0,end:0}, mon:{pre:0,sol:0,end:0,th:'Pendente',trq:'Pendente'} });
+  _addIso({ id:'iso-042', projId:'proj-001', num:'BK-BA01-06053-IS-20-02688', sheet:'00001', totalSheets:1, line:'12"-AD-6053007-BC70-H', area:'6053', fluid:'D', nr13:'Não', iso_term:'H', temp:'63.5 °C', insp:'II', paint:'Não Pintado', classif:'Fabricação', fab_start:'', fab_end:'', mon_start:'', mon_end:'', th_date:'', trq_date:'', fab:{pre:0,sol:0,end:0}, mon:{pre:0,sol:0,end:0,th:'Pendente',trq:'Pendente'} });
+  _addIso({ id:'iso-043', projId:'proj-001', num:'BK-BA01-06053-IS-20-02689', sheet:'00001', totalSheets:1, line:'12"-AD-6053026-BC70-H', area:'6053', fluid:'D', nr13:'Não', iso_term:'H', temp:'63.5 °C', insp:'II', paint:'Não Pintado', classif:'Fabricação', fab_start:'', fab_end:'', mon_start:'', mon_end:'', th_date:'', trq_date:'', fab:{pre:0,sol:0,end:0}, mon:{pre:0,sol:0,end:0,th:'Pendente',trq:'Pendente'} });
+  _addIso({ id:'iso-044', projId:'proj-001', num:'BK-BA01-09000-IS-20-00660', sheet:'00001', totalSheets:1, line:'8"-FG-90011-BC51', area:'9000', fluid:'G', nr13:'Sim', iso_term:'NR', temp:'45 °C', insp:'II', paint:'Não Pintado', classif:'Fabricação', fab_start:'', fab_end:'', mon_start:'', mon_end:'', th_date:'', trq_date:'', fab:{pre:0,sol:0,end:0}, mon:{pre:0,sol:0,end:0,th:'Pendente',trq:'Pendente'} });
+  // ── Isométricos da planilha material_consolidado.xlsx que estavam ausentes do seed ──
+  _addIso({ id:'iso-045', projId:'proj-001', num:'BK-BA01-04200-IS-20-01642', sheet:'00001', totalSheets:4, line:'6"-P-4200-1043', area:'4200', fluid:'A', nr13:'Sim', iso_term:'NR', temp:'45 °C', insp:'II', paint:'Não Pintado', classif:'Fabricação', fab_start:'', fab_end:'', mon_start:'', mon_end:'', th_date:'', trq_date:'', fab:{pre:0,sol:0,end:0}, mon:{pre:0,sol:0,end:0,th:'Pendente',trq:'Pendente'} });
+  _addIso({ id:'iso-046', projId:'proj-001', num:'BK-BA01-04200-IS-20-01642', sheet:'00002', totalSheets:4, line:'6"-P-4200-1043', area:'4200', fluid:'A', nr13:'Sim', iso_term:'NR', temp:'45 °C', insp:'II', paint:'Não Pintado', classif:'Fabricação', fab_start:'', fab_end:'', mon_start:'', mon_end:'', th_date:'', trq_date:'', fab:{pre:0,sol:0,end:0}, mon:{pre:0,sol:0,end:0,th:'Pendente',trq:'Pendente'} });
+  _addIso({ id:'iso-047', projId:'proj-001', num:'BK-BA01-04200-IS-20-01642', sheet:'00003', totalSheets:4, line:'6"-P-4200-1043', area:'4200', fluid:'A', nr13:'Sim', iso_term:'NR', temp:'45 °C', insp:'II', paint:'Não Pintado', classif:'Fabricação', fab_start:'', fab_end:'', mon_start:'', mon_end:'', th_date:'', trq_date:'', fab:{pre:0,sol:0,end:0}, mon:{pre:0,sol:0,end:0,th:'Pendente',trq:'Pendente'} });
+  _addIso({ id:'iso-048', projId:'proj-001', num:'BK-BA01-04200-IS-20-01642', sheet:'00004', totalSheets:4, line:'6"-P-4200-1043', area:'4200', fluid:'A', nr13:'Sim', iso_term:'NR', temp:'45 °C', insp:'II', paint:'Não Pintado', classif:'Fabricação', fab_start:'', fab_end:'', mon_start:'', mon_end:'', th_date:'', trq_date:'', fab:{pre:0,sol:0,end:0}, mon:{pre:0,sol:0,end:0,th:'Pendente',trq:'Pendente'} });
+  _addIso({ id:'iso-049', projId:'proj-001', num:'BK-BA01-04200-IS-20-01643', sheet:'00001', totalSheets:1, line:'6"-P-42716', area:'4200', fluid:'A', nr13:'Sim', iso_term:'NR', temp:'45 °C', insp:'II', paint:'Não Pintado', classif:'Fabricação', fab_start:'', fab_end:'', mon_start:'', mon_end:'', th_date:'', trq_date:'', fab:{pre:0,sol:0,end:0}, mon:{pre:0,sol:0,end:0,th:'Pendente',trq:'Pendente'} });
+  // Persiste isos novos no storage imediatamente
+  if (_isoMigChanged) { try { await storageSet(SK_ISOS, JSON.stringify(isos)); } catch(e) {} }
+
+  // ── Migração de materiais órfãos (sufixos (FL1), (F2), (Fl.2) etc.) ──
+  // Corrige isoNum de materiais importados antes da normalização de sufixos
+  const _sufixRgx = /\s*[\(\[]\s*(?:[Ff]olha\s*\d+|[Ff][Ll]?\.?\s*\d+)\s*[\)\]]\s*$/;
+  let _matMigChanged = false;
+  materiais.forEach(m => {
+    if (!m.isoNum) return;
+    const clean = m.isoNum.replace(_sufixRgx, '').trim();
+    if (clean !== m.isoNum) {
+      m.isoNum = clean;
+      _matMigChanged = true;
+    }
+  });
+  if (_matMigChanged) {
+    try { await storageSet(SK_MATS, JSON.stringify(materiais)); } catch(e) {}
+    console.info('[HYDROSTEC] Materiais órfãos com sufixo de folha normalizados:', materiais.filter(m => _sufixRgx.test(m.isoNum || '')).length);
+  }
+  if (!suportes.length || suportes.length < SUPORTES_SEED.length) {
+    // Migrate: re-seed if stored data is incomplete (e.g. old 190-record version)
+    suportes = SUPORTES_SEED.map(s => ({ ...s }));
+    try { await storageSet(SK_SUPS, JSON.stringify(suportes)); } catch(e) { console.warn('sup seed save:', e); }
+  }
+  // (sem propagação automática de chave padrão)
+  // Carrega template da última entrada
+  // ── Carrega materiais (isolado: erro de parse não impede o merge) ──
+  try {
+    const mv = await storageGet(SK_MATS);
+    if (mv) { const mp = JSON.parse(mv); if (Array.isArray(mp) && mp.length) materiais = mp; }
+  } catch(e) { materiais = []; }
+
+  // ── Merge MATS_SEED: roda SEMPRE, fora do try/catch de storage ──
+  // Garante todos os 426 registros da planilha mesmo com dados antigos/corrompidos
+  (function _mergeSeed() {
+    if (typeof MATS_SEED === 'undefined' || !MATS_SEED.length) return;
+    if (!materiais.length) {
+      materiais = MATS_SEED.map(m => ({ ...m }));
+      return;
+    }
+    // Fingerprint: isoNum + item + codigoItem
+    const fp = m => String(m.isoNum||'').trim() + '§' + String(m.item||'').trim() + '§' + String(m.codigoItem||'').trim();
+    const existFP = new Set(materiais.map(fp));
+    const toAdd   = MATS_SEED.filter(m => !existFP.has(fp(m)));
+    if (toAdd.length) {
+      materiais.push(...toAdd.map(m => ({ ...m })));
+    }
+    // Corrige campos divergentes em entradas existentes (preserva status/classif/retiradaData)
+    const fpMap = new Map(materiais.map((m, i) => [fp(m), i]));
+    for (const seed of MATS_SEED) {
+      const key = fp(seed);
+      if (fpMap.has(key)) {
+        const i = fpMap.get(key);
+        const ex = materiais[i];
+        materiais[i] = { ...seed, id: ex.id,
+          status: ex.status || seed.status,
+          classif: ex.classif || seed.classif,
+          retiradaData: ex.retiradaData || seed.retiradaData,
+          projId: ex.projId || seed.projId };
+      }
+    }
+  })();
+  try { await storageSet(SK_MATS, JSON.stringify(materiais)); } catch(e) {}
+
+  // Migração: garantir campo status em itens antigos
+  materiais.forEach(m => {
+    if (!m.status) m.status = 'Pendente';
+    if (!m.retiradaData) m.retiradaData = '';
+    if (!m.classif || m.classif === 'Fabricação e Montagem' || m.classif === 'Apenas Fabricação') m.classif = 'Fabricação';
+    if (m.classif === 'Apenas Montagem') m.classif = 'Montagem';
+    // Migração: materiais sem projId herdam o único projeto existente
+    if (!m.projId && projects.length === 1) m.projId = projects[0].id;
+  });
+  try { const v = await storageGet(SK_TMPL); if (v) lastTemplate = JSON.parse(v); } catch(e) {}
+  // Se template vazio, inicializa apenas com dados do projeto atual (sem vazar dados entre projetos)
+  if (!lastTemplate.fluid && isos.length) {
+    const _tmplSrc = (currentProjId ? isos.find(x => x.projId === currentProjId) : null) || isos[0];
+    lastTemplate = { fluid: _tmplSrc.fluid||'', nr13: _tmplSrc.nr13||'Sim', iso_term: _tmplSrc.iso_term||'',
+                     temp: _tmplSrc.temp||'', insp: _tmplSrc.insp||'', paint: _tmplSrc.paint||'Não Pintado' };
+  }
+}
+async function saveAll() {
+  _sbIgnoreNextReload = true; // ignora o echo do Supabase dos nossos próprios saves
+  try { await storageSet(SK_SUPS, JSON.stringify(suportes)); } catch(e) {}
+  try { await storageSet(SK_EST, JSON.stringify(estrutura)); } catch(e) {}
+  try { await storageSet(SK_MATS, JSON.stringify(materiais)); } catch(e) {}
+  try { await storageSet(SK_PROJ, JSON.stringify(projects)); } catch(e) {}
+  try { await storageSet(SK_ISOS, JSON.stringify(isos)); } catch(e) {}
+  try { await storageSet(SK_DEL, JSON.stringify([...deletedIds])); } catch(e) {}
+  // Mantém ignore por 10s após o último save (cobre latência do Supabase)
+  clearTimeout(window._sbIgnoreTimer);
+  window._sbIgnoreTimer = setTimeout(() => { _sbIgnoreNextReload = false; }, 5000);
+  if (Object.keys(lastTemplate).length) { try { await storageSet(SK_TMPL, JSON.stringify(lastTemplate)); } catch(e) {} }
+
+  // Verifica uso do localStorage e alerta se próximo do limite (~4.5 MB)
+  try {
+    let total = 0;
+    for (const k in localStorage) {
+      if (Object.prototype.hasOwnProperty.call(localStorage, k)) {
+        total += (localStorage[k].length + k.length) * 2; // UTF-16: 2 bytes/char
+      }
+    }
+    const usedMB = (total / 1024 / 1024).toFixed(2);
+    if (total > 4.5 * 1024 * 1024) {
+      console.warn(`[HYDROSTEC] localStorage próximo do limite: ${usedMB} MB usados. Considere exportar e limpar dados antigos.`);
+      // Aviso visual discreto apenas 1× por sessão
+      if (!window._lsWarnShown) {
+        window._lsWarnShown = true;
+        setTimeout(() => alert(`⚠️ Armazenamento local próximo do limite (${usedMB} MB).\nExporte os dados e considere limpar registros antigos para evitar falhas.`), 300);
+      }
+    }
+  } catch(_) {}
+}
+function seed() {
+  projects = [{ id: 'proj-001', name: 'Flexibilidades Operacionais Q1 BA', code: 'PJ-0602807', resp: 'APJ Consultoria e Projetos', plant: 'BA-01 / Q1 BA', desc: 'Isométricos de tubulação — área 4200',
+    tabConfig: { caldeiraria: { subs: ['isometricos','suportes'], labels: ['Controle de Isométricos','Controle de Suportes'] } }
+  }];
+  const b = { projId: 'proj-001', num: 'BK-BA01-04200-IS-20-01642', totalSheets: 4, line: '6"-P-4200-1043-BC05-NR', area: '4200', fluid: 'A', nr13: 'Sim', iso_term: 'NR', temp: '45 °C', insp: 'II', paint: 'Não Pintado', classif: 'Fabricação', fab_start: '', fab_end: '', mon_start: '', mon_end: '', th_date: '', trq_date: '' };
+  const b2 = { projId: 'proj-001', num: 'BK-BA01-04200-IS-20-01643', totalSheets: 1, line: '6"-P-42716-CC06-NR', area: '4200', fluid: 'A', nr13: 'Sim', iso_term: 'NR', temp: '45 °C', insp: 'II', paint: 'Não Pintado', classif: 'Fabricação', fab_start: '', fab_end: '', mon_start: '', mon_end: '', th_date: '', trq_date: '' };
+  isos = [
+    { ...b, id: 'iso-001', sheet: '00001', fab: { pre: 100, sol: 80, end: 0 }, mon: { pre: 30, sol: 0, end: 0, th: 'Pendente', trq: 'Pendente' } },
+    { ...b, id: 'iso-002', sheet: '00002', fab: { pre: 100, sol: 60, end: 0 }, mon: { pre: 10, sol: 0, end: 0, th: 'Pendente', trq: 'Pendente' } },
+    { ...b, id: 'iso-003', sheet: '00003', fab: { pre: 80, sol: 40, end: 0 }, mon: { pre: 0, sol: 0, end: 0, th: 'Pendente', trq: 'Pendente' } },
+    { ...b, id: 'iso-004', sheet: '00004', fab: { pre: 50, sol: 20, end: 0 }, mon: { pre: 0, sol: 0, end: 0, th: 'Pendente', trq: 'Pendente' } },
+    { ...b2, id: 'iso-005', sheet: '00001', fab: { pre: 0, sol: 0, end: 0 }, mon: { pre: 0, sol: 0, end: 0, th: 'Pendente', trq: 'Pendente' } },
+  ];
+}
+function projIsos(pid) { return isos.filter(x => x.projId === pid); }
+
+/* ── NAV ── */
+function goView(v, pid) {
+  if (pid !== undefined) {
+    const prevProj = currentProjId;
+    // Toggle: if same project clicked again, close it
+    currentProjId = (currentProjId === pid) ? null : pid;
+    if (currentProjId) {
+      currentDisc = 'caldeiraria';
+      const effTabs = getEffectiveDiscTabs(currentProjId);
+      currentSubTab = effTabs.caldeiraria.subs[0];
+    }
+    // Reseta lastTemplate ao trocar de projeto — evita vazamento de dados entre projetos
+    if (currentProjId !== prevProj) {
+      _planFinState = null; _planRecursos = {}; // reset so _planLoad picks up per-project data
+      const _projSrc = currentProjId ? isos.find(x => x.projId === currentProjId && x.fluid) : null;
+      lastTemplate = _projSrc
+        ? { fluid: _projSrc.fluid||'', nr13: _projSrc.nr13||'Sim', iso_term: _projSrc.iso_term||'',
+            temp: _projSrc.temp||'', insp: _projSrc.insp||'', paint: _projSrc.paint||'Não Pintado' }
+        : {};
+    }
+    // Always stay on projects view when opening a project
+    v = 'projects';
+  }
+  currentView = v;
+  document.getElementById('view-projects').style.display = v === 'projects' ? 'block' : 'none';
+
+  document.getElementById('tab-proj').classList.toggle('active', v === 'projects');
+
+  document.getElementById('tb-proj').textContent = projects.length;
+
+  if (v === 'projects') renderProjects();
+  else if (v === 'isos') renderIsoView();
+  renderHeader();
+}
+function renderHeader() {
+  const el = document.getElementById('hdr-acts');
+  if (currentView === 'projects' && !currentProjId) {
+    el.innerHTML = `<span class="sync-badge" id="sync-badge" onclick="openSbModal()" title="Sincronização em equipe">⚫ Modo local</span><button class="btn btn-out" onclick="openApiKeyModal()" title="Configurar API Key Anthropic">🔑 API</button><button class="btn btn-out" style="background:rgba(255,255,255,.13);" onclick="openSbModal()" title="Configurar sincronização em equipe">☁️ Equipe</button><button class="btn btn-amber" onclick="reqAuth('add-proj')">📁+ Novo Projeto</button>`;
+  } else if (currentSubTab === 'materiais') {
+    el.innerHTML = `
+    <span class="sync-badge" id="sync-badge" onclick="openSbModal()">⚫ Modo local</span>
+    <button class="btn btn-out" onclick="openApiKeyModal()" title="Configurar API Key Anthropic">🔑 API</button>
+    <button class="btn btn-out" style="background:rgba(255,255,255,.13)" onclick="openSbModal()" title="Equipe">☁️ Equipe</button>`;
+  } else if (currentSubTab === 'suportes') {
+    el.innerHTML = `
+    <span class="sync-badge" id="sync-badge" onclick="openSbModal()">⚫ Modo local</span>
+    <button class="btn btn-out" onclick="openApiKeyModal()" title="Configurar API Key Anthropic">🔑 API</button>
+    <button class="btn btn-out" style="background:rgba(255,255,255,.13)" onclick="openSbModal()" title="Equipe">☁️ Equipe</button>
+    <button class="btn btn-out" style="background:rgba(46,125,50,.12);color:#2e7d32;border-color:#a5d6a7" onclick="alert('Importação de suportes disponível em breve.')">📥 Importar</button>
+    <button class="btn btn-cyan" style="font-weight:700;letter-spacing:.3px;box-shadow:0 0 0 2.5px rgba(0,168,232,.45),0 2px 8px rgba(0,168,232,.3)" onclick="exportSuportesPDF()">📄 Exportar PDF</button>
+    <button class="btn btn-out" onclick="sincronizarPlanilha()" style="background:rgba(46,125,50,.15);color:#2e7d32;border-color:#a5d6a7" title="Sincronizar com planilha">🔄 Planilha</button>`;
+  } else if (currentSubTab === 'isometricos') {
+    el.innerHTML = `
+    <span class="sync-badge" id="sync-badge" onclick="openSbModal()">⚫ Modo local</span>
+    <button class="btn btn-out" onclick="openApiKeyModal()" title="Configurar API Key Anthropic">🔑 API</button>
+    <button class="btn btn-out" style="background:rgba(255,255,255,.13)" onclick="openSbModal()" title="Equipe">☁️ Equipe</button>
+    <button class="btn btn-out" style="background:rgba(46,125,50,.12);color:#2e7d32;border-color:#a5d6a7" onclick="openImportIsosModal()" title="Importar isométricos via planilha Excel">📥 Importar XLSX</button>`;  } else {
+    el.innerHTML = `
+    <span class="sync-badge" id="sync-badge" onclick="openSbModal()">⚫ Modo local</span>
+    <button class="btn btn-out" onclick="openApiKeyModal()" title="Configurar API Key Anthropic">🔑 API</button>
+    <button class="btn btn-out" style="background:rgba(255,255,255,.13)" onclick="openSbModal()" title="Equipe">☁️ Equipe</button>`;
+  }
+}
+
+/* ── PROJECTS ── */
+function renderProjects() {
+  const search = (document.getElementById('proj-search-inp') ? document.getElementById('proj-search-inp').value : '').toLowerCase();
+  const list = projects.filter(p => !search || p.name.toLowerCase().includes(search) || (p.code||'').toLowerCase().includes(search));
+
+  const rows = list.map(p => {
+    const pi = projIsos(p.id), n = pi.length;
+    const piFab = pi.filter(e => !['Apenas Montagem','Desmontagem','Referência','Escopo cancelado','Hold'].includes(e.classif||'Fabricação'));
+    const piMon = pi.filter(e => !['Referência','Desmontagem','Escopo cancelado','Hold'].includes(e.classif||'Fabricação'));
+    const af = piFab.length ? Math.round(piFab.reduce((s,e) => s+fabPct(e),0)/piFab.length) : 0;
+    const am = piMon.length ? Math.round(piMon.reduce((s,e) => s+monPct(e),0)/piMon.length) : 0;
+    const isOpen = currentProjId === p.id;
+    const fabClr = af>=100?'#1a8c4e':af>=70?'#c07000':'#0B3D91';
+    const monClr = am>=100?'#1a8c4e':am>=70?'#c07000':'#0077b6';
+
+    const openBtn = isOpen
+      ? '<button onclick="currentProjId=null;renderProjects()" style="font-size:11px;padding:5px 12px;border-radius:6px;border:1px solid #bbb;background:#f0f0f0;cursor:pointer;font-weight:600;color:#555">✕ Fechar</button>'
+      : '<button class="proj-open-btn" onclick="goView(\'isos\',\''+p.id+'\')">Abrir →</button>';
+
+    const bar = (pct, clr) =>
+      '<div style="display:flex;align-items:center;gap:6px">'
+      +'<div style="width:80px;height:6px;background:#e8eef7;border-radius:3px;overflow:hidden">'
+      +'<div style="height:100%;width:'+pct+'%;background:'+clr+';border-radius:3px"></div></div>'
+      +'<span style="font-size:11px;font-weight:700;color:'+clr+'">'+pct+'%</span></div>';
+
+    const expandedRow = isOpen
+      ? '<tr><td colspan="7" style="padding:0;border-top:2px solid var(--hc)">'
+        +'<div style="padding:16px 20px;background:#f8fafd"><div id="view-isos"></div></div>'
+        +'</td></tr>'
+      : '';
+
+    return '<tr style="background:'+(isOpen?'#eef4ff':'#fff')+';border-bottom:1px solid #e8eef7">'
+      +'<td style="padding:10px 16px">'
+        +'<div style="font-size:13px;font-weight:700;color:var(--hb)">'+p.name+'</div>'
+        +(p.desc?'<div style="font-size:10px;color:var(--hmu);margin-top:1px">'+p.desc+'</div>':'')
+      +'</td>'
+      +'<td style="padding:10px 12px;font-size:11px;color:var(--hmu)">'+(p.code||'—')+'</td>'
+      +'<td style="padding:10px 12px;font-size:11px;color:var(--hmu)">'+(p.plant||'—')+'</td>'
+      +'<td style="padding:10px 12px;text-align:center;font-size:12px;font-weight:600;color:var(--hb)">'+n+'</td>'
+      +'<td style="padding:10px 12px">'+bar(af,fabClr)+'</td>'
+      +'<td style="padding:10px 12px">'+bar(am,monClr)+'</td>'
+      +'<td style="padding:10px 12px">'
+        +'<div style="display:flex;gap:4px;align-items:center">'
+          +openBtn
+          +'<button onclick="reqAuth(\'edit-proj\',\''+p.id+'\''+')" style="font-size:11px;padding:5px 9px;border-radius:6px;border:1px solid #d0d8e8;background:#f8fafd;cursor:pointer" title="Editar">✏️</button>'
+          +'<button onclick="reqAuth(\'clear-proj\',\''+p.id+'\''+')" style="font-size:11px;padding:5px 9px;border-radius:6px;border:1px solid #d0d8e8;background:#f8fafd;cursor:pointer" title="Zerar">🧹</button>'
+          +'<button onclick="reqAuth(\'del-proj\',\''+p.id+'\''+')" style="font-size:11px;padding:5px 9px;border-radius:6px;border:1px solid #e0c8c8;background:#fdecea;cursor:pointer;color:var(--hd)" title="Excluir">🗑️</button>'
+        +'</div>'
+      +'</td></tr>'
+      + expandedRow;
+  }).join('');
+
+  document.getElementById('view-projects').innerHTML =
+    '<div class="proj-bar">'
+      +'<div style="display:flex;align-items:center;gap:8px">'
+        +'<span style="font-size:13px">🔍</span>'
+        +'<input class="proj-search" id="proj-search-inp" placeholder="Buscar por nome ou código..." value="'+search+'" oninput="renderProjects()">'
+      +'</div>'
+      +'<span style="font-size:11px;color:var(--hmu);font-weight:500;background:#fff;padding:4px 12px;border-radius:20px;border:1px solid var(--hbr)">'+projects.length+' projeto'+(projects.length!==1?'s':'')+'</span>'
+    +'</div>'
+    +'<div style="padding:0 16px 16px">'
+      +(!list.length
+        ? '<div class="no-proj">'+(projects.length?'Nenhum resultado.':'Nenhum projeto. Clique em Novo Projeto.')+'</div>'
+        : '<div style="background:#fff;border:1px solid #e8eef7;border-radius:10px;overflow:hidden;box-shadow:0 1px 6px rgba(0,0,0,.05)">'
+          +'<table style="width:100%;border-collapse:collapse">'
+          +'<thead><tr style="background:linear-gradient(90deg,#071d4a,#0B3D91);color:#fff">'
+            +'<th style="padding:10px 16px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.4px">PROJETO</th>'
+            +'<th style="padding:10px 12px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.4px">CÓDIGO</th>'
+            +'<th style="padding:10px 12px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.4px">PLANTA</th>'
+            +'<th style="padding:10px 12px;text-align:center;font-size:10px;font-weight:700;letter-spacing:.4px">FOLHAS</th>'
+            +'<th style="padding:10px 12px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.4px">⚙️ FABRICAÇÃO</th>'
+            +'<th style="padding:10px 12px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.4px">🔧 MONTAGEM</th>'
+            +'<th style="padding:10px 12px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.4px">AÇÕES</th>'
+          +'</tr></thead>'
+          +'<tbody>'+rows+'</tbody>'
+          +'</table></div>')
+    +'</div>';
+
+  if (currentProjId) {
+    // DOM já foi atualizado com a linha expandida — agora renderiza o conteúdo
+    setTimeout(function() {
+      renderIsoView(true);
+      _sbUpdateBadge();
+    }, 0);
+  }
+}
+
