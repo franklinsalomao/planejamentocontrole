@@ -1183,67 +1183,87 @@ function renderHeader() {
 /* ── PROJECTS ── */
 function renderProjects() {
   const search = (document.getElementById('proj-search-inp') ? document.getElementById('proj-search-inp').value : '').toLowerCase();
-  const list = projects.filter(p => !search || p.name.toLowerCase().includes(search) || (p.code || '').toLowerCase().includes(search));
-  document.getElementById('view-projects').innerHTML = `
-    <div class="proj-bar">
-      <div style="display:flex;align-items:center;gap:8px">
-        <span style="font-size:13px">🔍</span>
-        <input class="proj-search" id="proj-search-inp" placeholder="Buscar projeto por nome ou código..." value="${search}" oninput="renderProjects()">
-      </div>
-      <span style="font-size:11px;color:var(--hmu);font-weight:500;background:#fff;padding:4px 12px;border-radius:20px;border:1px solid var(--hbr)">${projects.length} projeto${projects.length !== 1 ? 's' : ''}</span>
-    </div>
-    <div class="proj-grid">
-      ${!list.length ? `<div class="no-proj">${projects.length ? 'Nenhum resultado.' : 'Nenhum projeto. Clique em Novo Projeto.'}</div>` : ''}
-      ${list.map(p => {
-        const pi = projIsos(p.id), n = pi.length;
-        const piFab = pi.filter(e => !['Apenas Montagem','Desmontagem','Referência','Escopo cancelado','Hold'].includes(e.classif||'Fabricação'));
-        const piMon = pi.filter(e => !['Referência','Desmontagem','Escopo cancelado','Hold'].includes(e.classif||'Fabricação'));
-        const af = piFab.length ? Math.round(piFab.reduce((s, e) => s + fabPct(e), 0) / piFab.length) : 0;
-        const am = piMon.length ? Math.round(piMon.reduce((s, e) => s + monPct(e), 0) / piMon.length) : 0;
-        const isOpen = currentProjId === p.id;
-        const openBtn = isOpen
-          ? '<button class="proj-open-btn" style="background:linear-gradient(90deg,#666,#888)" onclick="currentProjId=null;renderProjects()">✕ Fechar</button>'
-          : '<button class="proj-open-btn" onclick="goView(\'isos\',\''+p.id+'\')" >Abrir Projeto →</button>';
-        const expandedContent = isOpen
-          ? '<div style="border-top:2px solid var(--hc);padding:16px 20px;background:#f8fafd"><div id="view-isos"></div></div>'
-          : '';
-        const descHtml = p.desc
-          ? '<div style="font-size:9.5px;color:var(--hmu);margin-bottom:8px;line-height:1.4">'+p.desc+'</div>'
-          : '';
-        return '<div class="proj-card '+(isOpen?'active-proj':'')+'" style="'+(isOpen?'grid-column:1/-1;':'')+'">'
-          + '<div class="pc-card-top">'
-          +   '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">'
-          +     '<div style="flex:1;min-width:0">'
-          +       '<div class="pc-name">'+p.name+'</div>'
-          +       '<div class="pc-code">'+(p.code||'—')+(p.plant?' · '+p.plant:'')+'</div>'
-          +     '</div>'
-          +     '<div style="display:flex;gap:4px;flex-shrink:0">'
-          +       '<button class="btn-edit-sm" style="background:rgba(255,255,255,.15);border-color:rgba(255,255,255,.25);color:#fff" onclick="reqAuth(\'edit-proj\',\''+p.id+'\')">✏️</button>'
-          +       '<button class="btn-edit-sm" style="background:rgba(255,255,255,.15);border-color:rgba(255,255,255,.25);color:#fff" onclick="reqAuth(\'clear-proj\',\''+p.id+'\')">🧹</button>'
-          +       '<button class="proj-del-btn" style="background:rgba(255,255,255,.12);border-color:rgba(255,100,100,.4);color:#ffaaaa" onclick="reqAuth(\'del-proj\',\''+p.id+'\')">🗑️</button>'
-          +     '</div>'
-          +   '</div>'
-          + '</div>'
-          + '<div class="pc-card-body">'
-          +   '<div class="pc-stats">'
-          +     '<span class="proj-stat">📄 '+n+' folha'+(n!==1?'s':'')+'</span>'
-          +     '<span class="proj-stat proj-stat-fab">⚙️ Fab '+af+'%</span>'
-          +     '<span class="proj-stat proj-stat-mon">🔧 Mon '+am+'%</span>'
-          +   '</div>'
-          +   descHtml
-          +   '<div class="pc-acts">'+openBtn+'</div>'
-          + '</div>'
-          + expandedContent
-          + '</div>';
-      }).join('')}
-      <div class="proj-new-card" onclick="reqAuth('add-proj')">
-        <div class="pnc-icon">＋</div>
-        <div class="pnc-lbl">Novo Projeto</div>
-        <div style="font-size:9px;color:var(--hmu);margin-top:2px">Clique para criar</div>
-      </div>
-    </div>`;
+  const list = projects.filter(p => !search || p.name.toLowerCase().includes(search) || (p.code||'').toLowerCase().includes(search));
 
-  // Se há projeto aberto, renderiza o conteúdo dentro do card
+  let rowsHtml = '';
+  list.forEach(function(p) {
+    const pi = projIsos(p.id), n = pi.length;
+    const piFab = pi.filter(e => !['Apenas Montagem','Desmontagem','Referência','Escopo cancelado','Hold'].includes(e.classif||'Fabricação'));
+    const piMon = pi.filter(e => !['Referência','Desmontagem','Escopo cancelado','Hold'].includes(e.classif||'Fabricação'));
+    const af = piFab.length ? Math.round(piFab.reduce(function(s,e){return s+fabPct(e);},0)/piFab.length) : 0;
+    const am = piMon.length ? Math.round(piMon.reduce(function(s,e){return s+monPct(e);},0)/piMon.length) : 0;
+    const isOpen = currentProjId === p.id;
+    const fabClr = af>=100?'#1a8c4e':af>=70?'#c07000':'#0B3D91';
+    const monClr = am>=100?'#1a8c4e':am>=70?'#c07000':'#0077b6';
+    const bar = function(pct,clr) {
+      return '<div style="display:flex;align-items:center;gap:6px">'
+        +'<div style="width:80px;height:6px;background:#e8eef7;border-radius:3px;overflow:hidden">'
+        +'<div style="height:100%;width:'+pct+'%;background:'+clr+';border-radius:3px"></div></div>'
+        +'<span style="font-size:11px;font-weight:700;color:'+clr+'">'+pct+'%</span></div>';
+    };
+    const openBtnHtml = isOpen
+      ? '<button class="proj-open-btn" style="background:linear-gradient(90deg,#666,#888)" onclick="currentProjId=null;renderProjects()">✕ Fechar</button>'
+      : '<button class="proj-open-btn" onclick="goView(\'isos\',\''+p.id+'\')">'+'Abrir →</button>';
+    const expandedHtml = isOpen
+      ? '<tr><td colspan="6" style="padding:0;border-top:2px solid var(--hc)">'
+        +'<div style="padding:16px 20px;background:#f8fafd"><div id="view-isos"></div></div>'
+        +'</td></tr>'
+      : '';
+    rowsHtml +=
+      '<tr style="background:'+(isOpen?'#eef4ff':'#fff')+';border-bottom:1px solid #e8eef7">'
+      +'<td style="padding:10px 16px">'
+        +'<div style="font-size:13px;font-weight:700;color:var(--hb)">'+p.name+'</div>'
+        +(p.desc?'<div style="font-size:10px;color:var(--hmu);margin-top:2px">'+p.desc+'</div>':'')
+      +'</td>'
+      +'<td style="padding:10px 12px;font-size:11px;color:var(--hmu)">'+(p.code||'—')+(p.plant?' · '+p.plant:'')+'</td>'
+      +'<td style="padding:10px 12px;text-align:center;font-size:13px;font-weight:700;color:var(--hb)">'+n+'</td>'
+      +'<td style="padding:10px 12px">'+bar(af,fabClr)+'</td>'
+      +'<td style="padding:10px 12px">'+bar(am,monClr)+'</td>'
+      +'<td style="padding:10px 16px">'
+        +'<div style="display:flex;gap:4px;align-items:center">'
+          +openBtnHtml
+          +'<button class="btn-edit-sm" onclick="reqAuth(\'edit-proj\',\''+p.id+'\')" title="Editar">✏️</button>'
+          +'<button class="btn-edit-sm" onclick="reqAuth(\'clear-proj\',\''+p.id+'\')" title="Zerar">🧹</button>'
+          +'<button class="proj-del-btn" onclick="reqAuth(\'del-proj\',\''+p.id+'\')" title="Excluir">🗑️</button>'
+        +'</div>'
+      +'</td>'
+      +'</tr>'
+      + expandedHtml;
+  });
+
+  const tableHtml = list.length
+    ? '<div style="background:#fff;border:1px solid #e8eef7;border-radius:10px;overflow:hidden;box-shadow:0 1px 6px rgba(0,0,0,.05)">'
+      +'<table style="width:100%;border-collapse:collapse">'
+      +'<thead><tr style="background:linear-gradient(90deg,#071d4a,#0B3D91);color:#fff">'
+        +'<th style="padding:10px 16px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.4px">PROJETO</th>'
+        +'<th style="padding:10px 12px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.4px">CÓDIGO / PLANTA</th>'
+        +'<th style="padding:10px 12px;text-align:center;font-size:10px;font-weight:700;letter-spacing:.4px">FOLHAS</th>'
+        +'<th style="padding:10px 12px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.4px">⚙️ FABRICAÇÃO</th>'
+        +'<th style="padding:10px 12px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.4px">🔧 MONTAGEM</th>'
+        +'<th style="padding:10px 16px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.4px">AÇÕES</th>'
+      +'</tr></thead>'
+      +'<tbody>'+rowsHtml+'</tbody>'
+      +'</table></div>'
+    : '<div class="no-proj">'+(projects.length?'Nenhum resultado.':'Nenhum projeto. Clique em Novo Projeto.')+'</div>';
+
+  document.getElementById('view-projects').innerHTML =
+    '<div class="proj-bar">'
+      +'<div style="display:flex;align-items:center;gap:8px">'
+        +'<span style="font-size:13px">🔍</span>'
+        +'<input class="proj-search" id="proj-search-inp" placeholder="Buscar por nome ou código..." value="'+search+'" oninput="renderProjects()">'
+      +'</div>'
+      +'<span style="font-size:11px;color:var(--hmu);font-weight:500;background:#fff;padding:4px 12px;border-radius:20px;border:1px solid var(--hbr)">'+projects.length+' projeto'+(projects.length!==1?'s':'')+'</span>'
+    +'</div>'
+    +'<div style="padding:0 16px 16px">'
+      +tableHtml
+      +'<div class="proj-new-card" onclick="reqAuth(\'add-proj\')">'  
+        +'<div class="pnc-icon">＋</div>'
+        +'<div class="pnc-lbl">Novo Projeto</div>'
+        +'<div style="font-size:9px;color:var(--hmu);margin-top:2px">Clique para criar</div>'
+      +'</div>'
+    +'</div>';
+
+  // Se há projeto aberto, renderiza o conteúdo dentro da linha expandida
   if (currentProjId) {
     renderIsoView();
   }
