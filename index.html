@@ -3339,7 +3339,7 @@ function renderRows(list) {
       </div>
     </td>
     <td style="position:relative">
-      ${((e.classif||'Fabricação')==='Referência' || (e.classif||'Fabricação')==='Desmontagem' || (e.classif||'Fabricação')==='Apenas Montagem')
+      ${((e.classif||'Fabricação')==='Referência' || (e.classif||'Fabricação')==='Desmontagem' || (e.classif||'Fabricação')==='Apenas Montagem' || (e.classif||'Fabricação')==='Escopo cancelado' || (e.classif||'Fabricação')==='Hold')
         ? '<span style="font-size:10px;color:#bbb;font-style:italic">N/A</span>'
         : `${progMiniFab(e.fab, e.id)}
       <div class="ie-panel" id="ie-fab-${e.id}" onclick="event.stopPropagation()">
