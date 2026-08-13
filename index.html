@@ -663,6 +663,10 @@ let suportesEl  = []; const SK_SUP_EL  = 'hy_sup_el';
 let suportesIns = []; const SK_SUP_INS = 'hy_sup_ins';
 let dtEl        = []; const SK_DT_EL   = 'hy_dt_el';
 let dtIns       = []; const SK_DT_INS  = 'hy_dt_ins';
+let instEl  = []; const SK_INST_EL  = 'hy_inst_el';
+let instIns = []; const SK_INST_INS = 'hy_inst_ins';
+let infraEl  = []; const SK_INFRA_EL  = 'hy_infra_el';
+let infraIns = []; const SK_INFRA_INS = 'hy_infra_ins';
 
 /* ── Dados seed — material_consolidado.xlsx corrigido (426 registros) ── */
 const MATS_SEED = [];
@@ -918,6 +922,10 @@ async function loadAll() {
   try { const v=await storageGet(SK_SUP_INS); if(v){const d=JSON.parse(v);if(d&&d.length)suportesIns=d;} } catch(e) {}
   try { const v=await storageGet(SK_DT_EL);   if(v){const d=JSON.parse(v);if(d&&d.length)dtEl=d;}         } catch(e) {}
   try { const v=await storageGet(SK_DT_INS);  if(v){const d=JSON.parse(v);if(d&&d.length)dtIns=d;}        } catch(e) {}
+  try { const v=await storageGet(SK_INST_EL);  if(v){const d=JSON.parse(v);if(d&&d.length)instEl=d;}  } catch(e) {}
+  try { const v=await storageGet(SK_INST_INS); if(v){const d=JSON.parse(v);if(d&&d.length)instIns=d;} } catch(e) {}
+  try { const v=await storageGet(SK_INFRA_EL);  if(v){const d=JSON.parse(v);if(d&&d.length)infraEl=d;}  } catch(e) {}
+  try { const v=await storageGet(SK_INFRA_INS); if(v){const d=JSON.parse(v);if(d&&d.length)infraIns=d;} } catch(e) {}
   // Migração incremental: campo soldado e ajuste de labels de status
   suportes.forEach(s => {
     if (!s.soldado) s.soldado = 'Não soldado';
@@ -1090,6 +1098,10 @@ async function saveAll() {
   try { await storageSet(SK_SUP_INS, JSON.stringify(suportesIns)); } catch(e) {}
   try { await storageSet(SK_DT_EL,   JSON.stringify(dtEl));         } catch(e) {}
   try { await storageSet(SK_DT_INS,  JSON.stringify(dtIns));        } catch(e) {}
+  try { await storageSet(SK_INST_EL,  JSON.stringify(instEl));  } catch(e) {}
+  try { await storageSet(SK_INST_INS, JSON.stringify(instIns)); } catch(e) {}
+  try { await storageSet(SK_INFRA_EL,  JSON.stringify(infraEl));  } catch(e) {}
+  try { await storageSet(SK_INFRA_INS, JSON.stringify(infraIns)); } catch(e) {}
   try { await storageSet(SK_MATS, JSON.stringify(materiais)); } catch(e) {}
   try { await storageSet(SK_PROJ, JSON.stringify(projects)); } catch(e) {}
   try { await storageSet(SK_ISOS, JSON.stringify(isos)); } catch(e) {}
@@ -1325,10 +1337,10 @@ function sincronizarPlanilha() {
 const DISC_TABS = {
   caldeiraria: { label:'🔧 Caldeiraria', subs:['dashboard','isometricos','suportes','materiais','estrutura'],
     labels:['Dashboard','Controle de Isométricos','Controle de Suportes','Controle de Materiais','Estrutura Metálica'] },
-  eletrica: { label:'⚡ Elétrica', subs:['cabos-el','sup-el','encam-el','equip-el'],
-    labels:['Controle de Cabos','Controle de Suportes','Controle de Encaminhamento','Controle de Equipamentos'] },
-  instr: { label:'🔬 Instrumentação', subs:['cabos-ins','sup-ins','dt-ins','encam-ins','instrumentos','equip-ins','interlig'],
-    labels:['Controle de Cabos','Controle de Suportes','Detalhes Típicos','Controle de Encaminhamento','Controle de Instrumentos','Controle de Equipamentos','Controle de Interligação'] }
+  eletrica: { label:'⚡ Elétrica', subs:['cabos-el','inst-el','infra-el'],
+    labels:['Controle de Cabos','Controle de Instrumentos/Equip.','Controle de Infraestrutura'] },
+  instr: { label:'🔬 Instrumentação', subs:['cabos-ins','inst-ins','infra-ins','dt-ins'],
+    labels:['Controle de Cabos','Controle de Instrumentos/Equip.','Controle de Infraestrutura','Detalhes Típicos'] }
 };
 function setDisc(d) {
   currentDisc = d;
@@ -3001,6 +3013,248 @@ async function delAllDT(){
 }
 
 
+
+/* ══════════════════════════════════════════════════════════════════════════
+   CONTROLE DE INSTRUMENTOS / EQUIPAMENTOS — ELÉTRICA E INSTRUMENTAÇÃO
+   Colunas: Disciplina · Doc. Rastreabilidade · Localização · Tag · Cód. Suprimentos
+            Qtde · Condição · Status Calibração · Status Retirada · Status Montagem
+            Tip. Elétrico · Tip. Pneumático · Tip. Processo
+            Status Aterramento · Status Loop Teste
+══════════════════════════════════════════════════════════════════════════ */
+function _instArr()  { return currentDisc==='eletrica'?instEl:instIns; }
+function _instSet(a) { if(currentDisc==='eletrica')instEl=a; else instIns=a; }
+const SN_OPTS    = ['Sim','N/A'];
+const COND_OPTS  = ['Novo','Existente'];
+const ST3_OPTS   = ['Pendente','Em Execução','Concluído','N/A'];
+let _instSearch='', _instLoc='', _instDisc2='';
+
+function renderInstView(discTabs,bc){
+  var discLabel = currentDisc==='eletrica'?'⚡ Elétrica':'🔬 Instrumentação';
+  var all=_instArr();
+  var list=currentProjId?all.filter(function(r){return r.projId===currentProjId;}):all;
+  var srch=(_instSearch||'').toLowerCase();
+  var filtered=list.filter(function(r){
+    if(srch&&!(r.tag+' '+r.doc+' '+r.loc+' '+r.codSup).toLowerCase().includes(srch))return false;
+    if(_instLoc&&r.loc!==_instLoc)return false;
+    if(_instDisc2&&r.disc!==_instDisc2)return false;
+    return true;
+  });
+  var total=list.length;
+  var montOk=list.filter(function(r){return r.stMon==='Concluído';}).length;
+  var retOk =list.filter(function(r){return r.stRet==='Concluído';}).length;
+  var loopOk=list.filter(function(r){return r.stLoop==='Sim';}).length;
+  var pMon=total?Math.round(montOk/total*100):0;
+  var pRet=total?Math.round(retOk/total*100):0;
+  var pLoop=total?Math.round(loopOk/total*100):0;
+
+  var kpis='<div class="sum-bar" style="margin:10px 16px 0;gap:10px">'
+    +'<div class="sum-card"><div class="sum-val" style="color:var(--hb)">'+total+'</div><div class="sum-lbl">Itens</div></div>'
+    +'<div class="sum-card"><div class="sum-val" style="color:'+(pMon>=100?'#1a8c4e':pMon>=70?'#c07000':'#0077b6')+'">'+pMon+'%</div><div class="sum-lbl">Montagem</div><div class="kpi-bar" style="margin-top:4px"><div style="width:'+pMon+'%;height:5px;border-radius:3px;background:'+(pMon>=100?'#1a8c4e':pMon>=70?'#c07000':'#0077b6')+'"></div></div></div>'
+    +'<div class="sum-card"><div class="sum-val" style="color:'+(pRet>=100?'#1a8c4e':pRet>=70?'#c07000':'#7b1fa2')+'">'+pRet+'%</div><div class="sum-lbl">Retirada</div><div class="kpi-bar" style="margin-top:4px"><div style="width:'+pRet+'%;height:5px;border-radius:3px;background:'+(pRet>=100?'#1a8c4e':pRet>=70?'#c07000':'#7b1fa2')+'"></div></div></div>'
+    +'<div class="sum-card"><div class="sum-val" style="color:'+(pLoop>=100?'#1a8c4e':pLoop>=70?'#c07000':'#e65100')+'">'+loopOk+'/'+total+'</div><div class="sum-lbl">Loop Teste OK</div></div>'
+    +'</div>';
+
+  var locs=[...new Set(list.map(function(r){return r.loc;}).filter(Boolean))].sort();
+  var discs2=[...new Set(list.map(function(r){return r.disc;}).filter(Boolean))].sort();
+
+  var filterBar='<div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid var(--hbr)">'
+    +'<input placeholder="🔍 Tag, Rastreab., Local..." value="'+(_instSearch||'')+'" oninput="_instSearch=this.value;renderIsoView()" style="font-size:11px;padding:4px 8px;border:0.5px solid var(--hbr);border-radius:5px;background:var(--hg);color:var(--ht);min-width:180px">'
+    +'<select onchange="_instLoc=this.value;renderIsoView()" style="font-size:11px;padding:3px 7px;border:0.5px solid var(--hbr);border-radius:5px;background:var(--hg);color:var(--ht)">'
+      +'<option value="">Localização</option>'+locs.map(function(l){return '<option value="'+l+'" '+(_instLoc===l?'selected':'')+'>'+l+'</option>';}).join('')+'</select>'
+    +'<select onchange="_instDisc2=this.value;renderIsoView()" style="font-size:11px;padding:3px 7px;border:0.5px solid var(--hbr);border-radius:5px;background:var(--hg);color:var(--ht)">'
+      +'<option value="">Disciplina</option>'+discs2.map(function(l){return '<option value="'+l+'" '+(_instDisc2===l?'selected':'')+'>'+l+'</option>';}).join('')+'</select>'
+    +'<span style="font-size:10px;color:var(--hmu)">'+filtered.length+' de '+total+'</span>'
+    +'<button class="btn-clr" onclick="_instSearch=\'\';_instLoc=\'\';_instDisc2=\'\';renderIsoView()">✕</button>'
+    +'<button class="btn btn-cyan" style="height:27px;font-size:11px;background:rgba(0,90,180,.85)" onclick="addInst()">+ Item</button>'
+    +'<button style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:1px solid #e0c8c8;background:#fdecea;color:var(--hd);cursor:pointer" onclick="delAllInst()">🗑️ Excluir Tudo</button>'
+    +'</div>';
+
+  var clr=function(v){return v==='Concluído'||v==='Sim'?'#e8f5e9':v==='Em Execução'?'#fff8e1':v==='N/A'?'#f5f5f5':'var(--hg)';};
+  var sel=function(id,field,opts,val,w){
+    return '<select onchange="instSetField(\''+id+'\',\''+field+'\',this.value)" style="font-size:10px;padding:2px 4px;border-radius:5px;border:0.5px solid var(--hbr);background:'+clr(val)+';color:var(--ht);max-width:'+(w||90)+'px">'
+      +opts.map(function(o){return '<option value="'+o+'" '+(val===o?'selected':'')+'>'+o+'</option>';}).join('')+'</select>';
+  };
+  var inp=function(id,field,val,w){
+    return '<input type="text" value="'+String(val||'').replace(/"/g,'&quot;')+'" onclick="event.stopPropagation()" onchange="instSetField(\''+id+'\',\''+field+'\',this.value)" style="width:'+(w||80)+'px;padding:2px 5px;border:0.5px solid var(--hbr);border-radius:5px;font-size:10px;background:var(--hg);color:var(--ht)">';
+  };
+
+  var rows='';
+  filtered.forEach(function(r){
+    rows+='<tr style="border-bottom:1px solid #f0f4fb">'
+      +'<td style="padding:5px 8px;font-size:10px">'+inp(r.id,'disc',r.disc,80)+'</td>'
+      +'<td style="padding:5px 8px;font-size:10px;font-family:monospace">'+inp(r.id,'doc',r.doc,110)+'</td>'
+      +'<td style="padding:5px 8px;font-size:10px">'+inp(r.id,'loc',r.loc,90)+'</td>'
+      +'<td style="padding:5px 8px;font-size:10px;font-weight:700">'+inp(r.id,'tag',r.tag,90)+'</td>'
+      +'<td style="padding:5px 8px;font-size:10px">'+inp(r.id,'codSup',r.codSup,90)+'</td>'
+      +'<td style="padding:4px 5px;text-align:center"><input type="number" min="0" value="'+(r.qtd||1)+'" onchange="instSetField(\''+r.id+'\',\'qtd\',this.value)" onclick="event.stopPropagation()" style="width:50px;padding:2px 4px;border:0.5px solid var(--hbr);border-radius:5px;font-size:10px;text-align:center;background:var(--hg);color:var(--ht)"></td>'
+      +'<td style="padding:4px 5px;text-align:center">'+sel(r.id,'cond',COND_OPTS,r.cond||'Novo',80)+'</td>'
+      +'<td style="padding:4px 5px;text-align:center">'+sel(r.id,'stCalib',ST3_OPTS,r.stCalib||'Pendente',95)+'</td>'
+      +'<td style="padding:4px 5px;text-align:center">'+sel(r.id,'stRet',ST3_OPTS,r.stRet||'Pendente',95)+'</td>'
+      +'<td style="padding:4px 5px;text-align:center">'+sel(r.id,'stMon',ST3_OPTS,r.stMon||'Pendente',95)+'</td>'
+      +'<td style="padding:4px 5px;text-align:center">'+sel(r.id,'tipEl',SN_OPTS,r.tipEl||'N/A',55)+'</td>'
+      +'<td style="padding:4px 5px;text-align:center">'+sel(r.id,'tipPn',SN_OPTS,r.tipPn||'N/A',55)+'</td>'
+      +'<td style="padding:4px 5px;text-align:center">'+sel(r.id,'tipPr',SN_OPTS,r.tipPr||'N/A',55)+'</td>'
+      +'<td style="padding:4px 5px;text-align:center">'+sel(r.id,'stAter',ST3_OPTS,r.stAter||'Pendente',95)+'</td>'
+      +'<td style="padding:4px 5px;text-align:center">'+sel(r.id,'stLoop',SN_OPTS,r.stLoop||'N/A',55)+'</td>'
+      +'<td style="padding:4px 6px;text-align:center"><button class="btn-lupa" onclick="delInst(\''+r.id+'\')" style="color:var(--hd);border-color:#e0c8c8">🗑️</button></td>'
+      +'</tr>';
+  });
+
+  var ths=['DISCIPLINA','DOC. RASTREABILIDADE','LOCALIZAÇÃO','TAG / EQUIPAMENTO','CÓD. SUPRIMENTOS','QTDE','CONDIÇÃO','CALIBRAÇÃO/INSPEÇÃO','RETIRADA','MONTAGEM','TIP. ELÉT.','TIP. PNEU.','TIP. PROC.','ATERRAMENTO','LOOP TESTE','AÇÕES'];
+  var tbl=filtered.length
+    ?'<div style="margin:10px 16px 16px;overflow-x:auto"><table style="width:100%;border-collapse:collapse;min-width:1400px">'
+      +'<thead><tr style="background:linear-gradient(90deg,#071d4a,#0B3D91);color:#fff">'
+      +ths.map(function(h){return '<th style="padding:8px 8px;font-size:9px;letter-spacing:.4px;white-space:nowrap;text-align:center">'+h+'</th>';}).join('')
+      +'</tr></thead><tbody>'+rows+'</tbody></table></div>'
+    :'<div class="ph-panel"><div style="font-size:32px">🔌</div><strong>Nenhum item cadastrado</strong><span style="font-size:11px">Clique em "+ Item" para adicionar.</span></div>';
+
+  document.getElementById('view-isos').innerHTML=bc+discTabs
+    +'<div style="padding:10px 16px 4px;font-size:15px;font-weight:700;color:var(--hb)">'+discLabel+' — Controle de Instrumentos / Equipamentos</div>'
+    +kpis+filterBar+tbl+'</div>';
+}
+
+async function instSetField(id,field,value){
+  var arr=_instArr(); var r=arr.find(function(x){return x.id===id;}); if(!r)return;
+  r[field]=value; await saveAll();
+}
+async function addInst(){
+  var tag=prompt('Tag do instrumento / equipamento:');
+  if(!tag||!tag.trim())return;
+  var disc=currentDisc==='eletrica'?'Elétrica':'Instrumentação';
+  _instSet(_instArr().concat([{id:'inst_'+Date.now()+'_'+Math.random().toString(36).slice(2,5),projId:currentProjId||null,disc:disc,doc:'',loc:'',tag:tag.trim(),codSup:'',qtd:1,cond:'Novo',stCalib:'Pendente',stRet:'Pendente',stMon:'Pendente',tipEl:'N/A',tipPn:'N/A',tipPr:'N/A',stAter:'Pendente',stLoop:'N/A'}]));
+  await saveAll(); renderIsoView();
+}
+async function delInst(id){
+  if(!confirm('Excluir este item?'))return;
+  _instSet(_instArr().filter(function(r){return r.id!==id;}));
+  await saveAll(); renderIsoView();
+}
+async function delAllInst(){
+  var arr=_instArr();
+  var n=currentProjId?arr.filter(function(r){return r.projId===currentProjId;}).length:arr.length;
+  if(!n)return;
+  if(!confirm('Excluir TODOS os '+n+' itens'+(currentProjId?' deste projeto':'')+'?'))return;
+  if(currentProjId)_instSet(arr.filter(function(r){return r.projId!==currentProjId;}));
+  else _instSet([]);
+  await saveAll(); renderIsoView();
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   CONTROLE DE INFRAESTRUTURA — ELÉTRICA E INSTRUMENTAÇÃO
+   Colunas: Rastreabilidade · Disciplina · Tipo Encaminhamento · Diâm ·
+            Cód. Suprimentos · Status Suprimentos · Qtde Projetada · Qtde Montada
+══════════════════════════════════════════════════════════════════════════ */
+function _infraArr()  { return currentDisc==='eletrica'?infraEl:infraIns; }
+function _infraSet(a) { if(currentDisc==='eletrica')infraEl=a; else infraIns=a; }
+const INFRA_TIPO_OPTS = ['Eletrocalha','Nanogalão','Conduite','Perfilado','Cabo Aço','Outro'];
+const INFRA_SUP_OPTS  = ['Pendente','Em Compra','Comprado','N/A'];
+let _infraSearch='', _infraTipo='', _infraSup='';
+
+function renderInfraView(discTabs,bc){
+  var discLabel=currentDisc==='eletrica'?'⚡ Elétrica':'🔬 Instrumentação';
+  var all=_infraArr();
+  var list=currentProjId?all.filter(function(r){return r.projId===currentProjId;}):all;
+  var srch=(_infraSearch||'').toLowerCase();
+  var filtered=list.filter(function(r){
+    if(srch&&!(r.doc+' '+r.tipo+' '+r.codSup).toLowerCase().includes(srch))return false;
+    if(_infraTipo&&r.tipo!==_infraTipo)return false;
+    if(_infraSup&&r.stSup!==_infraSup)return false;
+    return true;
+  });
+  var total=list.length;
+  var qtdProj=list.reduce(function(s,r){return s+(parseFloat(r.qtdProj)||0);},0);
+  var qtdMont=list.reduce(function(s,r){return s+(parseFloat(r.qtdMont)||0);},0);
+  var pct=qtdProj>0?Math.round(qtdMont/qtdProj*100):0;
+  var supOk=list.filter(function(r){return r.stSup==='Comprado';}).length;
+
+  var kpis='<div class="sum-bar" style="margin:10px 16px 0;gap:10px">'
+    +'<div class="sum-card"><div class="sum-val" style="color:var(--hb)">'+total+'</div><div class="sum-lbl">Itens</div></div>'
+    +'<div class="sum-card"><div class="sum-val" style="color:var(--hb)">'+qtdProj.toLocaleString('pt-BR',{maximumFractionDigits:1})+'</div><div class="sum-lbl">Qtde Projetada</div></div>'
+    +'<div class="sum-card"><div class="sum-val" style="color:'+(pct>=100?'#1a8c4e':pct>=70?'#c07000':'#0077b6')+'">'+pct+'%</div><div class="sum-lbl">Montado</div><div class="kpi-bar" style="margin-top:4px"><div style="width:'+Math.min(pct,100)+'%;height:5px;border-radius:3px;background:'+(pct>=100?'#1a8c4e':pct>=70?'#c07000':'#0077b6')+'"></div></div></div>'
+    +'<div class="sum-card"><div class="sum-val" style="color:'+(supOk===total&&total>0?'#1a8c4e':'#7b1fa2')+'">'+supOk+'/'+total+'</div><div class="sum-lbl">Suprimentos OK</div></div>'
+    +'</div>';
+
+  var tipos=[...new Set(list.map(function(r){return r.tipo;}).filter(Boolean))].sort();
+  var filterBar='<div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid var(--hbr)">'
+    +'<input placeholder="🔍 Rastreab., Tipo, Cód..." value="'+(_infraSearch||'')+'" oninput="_infraSearch=this.value;renderIsoView()" style="font-size:11px;padding:4px 8px;border:0.5px solid var(--hbr);border-radius:5px;background:var(--hg);color:var(--ht);min-width:180px">'
+    +'<select onchange="_infraTipo=this.value;renderIsoView()" style="font-size:11px;padding:3px 7px;border:0.5px solid var(--hbr);border-radius:5px;background:var(--hg);color:var(--ht)">'
+      +'<option value="">Tipo Encam.</option>'+INFRA_TIPO_OPTS.map(function(o){return '<option value="'+o+'" '+(_infraTipo===o?'selected':'')+'>'+o+'</option>';}).join('')+'</select>'
+    +'<select onchange="_infraSup=this.value;renderIsoView()" style="font-size:11px;padding:3px 7px;border:0.5px solid var(--hbr);border-radius:5px;background:var(--hg);color:var(--ht)">'
+      +'<option value="">Status Sup.</option>'+INFRA_SUP_OPTS.map(function(o){return '<option value="'+o+'" '+(_infraSup===o?'selected':'')+'>'+o+'</option>';}).join('')+'</select>'
+    +'<span style="font-size:10px;color:var(--hmu)">'+filtered.length+' de '+total+'</span>'
+    +'<button class="btn-clr" onclick="_infraSearch=\'\';_infraTipo=\'\';_infraSup=\'\';renderIsoView()">✕</button>'
+    +'<button class="btn btn-cyan" style="height:27px;font-size:11px;background:rgba(0,90,180,.85)" onclick="addInfra()">+ Item</button>'
+    +'<button style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:1px solid #e0c8c8;background:#fdecea;color:var(--hd);cursor:pointer" onclick="delAllInfra()">🗑️ Excluir Tudo</button>'
+    +'</div>';
+
+  var clrSup=function(v){return v==='Comprado'?'#e8f5e9':v==='Em Compra'?'#fff8e1':v==='N/A'?'#f5f5f5':'var(--hg)';};
+  var inp2=function(id,field,val,w){return '<input type="text" value="'+String(val||'').replace(/"/g,'&quot;')+'" onclick="event.stopPropagation()" onchange="infraSetField(\''+id+'\',\''+field+'\',this.value)" style="width:'+(w||80)+'px;padding:2px 5px;border:0.5px solid var(--hbr);border-radius:5px;font-size:10px;background:var(--hg);color:var(--ht)">';};
+  var selInfra=function(id,field,opts,val){return '<select onchange="infraSetField(\''+id+'\',\''+field+'\',this.value)" style="font-size:10px;padding:2px 4px;border-radius:5px;border:0.5px solid var(--hbr);background:'+clrSup(val)+';color:var(--ht)">'
+    +opts.map(function(o){return '<option value="'+o+'" '+(val===o?'selected':'')+'>'+o+'</option>';}).join('')+'</select>';};
+
+  var rows='';
+  filtered.forEach(function(r){
+    var pct2=r.qtdProj>0?Math.round((parseFloat(r.qtdMont)||0)/parseFloat(r.qtdProj)*100):0;
+    var pc2=pct2>=100?'#1a8c4e':pct2>=70?'#c07000':'#0077b6';
+    rows+='<tr style="border-bottom:1px solid #f0f4fb">'
+      +'<td style="padding:5px 8px;font-size:10px;font-family:monospace">'+inp2(r.id,'doc',r.doc,120)+'</td>'
+      +'<td style="padding:5px 8px;font-size:10px">'+inp2(r.id,'disc',r.disc,80)+'</td>'
+      +'<td style="padding:4px 6px;text-align:center">'+selInfra(r.id,'tipo',INFRA_TIPO_OPTS,r.tipo||'Eletrocalha')+'</td>'
+      +'<td style="padding:5px 8px;font-size:10px">'+inp2(r.id,'diam',r.diam,60)+'</td>'
+      +'<td style="padding:5px 8px;font-size:10px">'+inp2(r.id,'codSup',r.codSup,90)+'</td>'
+      +'<td style="padding:4px 6px;text-align:center">'+selInfra(r.id,'stSup',INFRA_SUP_OPTS,r.stSup||'Pendente')+'</td>'
+      +'<td style="padding:5px 8px;text-align:center"><input type="number" min="0" step="0.1" value="'+(r.qtdProj||'')+'" onchange="infraSetField(\''+r.id+'\',\'qtdProj\',this.value)" onclick="event.stopPropagation()" style="width:65px;padding:2px 5px;border:0.5px solid var(--hbr);border-radius:5px;font-size:10px;text-align:center;background:var(--hg);color:var(--ht)"></td>'
+      +'<td style="padding:5px 8px">'
+        +'<div style="display:flex;align-items:center;gap:5px">'
+          +'<input type="number" min="0" step="0.1" value="'+(r.qtdMont||'')+'" onchange="infraSetField(\''+r.id+'\',\'qtdMont\',this.value)" onclick="event.stopPropagation()" style="width:65px;padding:2px 5px;border:0.5px solid var(--hbr);border-radius:5px;font-size:10px;text-align:center;background:var(--hg);color:var(--ht)">'
+          +'<div style="width:32px;height:5px;background:#e8eef7;border-radius:3px;overflow:hidden"><div style="height:100%;width:'+Math.min(pct2,100)+'%;background:'+pc2+';border-radius:3px"></div></div>'
+          +'<span style="font-size:9px;font-weight:700;color:'+pc2+'">'+pct2+'%</span>'
+        +'</div>'
+      +'</td>'
+      +'<td style="padding:4px 6px;text-align:center"><button class="btn-lupa" onclick="delInfra(\''+r.id+'\')" style="color:var(--hd);border-color:#e0c8c8">🗑️</button></td>'
+      +'</tr>';
+  });
+
+  var ths2=['RASTREABILIDADE','DISCIPLINA','TIPO ENCAMINHAMENTO','DIÂM.','CÓD. SUPRIMENTOS','STATUS SUPRIMENTOS','QTDE PROJETADA','QTDE MONTADA','AÇÕES'];
+  var tbl=filtered.length
+    ?'<div style="margin:10px 16px 16px;overflow-x:auto"><table style="width:100%;border-collapse:collapse;min-width:900px">'
+      +'<thead><tr style="background:linear-gradient(90deg,#071d4a,#0B3D91);color:#fff">'
+      +ths2.map(function(h){return '<th style="padding:8px 10px;font-size:9px;letter-spacing:.4px;white-space:nowrap;text-align:center">'+h+'</th>';}).join('')
+      +'</tr></thead><tbody>'+rows+'</tbody></table></div>'
+    :'<div class="ph-panel"><div style="font-size:32px">🏗️</div><strong>Nenhum item cadastrado</strong><span style="font-size:11px">Clique em "+ Item" para adicionar.</span></div>';
+
+  document.getElementById('view-isos').innerHTML=bc+discTabs
+    +'<div style="padding:10px 16px 4px;font-size:15px;font-weight:700;color:var(--hb)">'+discLabel+' — Controle de Infraestrutura</div>'
+    +kpis+filterBar+tbl+'</div>';
+}
+
+async function infraSetField(id,field,value){
+  var arr=_infraArr(); var r=arr.find(function(x){return x.id===id;}); if(!r)return;
+  r[field]=value; await saveAll();
+}
+async function addInfra(){
+  var doc=prompt('Número de rastreabilidade do documento:');
+  if(!doc||!doc.trim())return;
+  var disc=currentDisc==='eletrica'?'Elétrica':'Instrumentação';
+  _infraSet(_infraArr().concat([{id:'infra_'+Date.now()+'_'+Math.random().toString(36).slice(2,5),projId:currentProjId||null,doc:doc.trim(),disc:disc,tipo:'Eletrocalha',diam:'',codSup:'',stSup:'Pendente',qtdProj:null,qtdMont:null}]));
+  await saveAll(); renderIsoView();
+}
+async function delInfra(id){
+  if(!confirm('Excluir este item?'))return;
+  _infraSet(_infraArr().filter(function(r){return r.id!==id;}));
+  await saveAll(); renderIsoView();
+}
+async function delAllInfra(){
+  var arr=_infraArr();
+  var n=currentProjId?arr.filter(function(r){return r.projId===currentProjId;}).length:arr.length;
+  if(!n)return;
+  if(!confirm('Excluir TODOS os '+n+' itens'+(currentProjId?' deste projeto':'')+'?'))return;
+  if(currentProjId)_infraSet(arr.filter(function(r){return r.projId!==currentProjId;}));
+  else _infraSet([]);
+  await saveAll(); renderIsoView();
+}
+
+
 /* ════════════ PLANEJAMENTO DE FABRICAÇÃO ════════════ */
 const PROD_INDEX = {"AC|SCH 40|1/2\"": 0.85, "AC|SCH 40|3/4\"": 0.93, "AC|SCH 40|1\"": 1.0, "AC|SCH 40|1 1/4\"": 1.09, "AC|SCH 40|1 1/2\"": 1.1, "AC|SCH 40|2\"": 1.2, "AC|SCH 40|2 1/2\"": 1.43, "AC|SCH 40|3\"": 1.5, "AC|SCH 40|4\"": 1.85, "AC|SCH 40|5\"": 2.12, "AC|SCH 40|6\"": 2.47, "AC|SCH 40|8\"": 3.05, "AC|SCH 40|10\"": 6.5, "AC|SCH 40|12\"": 4.65, "AC|SCH 40|14\"": 5.5, "AC|SCH 40|16\"": 6.6, "AC|SCH 40|18\"": 7.5, "AC|SCH 40|20\"": 8.4, "AC|SCH 40|22\"": 9.14, "AC|SCH 40|24\"": 10.1, "AC|SCH 40|26\"": 12.1, "AC|SCH 40|28\"": 13.8, "AC|SCH 40|30\"": 15.0, "AC GALV.|DIN 2440|1/2\"": 0.85, "AC GALV.|DIN 2440|3/4\"": 0.93, "AC GALV.|DIN 2440|1\"": 1.0, "AC GALV.|DIN 2440|1 1/4\"": 1.09, "AC GALV.|DIN 2440|1 1/2\"": 1.1, "AC GALV.|DIN 2440|2\"": 1.2, "AC GALV.|DIN 2440|2 1/2\"": 1.43, "AC GALV.|DIN 2440|3\"": 1.5, "AC GALV.|DIN 2440|4\"": 1.85, "AC GALV.|DIN 2440|5\"": 2.12, "AC GALV.|DIN 2440|6\"": 2.4, "AC GALV.|DIN 2440|8\"": 3.05, "INOX|10S|1/2\"": 1.3, "INOX|10S|3/4\"": 1.42, "INOX|10S|1\"": 1.53, "INOX|10S|1 1/4\"": 1.67, "INOX|10S|1 1/2\"": 1.68, "INOX|10S|2\"": 1.83, "INOX|10S|2 1/2\"": 2.19, "INOX|10S|3\"": 2.29, "INOX|10S|4\"": 2.84, "INOX|10S|5\"": 3.24, "INOX|10S|6\"": 3.67, "INOX|10S|8\"": 4.66, "INOX|10S|10\"": 5.9, "INOX|10S|12\"": 7.12, "INOX|10S|14\"": 8.42, "INOX|10S|16\"": 10.09, "INOX|10S|18\"": 11.52, "INOX|10S|20\"": 12.85, "INOX|10S|22\"": 13.95, "INOX|10S|24\"": 15.45, "INOX|10S|26\"": 18.51, "INOX|10S|28\"": 21.11, "INOX|10S|30\"": 22.95, "AC|SCH 80|1/2\"": 1.15, "AC|SCH 80|3/4\"": 1.29, "AC|SCH 80|1\"": 1.36, "AC|SCH 80|1 1/4\"": 1.52, "AC|SCH 80|1 1/2\"": 1.54, "AC|SCH 80|2\"": 1.74, "AC|SCH 80|2 1/2\"": 1.99, "AC|SCH 80|3\"": 2.15, "AC|SCH 80|4\"": 2.7, "AC|SCH 80|5\"": 3.3, "AC|SCH 80|6\"": 3.8, "AC|SCH 80|8\"": 4.89, "AC|SCH 80|10\"": 6.45, "AC|SCH 80|12\"": 8.09, "AC|SCH 80|14\"": 9.79, "AC|SCH 80|16\"": 11.49, "AC|SCH 80|18\"": 12.89, "AC|SCH 80|20\"": 15.02, "AC|SCH 80|22\"": 16.74, "AC|SCH 80|24\"": 18.46, "AC|SCH 80|26\"": 22.1, "AC|SCH 80|28\"": 25.2, "AC|SCH 80|30\"": 27.4, "INOX|40S|1/2\"": 1.45, "INOX|40S|3/4\"": 1.58, "INOX|40S|1\"": 1.7, "INOX|40S|1 1/4\"": 1.85, "INOX|40S|1 1/2\"": 1.87, "INOX|40S|2\"": 2.03, "INOX|40S|2 1/2\"": 2.43, "INOX|40S|3\"": 2.55, "INOX|40S|4\"": 3.15, "INOX|40S|5\"": 3.6, "INOX|40S|6\"": 4.08, "INOX|40S|8\"": 5.18, "INOX|40S|10\"": 6.55, "INOX|40S|12\"": 7.91, "INOX|40S|14\"": 9.35, "INOX|40S|16\"": 11.22, "INOX|40S|18\"": 12.8, "INOX|40S|20\"": 14.28, "INOX|40S|22\"": 15.54, "INOX|40S|24\"": 17.17, "INOX|40S|26\"": 20.57, "INOX|40S|28\"": 23.46, "INOX|40S|30\"": 25.5, "ALU|10S|6\"": 10.0, "ALU|10S|10\"": 14.0, "ALU|10S|12\"": 15.54, "ALU|10S|20\"": 18.0};
 const PLAN_HORAS_FAB = 8;   // horas produtivas/dia na fabricação
@@ -3706,6 +3960,8 @@ function renderIsoView(force) {
   }
 
   if ((currentDisc==='eletrica'||currentDisc==='instr') && currentSubTab.startsWith('cabos')) { renderCabosView(discTabs,bc); return; }
+  if ((currentDisc==='eletrica'||currentDisc==='instr') && (currentSubTab==='inst-el'||currentSubTab==='inst-ins')) { renderInstView(discTabs,bc); return; }
+  if ((currentDisc==='eletrica'||currentDisc==='instr') && (currentSubTab==='infra-el'||currentSubTab==='infra-ins')) { renderInfraView(discTabs,bc); return; }
   if ((currentDisc==='eletrica'||currentDisc==='instr') && (currentSubTab==='sup-el'||currentSubTab==='sup-ins')) { renderSupEletricaView(discTabs,bc); return; }
   if ((currentDisc==='eletrica'||currentDisc==='instr') && (currentSubTab==='dt-el'||currentSubTab==='dt-ins')) { renderDTView(discTabs,bc); return; }
 
