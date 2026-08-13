@@ -2496,6 +2496,7 @@ function renderCabosView(discTabs,bc){
     +'<span style="font-size:10px;color:var(--hmu)">'+filtered.length+' de '+total+'</span>'
     +'<button class="btn-clr" onclick="_cabSearch=\'\';_cabLoc=\'\';_cabInterl=\'\';renderIsoView()">✕</button>'
     +'<button class="btn btn-cyan" style="height:27px;font-size:11px;background:rgba(0,90,180,.85)" onclick="openImportCabosModal()">📥 Importar XLSX</button>'
+    +'<button class="btn btn-cyan" style="height:27px;font-size:11px;background:rgba(0,119,182,.85)" onclick="openImportCabosPDFModal()">📎 Importar PDF</button>'
     +'</div>';
 
   var rows='';
@@ -2857,6 +2858,91 @@ async function delDT(id){
   await saveAll(); renderIsoView();
 }
 
+
+
+function openImportCabosPDFModal(){
+  var old=document.getElementById('cabos-pdf-modal'); if(old)old.remove();
+  var m=document.createElement('div');
+  m.id='cabos-pdf-modal';
+  m.style.cssText='position:fixed;inset:0;background:rgba(10,20,50,.55);z-index:3000;display:flex;align-items:center;justify-content:center;padding:16px';
+  m.innerHTML='<div style="background:#fff;border-radius:12px;padding:24px 28px;width:500px;max-width:97vw;box-shadow:0 8px 40px rgba(0,0,0,.28);position:relative">'
+    +'<button onclick="document.getElementById(\'cabos-pdf-modal\').remove()" style="position:absolute;top:14px;right:14px;background:none;border:none;font-size:18px;color:#999;cursor:pointer">✕</button>'
+    +'<div style="font-size:14px;font-weight:700;color:#0077b6;margin-bottom:4px">📎 Importar Lista de Cabos via PDF</div>'
+    +'<div style="font-size:10px;color:#5a6a85;margin-bottom:14px">Extrai tabela do PDF automaticamente. Colunas detectadas: Nº Lista · Cód. Suprimentos · Tipo · Origem · Destino · Qtd Planejada · Localização · Interligação</div>'
+    +'<div style="border:2px dashed #b0ddf0;border-radius:8px;padding:26px;text-align:center;cursor:pointer;background:#f4f9ff;margin-bottom:12px" '
+      +'ondragover="event.preventDefault();this.style.borderColor=\'#0077b6\'" '
+      +'ondragleave="this.style.borderColor=\'#b0ddf0\'" '
+      +'ondrop="event.preventDefault();this.style.borderColor=\'#b0ddf0\';var f=[...event.dataTransfer.files].find(function(x){return /\.pdf$/i.test(x.name);});if(f){document.getElementById(\'cabos-pdf-status\').textContent=\'📂 \'+f.name;importCabosPDF(f);}else{document.getElementById(\'cabos-pdf-status\').textContent=\'❌ Selecione um arquivo .pdf\';}" '
+      +'onclick="document.getElementById(\'cabos-pdf-file\').click()">'
+      +'<div style="font-size:26px;margin-bottom:6px">📄</div>'
+      +'<div style="font-size:11px;font-weight:600;color:#0077b6">Clique ou arraste o PDF aqui</div>'
+      +'<div style="font-size:9.5px;color:#5a6a85;margin-top:3px">Tabela com cabeçalho de colunas</div>'
+    +'</div>'
+    +'<input type="file" id="cabos-pdf-file" accept=".pdf" style="display:none" onchange="if(this.files[0]){document.getElementById(\'cabos-pdf-status\').textContent=\'📂 \'+this.files[0].name;importCabosPDF(this.files[0]);}">'
+    +'<div id="cabos-pdf-status" style="font-size:11px;color:#5a6a85;min-height:18px;text-align:center"></div>'
+    +'<div style="display:flex;justify-content:flex-end;margin-top:10px">'
+      +'<button onclick="document.getElementById(\'cabos-pdf-modal\').remove()" style="padding:7px 16px;border:1px solid #ddd;border-radius:7px;background:#f5f5f5;cursor:pointer;font-size:12px">Fechar</button>'
+    +'</div></div>';
+  document.body.appendChild(m);
+}
+
+async function importCabosPDF(file){
+  var setStatus=function(msg){var el=document.getElementById('cabos-pdf-status');if(el)el.textContent=msg;};
+  try{
+    if(typeof pdfjsLib==='undefined'){
+      // Load pdf.js if not already loaded
+      await new Promise(function(resolve,reject){
+        var s=document.createElement('script');
+        s.src='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+        s.onload=resolve; s.onerror=reject;
+        document.head.appendChild(s);
+      });
+    }
+    pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    setStatus('⏳ Lendo PDF...');
+    var buf=await file.arrayBuffer();
+    var pdfDoc=await pdfjsLib.getDocument({data:buf}).promise;
+    var allRows=[];
+    for(var p=1;p<=pdfDoc.numPages;p++){
+      setStatus('⏳ Processando página '+p+'/'+pdfDoc.numPages+'...');
+      var pg=await pdfDoc.getPage(p);
+      var tc=await pg.getTextContent();
+      var items=tc.items.filter(function(it){return it.str&&it.str.trim().length;});
+      if(!items.length)continue;
+      // Group by Y position (same row = within 4pt)
+      var Y_TOL=4;
+      var sorted=items.slice().sort(function(a,b){return b.transform[5]-a.transform[5];});
+      var lines=[];
+      sorted.forEach(function(it){
+        var y=it.transform[5];
+        var line=lines.find(function(l){return Math.abs(l.y-y)<=Y_TOL;});
+        if(!line){line={y:y,items:[]};lines.push(line);}
+        line.items.push(it);
+      });
+      // Within each line sort by X and merge into cells
+      lines.forEach(function(line){
+        line.items.sort(function(a,b){return a.transform[4]-b.transform[4];});
+        var cells=[],buf2='',lastX=null,X_GAP=10;
+        line.items.forEach(function(it){
+          var x=it.transform[4];
+          if(lastX!==null&&(x-lastX)>X_GAP&&buf2.trim()){cells.push(buf2.trim());buf2='';}
+          buf2+=(buf2&&!buf2.endsWith(' ')?' ':'')+it.str;
+          lastX=x+(it.width||0);
+        });
+        if(buf2.trim())cells.push(buf2.trim());
+        if(cells.length)allRows.push(cells);
+      });
+    }
+    if(!allRows.length){setStatus('❌ Não foi possível extrair texto do PDF.');return;}
+    setStatus('⏳ '+allRows.length+' linha(s) extraída(s). Processando...');
+    // Reuse the same column mapper
+    var setStatus2=function(msg){setStatus(msg);setTimeout(function(){var m=document.getElementById('cabos-pdf-modal');if(m)m.remove();},1800);};
+    processCabosRows(allRows,setStatus2);
+  }catch(err){
+    setStatus('❌ Erro: '+err.message);
+    console.error('[importCabosPDF]',err);
+  }
+}
 
 /* ════════════ PLANEJAMENTO DE FABRICAÇÃO ════════════ */
 const PROD_INDEX = {"AC|SCH 40|1/2\"": 0.85, "AC|SCH 40|3/4\"": 0.93, "AC|SCH 40|1\"": 1.0, "AC|SCH 40|1 1/4\"": 1.09, "AC|SCH 40|1 1/2\"": 1.1, "AC|SCH 40|2\"": 1.2, "AC|SCH 40|2 1/2\"": 1.43, "AC|SCH 40|3\"": 1.5, "AC|SCH 40|4\"": 1.85, "AC|SCH 40|5\"": 2.12, "AC|SCH 40|6\"": 2.47, "AC|SCH 40|8\"": 3.05, "AC|SCH 40|10\"": 6.5, "AC|SCH 40|12\"": 4.65, "AC|SCH 40|14\"": 5.5, "AC|SCH 40|16\"": 6.6, "AC|SCH 40|18\"": 7.5, "AC|SCH 40|20\"": 8.4, "AC|SCH 40|22\"": 9.14, "AC|SCH 40|24\"": 10.1, "AC|SCH 40|26\"": 12.1, "AC|SCH 40|28\"": 13.8, "AC|SCH 40|30\"": 15.0, "AC GALV.|DIN 2440|1/2\"": 0.85, "AC GALV.|DIN 2440|3/4\"": 0.93, "AC GALV.|DIN 2440|1\"": 1.0, "AC GALV.|DIN 2440|1 1/4\"": 1.09, "AC GALV.|DIN 2440|1 1/2\"": 1.1, "AC GALV.|DIN 2440|2\"": 1.2, "AC GALV.|DIN 2440|2 1/2\"": 1.43, "AC GALV.|DIN 2440|3\"": 1.5, "AC GALV.|DIN 2440|4\"": 1.85, "AC GALV.|DIN 2440|5\"": 2.12, "AC GALV.|DIN 2440|6\"": 2.4, "AC GALV.|DIN 2440|8\"": 3.05, "INOX|10S|1/2\"": 1.3, "INOX|10S|3/4\"": 1.42, "INOX|10S|1\"": 1.53, "INOX|10S|1 1/4\"": 1.67, "INOX|10S|1 1/2\"": 1.68, "INOX|10S|2\"": 1.83, "INOX|10S|2 1/2\"": 2.19, "INOX|10S|3\"": 2.29, "INOX|10S|4\"": 2.84, "INOX|10S|5\"": 3.24, "INOX|10S|6\"": 3.67, "INOX|10S|8\"": 4.66, "INOX|10S|10\"": 5.9, "INOX|10S|12\"": 7.12, "INOX|10S|14\"": 8.42, "INOX|10S|16\"": 10.09, "INOX|10S|18\"": 11.52, "INOX|10S|20\"": 12.85, "INOX|10S|22\"": 13.95, "INOX|10S|24\"": 15.45, "INOX|10S|26\"": 18.51, "INOX|10S|28\"": 21.11, "INOX|10S|30\"": 22.95, "AC|SCH 80|1/2\"": 1.15, "AC|SCH 80|3/4\"": 1.29, "AC|SCH 80|1\"": 1.36, "AC|SCH 80|1 1/4\"": 1.52, "AC|SCH 80|1 1/2\"": 1.54, "AC|SCH 80|2\"": 1.74, "AC|SCH 80|2 1/2\"": 1.99, "AC|SCH 80|3\"": 2.15, "AC|SCH 80|4\"": 2.7, "AC|SCH 80|5\"": 3.3, "AC|SCH 80|6\"": 3.8, "AC|SCH 80|8\"": 4.89, "AC|SCH 80|10\"": 6.45, "AC|SCH 80|12\"": 8.09, "AC|SCH 80|14\"": 9.79, "AC|SCH 80|16\"": 11.49, "AC|SCH 80|18\"": 12.89, "AC|SCH 80|20\"": 15.02, "AC|SCH 80|22\"": 16.74, "AC|SCH 80|24\"": 18.46, "AC|SCH 80|26\"": 22.1, "AC|SCH 80|28\"": 25.2, "AC|SCH 80|30\"": 27.4, "INOX|40S|1/2\"": 1.45, "INOX|40S|3/4\"": 1.58, "INOX|40S|1\"": 1.7, "INOX|40S|1 1/4\"": 1.85, "INOX|40S|1 1/2\"": 1.87, "INOX|40S|2\"": 2.03, "INOX|40S|2 1/2\"": 2.43, "INOX|40S|3\"": 2.55, "INOX|40S|4\"": 3.15, "INOX|40S|5\"": 3.6, "INOX|40S|6\"": 4.08, "INOX|40S|8\"": 5.18, "INOX|40S|10\"": 6.55, "INOX|40S|12\"": 7.91, "INOX|40S|14\"": 9.35, "INOX|40S|16\"": 11.22, "INOX|40S|18\"": 12.8, "INOX|40S|20\"": 14.28, "INOX|40S|22\"": 15.54, "INOX|40S|24\"": 17.17, "INOX|40S|26\"": 20.57, "INOX|40S|28\"": 23.46, "INOX|40S|30\"": 25.5, "ALU|10S|6\"": 10.0, "ALU|10S|10\"": 14.0, "ALU|10S|12\"": 15.54, "ALU|10S|20\"": 18.0};
