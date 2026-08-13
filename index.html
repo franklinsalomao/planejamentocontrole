@@ -657,6 +657,8 @@ let materiais = [];  // dados de materiais (aba removida)
 const SK_MATS = 'hy_mats';
 let estrutura = []; // Controle de Estrutura Metálica
 const SK_EST = 'hy_estrutura';
+let cabosEl  = []; const SK_CABOS_EL  = 'hy_cabos_el';
+let cabosIns = []; const SK_CABOS_INS = 'hy_cabos_ins';
 
 /* ── Dados seed — material_consolidado.xlsx corrigido (426 registros) ── */
 const MATS_SEED = [];
@@ -906,6 +908,8 @@ async function loadAll() {
     const ev = await storageGet(SK_EST);
     if (ev) { const ed = JSON.parse(ev); if (ed && ed.length) estrutura = ed; }
   } catch(e) {}
+  try { const v=await storageGet(SK_CABOS_EL);  if(v){const d=JSON.parse(v);if(d&&d.length)cabosEl=d;}  } catch(e) {}
+  try { const v=await storageGet(SK_CABOS_INS); if(v){const d=JSON.parse(v);if(d&&d.length)cabosIns=d;} } catch(e) {}
   // Migração incremental: campo soldado e ajuste de labels de status
   suportes.forEach(s => {
     if (!s.soldado) s.soldado = 'Não soldado';
@@ -1072,6 +1076,8 @@ async function saveAll() {
   _sbIgnoreNextReload = true; // ignora o echo do Supabase dos nossos próprios saves
   try { await storageSet(SK_SUPS, JSON.stringify(suportes)); } catch(e) {}
   try { await storageSet(SK_EST, JSON.stringify(estrutura)); } catch(e) {}
+  try { await storageSet(SK_CABOS_EL,  JSON.stringify(cabosEl));  } catch(e) {}
+  try { await storageSet(SK_CABOS_INS, JSON.stringify(cabosIns)); } catch(e) {}
   try { await storageSet(SK_MATS, JSON.stringify(materiais)); } catch(e) {}
   try { await storageSet(SK_PROJ, JSON.stringify(projects)); } catch(e) {}
   try { await storageSet(SK_ISOS, JSON.stringify(isos)); } catch(e) {}
@@ -2437,6 +2443,210 @@ function renderDashboard(discTabs, bc) {
   document.getElementById('view-isos').innerHTML = bc + discTabs + header + kpiBar + areaTable + '</div>';
 }
 
+
+/* ═══════════════════ CONTROLE DE CABOS — ELÉTRICA / INSTRUMENTAÇÃO ════ */
+function _cabosArr() { return currentDisc==='eletrica'?cabosEl:cabosIns; }
+function _cabosSet(a){ if(currentDisc==='eletrica')cabosEl=a; else cabosIns=a; }
+let _cabSearch='',_cabLoc='',_cabInterl='';
+
+function renderCabosView(discTabs,bc){
+  var disc=currentDisc==='eletrica'?'⚡ Elétrica':'🔬 Instrumentação';
+  var all=_cabosArr();
+  var list=currentProjId?all.filter(function(c){return c.projId===currentProjId;}):all;
+  var srch=(_cabSearch||'').toLowerCase();
+  var filtered=list.filter(function(c){
+    if(srch&&!Object.values(c).join(' ').toLowerCase().includes(srch))return false;
+    if(_cabLoc&&c.localizacao!==_cabLoc)return false;
+    if(_cabInterl&&c.interligacao!==_cabInterl)return false;
+    return true;
+  });
+  var total=list.length;
+  var qtdP=list.reduce(function(s,c){return s+(parseFloat(c.qtdPlan)||0);},0);
+  var qtdE=list.reduce(function(s,c){return s+(parseFloat(c.qtdExec)||0);},0);
+  var pct=qtdP>0?Math.round(qtdE/qtdP*100):0;
+  var pctClr=pct>=100?'#1a8c4e':pct>=70?'#c07000':'#0077b6';
+
+  var kpis='<div class="sum-bar" style="margin:10px 16px 0;gap:10px">'
+    +'<div class="sum-card"><div class="sum-val" style="color:var(--hb)">'+total+'</div><div class="sum-lbl">Cabos</div></div>'
+    +'<div class="sum-card"><div class="sum-val" style="color:var(--hb)">'+qtdP.toLocaleString('pt-BR',{maximumFractionDigits:1})+'</div><div class="sum-lbl">Qtd Planejada (m)</div></div>'
+    +'<div class="sum-card"><div class="sum-val" style="color:'+pctClr+'">'+pct+'%</div><div class="sum-lbl">Executado</div>'
+    +'<div style="font-size:9px;color:var(--hmu)">'+qtdE.toLocaleString('pt-BR',{maximumFractionDigits:1})+' / '+qtdP.toLocaleString('pt-BR',{maximumFractionDigits:1})+' m</div>'
+    +'<div class="kpi-bar" style="margin-top:4px"><div style="width:'+Math.min(pct,100)+'%;height:5px;border-radius:3px;background:'+pctClr+'"></div></div></div>'
+    +'</div>';
+
+  var locs=[...new Set(list.map(function(c){return c.localizacao;}).filter(Boolean))].sort();
+  var interls=[...new Set(list.map(function(c){return c.interligacao;}).filter(Boolean))].sort();
+
+  var filterBar='<div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid var(--hbr)">'
+    +'<input placeholder="🔍 Buscar..." value="'+(_cabSearch||'')+'" oninput="_cabSearch=this.value;renderIsoView()" style="font-size:11px;padding:4px 8px;border:0.5px solid var(--hbr);border-radius:5px;background:var(--hg);color:var(--ht);min-width:160px">'
+    +'<select onchange="_cabLoc=this.value;renderIsoView()" style="font-size:11px;padding:3px 7px;border:0.5px solid var(--hbr);border-radius:5px;background:var(--hg);color:var(--ht)">'
+      +'<option value="">Localização</option>'+locs.map(function(l){return '<option value="'+l+'" '+(_cabLoc===l?'selected':'')+'>'+l+'</option>';}).join('')+'</select>'
+    +'<select onchange="_cabInterl=this.value;renderIsoView()" style="font-size:11px;padding:3px 7px;border:0.5px solid var(--hbr);border-radius:5px;background:var(--hg);color:var(--ht)">'
+      +'<option value="">Interligação</option>'+interls.map(function(l){return '<option value="'+l+'" '+(_cabInterl===l?'selected':'')+'>'+l+'</option>';}).join('')+'</select>'
+    +'<span style="font-size:10px;color:var(--hmu)">'+filtered.length+' de '+total+'</span>'
+    +'<button class="btn-clr" onclick="_cabSearch=\'\';_cabLoc=\'\';_cabInterl=\'\';renderIsoView()">✕</button>'
+    +'<button class="btn btn-cyan" style="height:27px;font-size:11px;background:rgba(0,90,180,.85)" onclick="openImportCabosModal()">📥 Importar XLSX</button>'
+    +'</div>';
+
+  var rows='';
+  filtered.forEach(function(c){
+    var p=c.qtdPlan>0?Math.round((parseFloat(c.qtdExec)||0)/parseFloat(c.qtdPlan)*100):0;
+    var pc=p>=100?'#1a8c4e':p>=70?'#c07000':'#0077b6';
+    rows+='<tr style="border-bottom:1px solid #f0f4fb">'
+      +'<td style="padding:7px 10px;font-size:11px;font-family:monospace;font-weight:600">'+(c.nrLista||'—')+'</td>'
+      +'<td style="padding:7px 10px;font-size:11px">'+(c.codSup||'—')+'</td>'
+      +'<td style="padding:7px 10px;font-size:11px">'+(c.tipo||'—')+'</td>'
+      +'<td style="padding:7px 10px;font-size:11px">'+(c.origem||'—')+'</td>'
+      +'<td style="padding:7px 10px;font-size:11px">'+(c.destino||'—')+'</td>'
+      +'<td style="padding:7px 10px;text-align:right;font-size:11px;font-weight:600">'+(c.qtdPlan!=null?parseFloat(c.qtdPlan).toLocaleString('pt-BR',{maximumFractionDigits:2}):'—')+'</td>'
+      +'<td style="padding:4px 6px">'
+        +'<div style="display:flex;align-items:center;gap:6px">'
+          +'<input type="text" inputmode="numeric" value="'+(c.qtdExec!=null?c.qtdExec:'')+'" placeholder="0" onchange="cabSetField(\''+c.id+'\',\'qtdExec\',this.value)" onclick="event.stopPropagation()" style="width:70px;padding:3px 6px;border:0.5px solid var(--hbr);border-radius:5px;font-size:11px;text-align:right;background:var(--hg);color:var(--ht)">'
+          +'<div style="width:36px;height:5px;background:#e8eef7;border-radius:3px;overflow:hidden"><div style="height:100%;width:'+Math.min(p,100)+'%;background:'+pc+';border-radius:3px"></div></div>'
+          +'<span style="font-size:9px;font-weight:700;color:'+pc+'">'+p+'%</span>'
+        +'</div>'
+      +'</td>'
+      +'<td style="padding:7px 10px;font-size:11px">'+(c.localizacao||'—')+'</td>'
+      +'<td style="padding:7px 10px;font-size:11px">'+(c.interligacao||'—')+'</td>'
+      +'<td style="padding:4px 8px;text-align:center">'
+        +'<button class="btn-lupa" onclick="delCabo(\''+c.id+'\')" style="color:var(--hd);border-color:#e0c8c8" title="Excluir">🗑️</button>'
+      +'</td>'
+      +'</tr>';
+  });
+
+  var tbl=filtered.length
+    ?'<div class="tbl-wrap" style="margin:12px 16px 16px"><table style="width:100%">'
+      +'<thead><tr style="background:linear-gradient(90deg,#071d4a,#0B3D91);color:#fff">'
+        +'<th style="padding:9px 10px;font-size:9px;letter-spacing:.4px;text-align:left">Nº LISTA</th>'
+        +'<th style="padding:9px 10px;font-size:9px;letter-spacing:.4px;text-align:left">CÓD. SUPRIMENTOS</th>'
+        +'<th style="padding:9px 10px;font-size:9px;letter-spacing:.4px;text-align:left">TIPO DE CABO</th>'
+        +'<th style="padding:9px 10px;font-size:9px;letter-spacing:.4px;text-align:left">ORIGEM</th>'
+        +'<th style="padding:9px 10px;font-size:9px;letter-spacing:.4px;text-align:left">DESTINO</th>'
+        +'<th style="padding:9px 10px;font-size:9px;letter-spacing:.4px;text-align:right">QTD PLAN. (m)</th>'
+        +'<th style="padding:9px 10px;font-size:9px;letter-spacing:.4px;text-align:center">QTD EXEC. (m)</th>'
+        +'<th style="padding:9px 10px;font-size:9px;letter-spacing:.4px;text-align:left">LOCALIZAÇÃO</th>'
+        +'<th style="padding:9px 10px;font-size:9px;letter-spacing:.4px;text-align:left">INTERLIGAÇÃO</th>'
+        +'<th style="padding:9px 10px;font-size:9px;letter-spacing:.4px;text-align:center">AÇÕES</th>'
+      +'</tr></thead><tbody>'+rows+'</tbody></table></div>'
+    :'<div class="ph-panel"><div style="font-size:32px">🔌</div><strong>Nenhum cabo cadastrado</strong><span style="font-size:11px">Importe via XLSX.</span></div>';
+
+  document.getElementById('view-isos').innerHTML=bc+discTabs
+    +'<div style="padding:10px 16px 4px;font-size:15px;font-weight:700;color:var(--hb)">'+disc+' — Controle de Cabos</div>'
+    +kpis+filterBar+tbl+'</div>';
+}
+
+async function cabSetField(id,field,value){
+  var arr=_cabosArr(); var c=arr.find(function(x){return x.id===id;}); if(!c)return;
+  c[field]=value; await saveAll();
+}
+
+async function delCabo(id){
+  if(!confirm('Excluir este cabo?'))return;
+  _cabosSet(_cabosArr().filter(function(c){return c.id!==id;}));
+  await saveAll(); renderIsoView();
+}
+
+function openImportCabosModal(){
+  var old=document.getElementById('cabos-import-modal'); if(old)old.remove();
+  var m=document.createElement('div');
+  m.id='cabos-import-modal';
+  m.style.cssText='position:fixed;inset:0;background:rgba(10,20,50,.55);z-index:3000;display:flex;align-items:center;justify-content:center;padding:16px';
+  m.innerHTML='<div style="background:#fff;border-radius:12px;padding:24px 28px;width:500px;max-width:97vw;box-shadow:0 8px 40px rgba(0,0,0,.28);position:relative">'
+    +'<button onclick="document.getElementById(\'cabos-import-modal\').remove()" style="position:absolute;top:14px;right:14px;background:none;border:none;font-size:18px;color:#999;cursor:pointer">✕</button>'
+    +'<div style="font-size:14px;font-weight:700;color:#0B3D91;margin-bottom:4px">📥 Importar Lista de Cabos</div>'
+    +'<div style="font-size:10px;color:#5a6a85;margin-bottom:14px">Colunas detectadas automaticamente: Nº Lista · Cód. Suprimentos · Tipo · Origem · Destino · Qtd Planejada · Localização · Interligação</div>'
+    +'<div style="border:2px dashed #d0d8e8;border-radius:8px;padding:26px;text-align:center;cursor:pointer;background:#f4f6f9;margin-bottom:12px" onclick="document.getElementById(\'cab-file\').click()">'
+      +'<div style="font-size:24px;margin-bottom:6px">📊</div>'
+      +'<div style="font-size:11px;font-weight:600;color:#0B3D91">Clique para selecionar o arquivo .xlsx</div>'
+    +'</div>'
+    +'<input type="file" id="cab-file" accept=".xlsx,.xls" style="display:none" onchange="if(this.files[0]){document.getElementById(\'cab-status\').textContent=\'📂 \'+this.files[0].name;importCabosXLSX(this.files[0]);}">'
+    +'<div id="cab-status" style="font-size:11px;color:#5a6a85;min-height:18px;text-align:center"></div>'
+    +'<div style="display:flex;justify-content:flex-end;margin-top:10px">'
+      +'<button onclick="document.getElementById(\'cabos-import-modal\').remove()" style="padding:7px 16px;border:1px solid #ddd;border-radius:7px;background:#f5f5f5;cursor:pointer;font-size:12px">Fechar</button>'
+    +'</div></div>';
+  document.body.appendChild(m);
+}
+
+function importCabosXLSX(file){
+  var setStatus=function(msg){var el=document.getElementById('cab-status');if(el)el.textContent=msg;};
+  var doImport=function(lib){
+    var reader=new FileReader();
+    reader.onerror=function(){setStatus('❌ Erro ao ler arquivo.');};
+    reader.onload=function(e){
+      try{
+        var wb=lib.read(new Uint8Array(e.target.result),{type:'array'});
+        var ws=wb.Sheets[wb.SheetNames[0]];
+        var rows=lib.utils.sheet_to_json(ws,{header:1,defval:''});
+        if(!rows||rows.length<2){setStatus('❌ Planilha vazia.');return;}
+        processCabosRows(rows,setStatus);
+      }catch(err){setStatus('❌ Erro: '+err.message);}
+    };
+    reader.readAsArrayBuffer(file);
+  };
+  setStatus('⏳ Carregando...');
+  if(typeof XLSX!=='undefined'){doImport(XLSX);return;}
+  var s=document.createElement('script');
+  s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+  s.onload=function(){doImport(window.XLSX);};
+  s.onerror=function(){setStatus('❌ Não foi possível carregar biblioteca XLSX.');};
+  document.head.appendChild(s);
+}
+
+function processCabosRows(rows,setStatus){
+  var norm=function(s){return String(s||'').toLowerCase().trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'');};
+  var hdrIdx=-1;
+  for(var i=0;i<Math.min(rows.length,15);i++){
+    var nc=rows[i].map(norm);
+    if(nc.some(function(c){return c.includes('cabo')||c.includes('lista')||c.includes('tipo')||c.includes('origem');})){hdrIdx=i;break;}
+  }
+  if(hdrIdx<0){setStatus('❌ Cabeçalho não encontrado.');return;}
+  var hdr=rows[hdrIdx].map(norm);
+  var fc=function(){
+    var names=Array.prototype.slice.call(arguments);
+    for(var k=0;k<names.length;k++){
+      var idx=hdr.findIndex(function(h){return h===names[k]||h.includes(names[k]);});
+      if(idx>=0)return idx;
+    }
+    return -1;
+  };
+  var cNr=fc('nr lista','lista de cabo','nro lista','rastreabilidade','numero lista','lista');
+  var cCod=fc('cod suprimento','codigo suprimento','suprimento','material','codigo');
+  var cTipo=fc('tipo de cabo','tipo','cabo');
+  var cOrig=fc('origem');
+  var cDest=fc('destino');
+  var cQtdP=fc('qtd plan','quantidade plan','planejada','qtd planejada','comprimento','metragem');
+  var cLoc=fc('localizacao','local','campo','subestacao');
+  var cInt=fc('interligacao','interlig');
+  var added=0,skipped=0;
+  var arr=_cabosArr();
+  rows.slice(hdrIdx+1).forEach(function(r,ridx){
+    var tipo=cTipo>=0?String(r[cTipo]||'').trim():'';
+    var nr=cNr>=0?String(r[cNr]||'').trim():'';
+    if(!tipo&&!nr){skipped++;return;}
+    arr.push({
+      id:'cab_'+Date.now()+'_'+ridx+'_'+Math.random().toString(36).slice(2,5),
+      projId:currentProjId||null,
+      nrLista:nr,
+      codSup:cCod>=0?String(r[cCod]||'').trim():'',
+      tipo:tipo,
+      origem:cOrig>=0?String(r[cOrig]||'').trim():'',
+      destino:cDest>=0?String(r[cDest]||'').trim():'',
+      qtdPlan:cQtdP>=0?(parseFloat(String(r[cQtdP]||'').replace(',','.').replace(/[^0-9.]/g,''))||null):null,
+      qtdExec:null,
+      localizacao:cLoc>=0?String(r[cLoc]||'').trim():'',
+      interligacao:cInt>=0?String(r[cInt]||'').trim():''
+    });
+    added++;
+  });
+  _cabosSet(arr);
+  saveAll().then(function(){
+    renderIsoView();
+    setStatus('✅ '+added+' cabo(s) importado(s)'+(skipped?' · '+skipped+' ignorado(s)':''));
+    setTimeout(function(){var m=document.getElementById('cabos-import-modal');if(m)m.remove();},1800);
+  });
+}
+
+
 /* ════════════ PLANEJAMENTO DE FABRICAÇÃO ════════════ */
 const PROD_INDEX = {"AC|SCH 40|1/2\"": 0.85, "AC|SCH 40|3/4\"": 0.93, "AC|SCH 40|1\"": 1.0, "AC|SCH 40|1 1/4\"": 1.09, "AC|SCH 40|1 1/2\"": 1.1, "AC|SCH 40|2\"": 1.2, "AC|SCH 40|2 1/2\"": 1.43, "AC|SCH 40|3\"": 1.5, "AC|SCH 40|4\"": 1.85, "AC|SCH 40|5\"": 2.12, "AC|SCH 40|6\"": 2.47, "AC|SCH 40|8\"": 3.05, "AC|SCH 40|10\"": 6.5, "AC|SCH 40|12\"": 4.65, "AC|SCH 40|14\"": 5.5, "AC|SCH 40|16\"": 6.6, "AC|SCH 40|18\"": 7.5, "AC|SCH 40|20\"": 8.4, "AC|SCH 40|22\"": 9.14, "AC|SCH 40|24\"": 10.1, "AC|SCH 40|26\"": 12.1, "AC|SCH 40|28\"": 13.8, "AC|SCH 40|30\"": 15.0, "AC GALV.|DIN 2440|1/2\"": 0.85, "AC GALV.|DIN 2440|3/4\"": 0.93, "AC GALV.|DIN 2440|1\"": 1.0, "AC GALV.|DIN 2440|1 1/4\"": 1.09, "AC GALV.|DIN 2440|1 1/2\"": 1.1, "AC GALV.|DIN 2440|2\"": 1.2, "AC GALV.|DIN 2440|2 1/2\"": 1.43, "AC GALV.|DIN 2440|3\"": 1.5, "AC GALV.|DIN 2440|4\"": 1.85, "AC GALV.|DIN 2440|5\"": 2.12, "AC GALV.|DIN 2440|6\"": 2.4, "AC GALV.|DIN 2440|8\"": 3.05, "INOX|10S|1/2\"": 1.3, "INOX|10S|3/4\"": 1.42, "INOX|10S|1\"": 1.53, "INOX|10S|1 1/4\"": 1.67, "INOX|10S|1 1/2\"": 1.68, "INOX|10S|2\"": 1.83, "INOX|10S|2 1/2\"": 2.19, "INOX|10S|3\"": 2.29, "INOX|10S|4\"": 2.84, "INOX|10S|5\"": 3.24, "INOX|10S|6\"": 3.67, "INOX|10S|8\"": 4.66, "INOX|10S|10\"": 5.9, "INOX|10S|12\"": 7.12, "INOX|10S|14\"": 8.42, "INOX|10S|16\"": 10.09, "INOX|10S|18\"": 11.52, "INOX|10S|20\"": 12.85, "INOX|10S|22\"": 13.95, "INOX|10S|24\"": 15.45, "INOX|10S|26\"": 18.51, "INOX|10S|28\"": 21.11, "INOX|10S|30\"": 22.95, "AC|SCH 80|1/2\"": 1.15, "AC|SCH 80|3/4\"": 1.29, "AC|SCH 80|1\"": 1.36, "AC|SCH 80|1 1/4\"": 1.52, "AC|SCH 80|1 1/2\"": 1.54, "AC|SCH 80|2\"": 1.74, "AC|SCH 80|2 1/2\"": 1.99, "AC|SCH 80|3\"": 2.15, "AC|SCH 80|4\"": 2.7, "AC|SCH 80|5\"": 3.3, "AC|SCH 80|6\"": 3.8, "AC|SCH 80|8\"": 4.89, "AC|SCH 80|10\"": 6.45, "AC|SCH 80|12\"": 8.09, "AC|SCH 80|14\"": 9.79, "AC|SCH 80|16\"": 11.49, "AC|SCH 80|18\"": 12.89, "AC|SCH 80|20\"": 15.02, "AC|SCH 80|22\"": 16.74, "AC|SCH 80|24\"": 18.46, "AC|SCH 80|26\"": 22.1, "AC|SCH 80|28\"": 25.2, "AC|SCH 80|30\"": 27.4, "INOX|40S|1/2\"": 1.45, "INOX|40S|3/4\"": 1.58, "INOX|40S|1\"": 1.7, "INOX|40S|1 1/4\"": 1.85, "INOX|40S|1 1/2\"": 1.87, "INOX|40S|2\"": 2.03, "INOX|40S|2 1/2\"": 2.43, "INOX|40S|3\"": 2.55, "INOX|40S|4\"": 3.15, "INOX|40S|5\"": 3.6, "INOX|40S|6\"": 4.08, "INOX|40S|8\"": 5.18, "INOX|40S|10\"": 6.55, "INOX|40S|12\"": 7.91, "INOX|40S|14\"": 9.35, "INOX|40S|16\"": 11.22, "INOX|40S|18\"": 12.8, "INOX|40S|20\"": 14.28, "INOX|40S|22\"": 15.54, "INOX|40S|24\"": 17.17, "INOX|40S|26\"": 20.57, "INOX|40S|28\"": 23.46, "INOX|40S|30\"": 25.5, "ALU|10S|6\"": 10.0, "ALU|10S|10\"": 14.0, "ALU|10S|12\"": 15.54, "ALU|10S|20\"": 18.0};
 const PLAN_HORAS_FAB = 8;   // horas produtivas/dia na fabricação
@@ -3145,6 +3355,8 @@ function renderIsoView(force) {
     renderPlanejamento(discTabs, bc); return;
   }
 
+  if ((currentDisc==='eletrica'||currentDisc==='instr') && currentSubTab.startsWith('cabos')) { renderCabosView(discTabs,bc); return; }
+
   if (currentDisc !== 'caldeiraria' || currentSubTab !== 'isometricos') {
     const lbl = effTabs[currentDisc].labels[effTabs[currentDisc].subs.indexOf(currentSubTab)];
     document.getElementById('view-isos').innerHTML = bc + discTabs +
@@ -3668,6 +3880,8 @@ async function delProject(id) {
   suportes = suportes.filter(s => !projIsoNums.has(s.isometrico));
   materiais = materiais.filter(m => m.projId !== id && !projIsoNums.has(m.iso));
   estrutura = estrutura.filter(e => e.projId !== id);
+  cabosEl  = cabosEl.filter(c => c.projId !== id);
+  cabosIns = cabosIns.filter(c => c.projId !== id);
 
   // Remove o projeto
   projects = projects.filter(p => p.id !== id);
@@ -3695,6 +3909,8 @@ async function clearProjectData(id) {
 
   // 3b. Remove estrutura metálica do projeto
   estrutura = estrutura.filter(e => e.projId !== id);
+  cabosEl  = cabosEl.filter(c => c.projId !== id);
+  cabosIns = cabosIns.filter(c => c.projId !== id);
 
   // 4. Remove materiais (matsCtrl) do projeto
   matsCtrl = matsCtrl.filter(m => m.projId !== id);
