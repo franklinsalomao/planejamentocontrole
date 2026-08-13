@@ -1336,11 +1336,7 @@ function sincronizarPlanilha() {
 
 const DISC_TABS = {
   caldeiraria: { label:'🔧 Caldeiraria', subs:['dashboard','isometricos','suportes','materiais','estrutura'],
-    labels:['Dashboard','Controle de Isométricos','Controle de Suportes','Controle de Materiais','Estrutura Metálica'] },
-  eletrica: { label:'⚡ Elétrica', subs:['cabos-el','inst-el','infra-el'],
-    labels:['Controle de Cabos','Controle de Instrumentos/Equip.','Controle de Infraestrutura'] },
-  instr: { label:'🔬 Instrumentação', subs:['cabos-ins','inst-ins','infra-ins','dt-ins'],
-    labels:['Controle de Cabos','Controle de Instrumentos/Equip.','Controle de Infraestrutura','Detalhes Típicos'] }
+    labels:['Dashboard','Controle de Isométricos','Controle de Suportes','Controle de Materiais','Estrutura Metálica'] }
 };
 function setDisc(d) {
   currentDisc = d;
@@ -3959,11 +3955,7 @@ function renderIsoView(force) {
     renderDashboard(discTabs, bc); return;
   }
 
-  if ((currentDisc==='eletrica'||currentDisc==='instr') && currentSubTab.startsWith('cabos')) { renderCabosView(discTabs,bc); return; }
-  if ((currentDisc==='eletrica'||currentDisc==='instr') && (currentSubTab==='inst-el'||currentSubTab==='inst-ins')) { renderInstView(discTabs,bc); return; }
-  if ((currentDisc==='eletrica'||currentDisc==='instr') && (currentSubTab==='infra-el'||currentSubTab==='infra-ins')) { renderInfraView(discTabs,bc); return; }
-  if ((currentDisc==='eletrica'||currentDisc==='instr') && (currentSubTab==='sup-el'||currentSubTab==='sup-ins')) { renderSupEletricaView(discTabs,bc); return; }
-  if ((currentDisc==='eletrica'||currentDisc==='instr') && (currentSubTab==='dt-el'||currentSubTab==='dt-ins')) { renderDTView(discTabs,bc); return; }
+
 
   if (currentDisc !== 'caldeiraria' || currentSubTab !== 'isometricos') {
     const lbl = effTabs[currentDisc].labels[effTabs[currentDisc].subs.indexOf(currentSubTab)];
