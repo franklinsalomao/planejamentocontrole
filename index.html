@@ -1328,9 +1328,7 @@ const DISC_TABS = {
   eletrica: { label:'⚡ Elétrica', subs:['cabos-el','sup-el','dt-el','encam-el','equip-el'],
     labels:['Controle de Cabos','Controle de Suportes','Detalhes Típicos','Controle de Encaminhamento','Controle de Equipamentos'] },
   instr: { label:'🔬 Instrumentação', subs:['cabos-ins','sup-ins','dt-ins','encam-ins','instrumentos','equip-ins','interlig'],
-    labels:['Controle de Cabos','Controle de Suportes','Detalhes Típicos','Controle de Encaminhamento','Controle de Instrumentos','Controle de Equipamentos','Controle de Interligação'] },
-  planejamento: { label:'🗓️ Planejamento', subs:['planejamento'],
-    labels:['Físico × Financeiro'] }
+    labels:['Controle de Cabos','Controle de Suportes','Detalhes Típicos','Controle de Encaminhamento','Controle de Instrumentos','Controle de Equipamentos','Controle de Interligação'] }
 };
 function setDisc(d) {
   currentDisc = d;
@@ -3558,10 +3556,6 @@ function renderIsoView(force) {
 
   if (currentDisc === 'caldeiraria' && currentSubTab === 'dashboard') {
     renderDashboard(discTabs, bc); return;
-  }
-
-  if (currentDisc === 'planejamento') {
-    renderPlanejamento(discTabs, bc); return;
   }
 
   if ((currentDisc==='eletrica'||currentDisc==='instr') && currentSubTab.startsWith('cabos')) { renderCabosView(discTabs,bc); return; }
