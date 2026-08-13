@@ -1452,6 +1452,7 @@ function renderEstruturaView(discTabs, bc) {
     <span style="font-size:10px;color:var(--hmu);margin-left:4px">${filtered.length} de ${total}</span>
     <button class="btn-clr" onclick="_estSearch='';_estFab='';_estMon='';_estGrd='';_estCob='';renderIsoView()" title="Limpar filtros">✕</button>
     <button class="btn btn-cyan" style="height:27px;font-size:11px" onclick="addEstrutura()">+ Novo Desenho</button>
+    <button style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:1px solid #e0c8c8;background:#fdecea;color:var(--hd);cursor:pointer" onclick="delAllEstrutura()">🗑️ Excluir Tudo</button>
   </div>`;
 
   const rows = filtered.map(e => {
@@ -1683,6 +1684,7 @@ function renderSuportesView(discTabs, bc) {
     <button class="btn btn-cyan" style="height:27px;font-size:11px;background:rgba(0,90,180,.85)" onclick="openImportSupsPdfModal()" title="Importar suportes via tabela em PDF">📎 Importar PDF</button>
     <button onclick="exportSuportesPDF()" id="sup-exp-btn" style="font-size:11px;padding:4px 10px;border-radius:6px;border:0.5px solid var(--hbr);background:var(--hg);color:var(--ht);cursor:pointer;height:27px;display:flex;align-items:center;gap:4px">📄 Exportar PDF</button>
     <button class="btn-del-sel" id="sbtn-del-sel" style="display:none" onclick="reqAuth('del-sup-sel','')">🗑️ Excluir selecionados (<span id="s-sel-count">0</span>)</button>
+  <button style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:1px solid #e0c8c8;background:#fdecea;color:var(--hd);cursor:pointer" onclick="delAllSuportes()">🗑️ Excluir Tudo</button>
   </div>
   <div id="sup-bulk-bar" style="display:none;flex-wrap:wrap;align-items:center;gap:8px;padding:6px 16px 8px;background:rgba(25,118,210,.07);border-bottom:1px solid var(--hbr)">
     <span style="font-size:11px;font-weight:600;color:var(--hb)">📋 <span id="sup-bulk-count">0</span> selecionado(s) — aplicar status:</span>
@@ -2497,6 +2499,7 @@ function renderCabosView(discTabs,bc){
     +'<button class="btn-clr" onclick="_cabSearch=\'\';_cabLoc=\'\';_cabInterl=\'\';renderIsoView()">✕</button>'
     +'<button class="btn btn-cyan" style="height:27px;font-size:11px;background:rgba(0,90,180,.85)" onclick="openImportCabosModal()">📥 Importar XLSX</button>'
     +'<button class="btn btn-cyan" style="height:27px;font-size:11px;background:rgba(0,119,182,.85)" onclick="openImportCabosPDFModal()">📎 Importar PDF</button>'
+    +'<button style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:1px solid #e0c8c8;background:#fdecea;color:var(--hd);cursor:pointer" onclick="delAllCabos()">🗑️ Excluir Tudo</button>'
     +'</div>';
 
   var rows='';
@@ -2706,6 +2709,7 @@ function renderSupEletricaView(discTabs,bc){
     +'<span style="font-size:10px;color:var(--hmu)">'+filtered.length+' de '+total+'</span>'
     +'<button class="btn-clr" onclick="_supElSearch=\'\';_supElFab=\'\';_supElMon=\'\';renderIsoView()">✕</button>'
     +'<button class="btn btn-cyan" style="height:27px;font-size:11px;background:rgba(0,90,180,.85)" onclick="addSupEl()">+ Suporte</button>'
+    +'<button style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:1px solid #e0c8c8;background:#fdecea;color:var(--hd);cursor:pointer" onclick="delAllSupEl()">🗑️ Excluir Tudo</button>'
     +'</div>';
 
   var clr=function(v,ok,warn){return v===ok?'#e8f5e9':v===warn?'#fff8e1':'var(--hg)';};
@@ -2802,6 +2806,7 @@ function renderDTView(discTabs,bc){
     +'<span style="font-size:10px;color:var(--hmu)">'+filtered.length+' de '+total+'</span>'
     +'<button class="btn-clr" onclick="_dtSearch=\'\';_dtTipo=\'\';_dtStatus=\'\';renderIsoView()">✕</button>'
     +'<button class="btn btn-cyan" style="height:27px;font-size:11px;background:rgba(0,90,180,.85)" onclick="addDT()">+ DT</button>'
+    +'<button style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:1px solid #e0c8c8;background:#fdecea;color:var(--hd);cursor:pointer" onclick="delAllDT()">🗑️ Excluir Tudo</button>'
     +'</div>';
 
   var clr=function(v){return v==='Concluído'?'#e8f5e9':v==='Em Execução'?'#fff8e1':v==='N/A'?'#f5f5f5':'var(--hg)';};
@@ -2943,6 +2948,58 @@ async function importCabosPDF(file){
     console.error('[importCabosPDF]',err);
   }
 }
+
+
+/* ─── Delete All Functions ────────────────────────────────────────────── */
+async function delAllEstrutura(){
+  var proj = currentProjId ? estrutura.filter(function(e){return e.projId===currentProjId;}).length : estrutura.length;
+  if(!proj){return;}
+  if(!confirm('Excluir TODOS os '+proj+' desenhos de Estrutura Metálica'+(currentProjId?' deste projeto':'')+' ? Esta ação não pode ser desfeita.'))return;
+  if(currentProjId) estrutura=estrutura.filter(function(e){return e.projId!==currentProjId;});
+  else estrutura=[];
+  await saveAll(); renderIsoView();
+}
+
+async function delAllSuportes(){
+  var proj = currentProjId ? suportes.filter(function(s){return projIsos(currentProjId).map(function(e){return e.num;}).includes(s.isometrico);}).length : suportes.length;
+  if(!confirm('Excluir TODOS os suportes'+(currentProjId?' deste projeto':'')+'? Esta ação não pode ser desfeita.'))return;
+  if(currentProjId){
+    var nums = new Set(projIsos(currentProjId).map(function(e){return e.num;}));
+    suportes=suportes.filter(function(s){return !nums.has(s.isometrico);});
+  } else suportes=[];
+  await saveAll(); renderIsoView();
+}
+
+async function delAllCabos(){
+  var arr=_cabosArr();
+  var proj=currentProjId?arr.filter(function(c){return c.projId===currentProjId;}).length:arr.length;
+  if(!proj)return;
+  if(!confirm('Excluir TODOS os '+proj+' cabos'+(currentProjId?' deste projeto':'')+'? Esta ação não pode ser desfeita.'))return;
+  if(currentProjId) _cabosSet(arr.filter(function(c){return c.projId!==currentProjId;}));
+  else _cabosSet([]);
+  await saveAll(); renderIsoView();
+}
+
+async function delAllSupEl(){
+  var arr=_supElArr();
+  var proj=currentProjId?arr.filter(function(c){return c.projId===currentProjId;}).length:arr.length;
+  if(!proj)return;
+  if(!confirm('Excluir TODOS os '+proj+' suportes'+(currentProjId?' deste projeto':'')+'? Esta ação não pode ser desfeita.'))return;
+  if(currentProjId) _supElSet(arr.filter(function(c){return c.projId!==currentProjId;}));
+  else _supElSet([]);
+  await saveAll(); renderIsoView();
+}
+
+async function delAllDT(){
+  var arr=_dtArr();
+  var proj=currentProjId?arr.filter(function(c){return c.projId===currentProjId;}).length:arr.length;
+  if(!proj)return;
+  if(!confirm('Excluir TODOS os '+proj+' DTs'+(currentProjId?' deste projeto':'')+'? Esta ação não pode ser desfeita.'))return;
+  if(currentProjId) _dtSet(arr.filter(function(c){return c.projId!==currentProjId;}));
+  else _dtSet([]);
+  await saveAll(); renderIsoView();
+}
+
 
 /* ════════════ PLANEJAMENTO DE FABRICAÇÃO ════════════ */
 const PROD_INDEX = {"AC|SCH 40|1/2\"": 0.85, "AC|SCH 40|3/4\"": 0.93, "AC|SCH 40|1\"": 1.0, "AC|SCH 40|1 1/4\"": 1.09, "AC|SCH 40|1 1/2\"": 1.1, "AC|SCH 40|2\"": 1.2, "AC|SCH 40|2 1/2\"": 1.43, "AC|SCH 40|3\"": 1.5, "AC|SCH 40|4\"": 1.85, "AC|SCH 40|5\"": 2.12, "AC|SCH 40|6\"": 2.47, "AC|SCH 40|8\"": 3.05, "AC|SCH 40|10\"": 6.5, "AC|SCH 40|12\"": 4.65, "AC|SCH 40|14\"": 5.5, "AC|SCH 40|16\"": 6.6, "AC|SCH 40|18\"": 7.5, "AC|SCH 40|20\"": 8.4, "AC|SCH 40|22\"": 9.14, "AC|SCH 40|24\"": 10.1, "AC|SCH 40|26\"": 12.1, "AC|SCH 40|28\"": 13.8, "AC|SCH 40|30\"": 15.0, "AC GALV.|DIN 2440|1/2\"": 0.85, "AC GALV.|DIN 2440|3/4\"": 0.93, "AC GALV.|DIN 2440|1\"": 1.0, "AC GALV.|DIN 2440|1 1/4\"": 1.09, "AC GALV.|DIN 2440|1 1/2\"": 1.1, "AC GALV.|DIN 2440|2\"": 1.2, "AC GALV.|DIN 2440|2 1/2\"": 1.43, "AC GALV.|DIN 2440|3\"": 1.5, "AC GALV.|DIN 2440|4\"": 1.85, "AC GALV.|DIN 2440|5\"": 2.12, "AC GALV.|DIN 2440|6\"": 2.4, "AC GALV.|DIN 2440|8\"": 3.05, "INOX|10S|1/2\"": 1.3, "INOX|10S|3/4\"": 1.42, "INOX|10S|1\"": 1.53, "INOX|10S|1 1/4\"": 1.67, "INOX|10S|1 1/2\"": 1.68, "INOX|10S|2\"": 1.83, "INOX|10S|2 1/2\"": 2.19, "INOX|10S|3\"": 2.29, "INOX|10S|4\"": 2.84, "INOX|10S|5\"": 3.24, "INOX|10S|6\"": 3.67, "INOX|10S|8\"": 4.66, "INOX|10S|10\"": 5.9, "INOX|10S|12\"": 7.12, "INOX|10S|14\"": 8.42, "INOX|10S|16\"": 10.09, "INOX|10S|18\"": 11.52, "INOX|10S|20\"": 12.85, "INOX|10S|22\"": 13.95, "INOX|10S|24\"": 15.45, "INOX|10S|26\"": 18.51, "INOX|10S|28\"": 21.11, "INOX|10S|30\"": 22.95, "AC|SCH 80|1/2\"": 1.15, "AC|SCH 80|3/4\"": 1.29, "AC|SCH 80|1\"": 1.36, "AC|SCH 80|1 1/4\"": 1.52, "AC|SCH 80|1 1/2\"": 1.54, "AC|SCH 80|2\"": 1.74, "AC|SCH 80|2 1/2\"": 1.99, "AC|SCH 80|3\"": 2.15, "AC|SCH 80|4\"": 2.7, "AC|SCH 80|5\"": 3.3, "AC|SCH 80|6\"": 3.8, "AC|SCH 80|8\"": 4.89, "AC|SCH 80|10\"": 6.45, "AC|SCH 80|12\"": 8.09, "AC|SCH 80|14\"": 9.79, "AC|SCH 80|16\"": 11.49, "AC|SCH 80|18\"": 12.89, "AC|SCH 80|20\"": 15.02, "AC|SCH 80|22\"": 16.74, "AC|SCH 80|24\"": 18.46, "AC|SCH 80|26\"": 22.1, "AC|SCH 80|28\"": 25.2, "AC|SCH 80|30\"": 27.4, "INOX|40S|1/2\"": 1.45, "INOX|40S|3/4\"": 1.58, "INOX|40S|1\"": 1.7, "INOX|40S|1 1/4\"": 1.85, "INOX|40S|1 1/2\"": 1.87, "INOX|40S|2\"": 2.03, "INOX|40S|2 1/2\"": 2.43, "INOX|40S|3\"": 2.55, "INOX|40S|4\"": 3.15, "INOX|40S|5\"": 3.6, "INOX|40S|6\"": 4.08, "INOX|40S|8\"": 5.18, "INOX|40S|10\"": 6.55, "INOX|40S|12\"": 7.91, "INOX|40S|14\"": 9.35, "INOX|40S|16\"": 11.22, "INOX|40S|18\"": 12.8, "INOX|40S|20\"": 14.28, "INOX|40S|22\"": 15.54, "INOX|40S|24\"": 17.17, "INOX|40S|26\"": 20.57, "INOX|40S|28\"": 23.46, "INOX|40S|30\"": 25.5, "ALU|10S|6\"": 10.0, "ALU|10S|10\"": 14.0, "ALU|10S|12\"": 15.54, "ALU|10S|20\"": 18.0};
