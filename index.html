@@ -1325,8 +1325,8 @@ function sincronizarPlanilha() {
 const DISC_TABS = {
   caldeiraria: { label:'🔧 Caldeiraria', subs:['dashboard','isometricos','suportes','materiais','estrutura'],
     labels:['Dashboard','Controle de Isométricos','Controle de Suportes','Controle de Materiais','Estrutura Metálica'] },
-  eletrica: { label:'⚡ Elétrica', subs:['cabos-el','sup-el','dt-el','encam-el','equip-el'],
-    labels:['Controle de Cabos','Controle de Suportes','Detalhes Típicos','Controle de Encaminhamento','Controle de Equipamentos'] },
+  eletrica: { label:'⚡ Elétrica', subs:['cabos-el','sup-el','encam-el','equip-el'],
+    labels:['Controle de Cabos','Controle de Suportes','Controle de Encaminhamento','Controle de Equipamentos'] },
   instr: { label:'🔬 Instrumentação', subs:['cabos-ins','sup-ins','dt-ins','encam-ins','instrumentos','equip-ins','interlig'],
     labels:['Controle de Cabos','Controle de Suportes','Detalhes Típicos','Controle de Encaminhamento','Controle de Instrumentos','Controle de Equipamentos','Controle de Interligação'] }
 };
@@ -2518,6 +2518,9 @@ function renderCabosView(discTabs,bc){
       +'</td>'
       +'<td style="padding:7px 10px;font-size:11px">'+(c.localizacao||'—')+'</td>'
       +'<td style="padding:7px 10px;font-size:11px">'+(c.interligacao||'—')+'</td>'
+      +(currentDisc==='eletrica'
+        ?'<td style="padding:4px 6px;text-align:center"><select onchange="cabSetField(\''+c.id+'\',\'statusDT\',this.value)" style="font-size:10px;padding:3px 5px;border-radius:5px;border:0.5px solid var(--hbr);background:'+(c.statusDT==='Concluído'?'#e8f5e9':c.statusDT==='Em Execução'?'#fff8e1':'var(--hg)')+';color:var(--ht)"><option value="Pendente" '+((!c.statusDT||c.statusDT==='Pendente')?'selected':'')+'>Pendente</option><option value="Em Execução" '+(c.statusDT==='Em Execução'?'selected':'')+'>Em Execução</option><option value="Concluído" '+(c.statusDT==='Concluído'?'selected':'')+'>Concluído</option><option value="N/A" '+(c.statusDT==='N/A'?'selected':'')+'>N/A</option></select></td>'
+        :'')
       +'<td style="padding:4px 8px;text-align:center">'
         +'<button class="btn-lupa" onclick="delCabo(\''+c.id+'\')" style="color:var(--hd);border-color:#e0c8c8" title="Excluir">🗑️</button>'
       +'</td>'
@@ -2536,6 +2539,7 @@ function renderCabosView(discTabs,bc){
         +'<th style="padding:9px 10px;font-size:9px;letter-spacing:.4px;text-align:center">QTD EXEC. (m)</th>'
         +'<th style="padding:9px 10px;font-size:9px;letter-spacing:.4px;text-align:left">LOCALIZAÇÃO</th>'
         +'<th style="padding:9px 10px;font-size:9px;letter-spacing:.4px;text-align:left">INTERLIGAÇÃO</th>'
+        +(currentDisc==='eletrica'?'<th style="padding:9px 10px;font-size:9px;letter-spacing:.4px;text-align:center">STATUS DT</th>':'')
         +'<th style="padding:9px 10px;font-size:9px;letter-spacing:.4px;text-align:center">AÇÕES</th>'
       +'</tr></thead><tbody>'+rows+'</tbody></table></div>'
     :'<div class="ph-panel"><div style="font-size:32px">🔌</div><strong>Nenhum cabo cadastrado</strong><span style="font-size:11px">Importe via XLSX.</span></div>';
