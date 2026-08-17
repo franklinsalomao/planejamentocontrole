@@ -4358,6 +4358,10 @@ function renderIsoView(force) {
     renderDashboard(discTabs, bc); return;
   }
 
+  if (currentDisc === 'instr') {
+    renderInstrView(currentSubTab, discTabs, bc); return;
+  }
+
 
 
   if (currentDisc !== 'caldeiraria' || currentSubTab !== 'isometricos') {
