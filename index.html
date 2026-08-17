@@ -1359,8 +1359,8 @@ function sincronizarPlanilha() {
 const DISC_TABS = {
   caldeiraria: { label:'🔧 Caldeiraria', subs:['dashboard','isometricos','suportes','materiais','estrutura'],
     labels:['Dashboard','Controle de Isométricos','Controle de Suportes','Controle de Materiais','Estrutura Metálica'] },
-  instr: { label:'🔬 Instrumentação', subs:['instr-tags','instr-cabos','instr-suportes','instr-dts','instr-interlig','instr-encam','instr-paineis'],
-    labels:['Tags de Instrumentos','Lista de Cabos','Suportes','Detalhes Típicos','Interligações','Encaminhamento','Painéis'] }
+  instr: { label:'🔬 Instrumentação', subs:['instr-tags','instr-cabos','instr-suportes','instr-encam','instr-paineis'],
+    labels:['Tags de Instrumentos','Lista de Cabos','Suportes','Encaminhamento','Painéis'] }
 };
 function setDisc(d) {
   currentDisc = d;
@@ -3305,8 +3305,6 @@ function renderInstrView(sub, discTabs, bc){
     'instr-tags':    function(){renderInstrTags(discTabs,bc);},
     'instr-cabos':   function(){renderInstrCabos(discTabs,bc);},
     'instr-suportes':function(){renderInstrSups(discTabs,bc);},
-    'instr-dts':     function(){renderInstrDTs(discTabs,bc);},
-    'instr-interlig':function(){renderInstrInterl(discTabs,bc);},
     'instr-encam':   function(){renderInstrEncam(discTabs,bc);},
     'instr-paineis': function(){renderInstrPaineis(discTabs,bc);}
   };
