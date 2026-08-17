@@ -3413,7 +3413,7 @@ function renderInstrTags(discTabs,bc){
       +'</tr>';
   }).join(''):null;
   _instrHeader(discTabs,bc,'Tags de Instrumentos / Equipamentos',kpis,
-    _instrFilterBar(_itSearch,'_itSearch','','instrTagAdd','instrTagDelAll'),
+    _instrFilterBar(_itSearch,'_itSearch','<button onclick="instrExportPDF(\'tags\')" style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid var(--hbr);background:var(--hg);color:var(--ht);cursor:pointer;display:flex;align-items:center;gap:4px">📄 Exportar PDF</button>','instrTagAdd','instrTagDelAll'),
     _instrTable(['DISCIPLINA','DOC. RASTREABILIDADE','TAG','CÓD. SUPRIMENTOS','QTDE','CALIBRAÇÃO','CLASSIFICAÇÃO','ST. MONTAGEM','DT ELÉT.','DT PNEU.','DT PROC.','INTERLIGAÇÃO','ATERRAMENTO','LOOP TESTE','AÇÕES'],rows,'🏷️','Nenhuma tag cadastrada'));
 }
 async function instrTagSet(id,f,v){var r=instrTags.find(function(x){return x.id===id;});if(r){r[f]=v;await saveAll();}}
@@ -3455,7 +3455,7 @@ function renderInstrCabos(discTabs,bc){
       +'</tr>';
   }).join(''):null;
   _instrHeader(discTabs,bc,'Lista de Cabos',kpis,
-    _instrFilterBar(_icSearch,'_icSearch','','instrCaboAdd','instrCaboDelAll'),
+    _instrFilterBar(_icSearch,'_icSearch','<button onclick="instrExportPDF(\'cabos\')" style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid var(--hbr);background:var(--hg);color:var(--ht);cursor:pointer;display:flex;align-items:center;gap:4px">📄 Exportar PDF</button>','instrCaboAdd','instrCaboDelAll'),
     _instrTable(['RASTREABILIDADE','REV.','DISCIPLINA','TIPO DE CABO','QTDE','ORIGEM (DE)','DESTINO (PARA)','ST. LANÇAMENTO','LOCALIZAÇÃO','AÇÕES'],rows,'🔌','Nenhum cabo cadastrado'));
 }
 async function instrCaboSet(id,f,v){var r=instrCabos.find(function(x){return x.id===id;});if(r){r[f]=v;await saveAll();}}
@@ -3493,7 +3493,7 @@ function renderInstrSups(discTabs,bc){
       +'</tr>';
   }).join(''):null;
   _instrHeader(discTabs,bc,'Suportes',kpis,
-    _instrFilterBar(_isSearch,'_isSearch','','instrSupAdd','instrSupDelAll'),
+    _instrFilterBar(_isSearch,'_isSearch','<button onclick="instrExportPDF(\'suportes\')" style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid var(--hbr);background:var(--hg);color:var(--ht);cursor:pointer;display:flex;align-items:center;gap:4px">📄 Exportar PDF</button>','instrSupAdd','instrSupDelAll'),
     _instrTable(['RASTREABILIDADE','DISCIPLINA','ST. FABRICAÇÃO','ST. PINTURA','ST. MONTAGEM','AÇÕES'],rows,'🔧','Nenhum suporte cadastrado'));
 }
 async function instrSupSet(id,f,v){var r=instrSups.find(function(x){return x.id===id;});if(r){r[f]=v;await saveAll();}}
@@ -3604,7 +3604,7 @@ function renderInstrEncam(discTabs,bc){
       +'</tr>';
   }).join(''):null;
   _instrHeader(discTabs,bc,'Encaminhamento',kpis,
-    _instrFilterBar(_ieSearch,'_ieSearch','','instrEncamAdd','instrEncamDelAll'),
+    _instrFilterBar(_ieSearch,'_ieSearch','<button onclick="instrExportPDF(\'encam\')" style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid var(--hbr);background:var(--hg);color:var(--ht);cursor:pointer;display:flex;align-items:center;gap:4px">📄 Exportar PDF</button>','instrEncamAdd','instrEncamDelAll'),
     _instrTable(['RASTREABILIDADE','DISCIPLINA','TIPO DE ENCAMINHAMENTO','DIÂMETRO','QTDE','ST. MONTAGEM','AÇÕES'],rows,'🛤️','Nenhum encaminhamento cadastrado'));
 }
 async function instrEncamSet(id,f,v){var r=instrEncam.find(function(x){return x.id===id;});if(r){r[f]=v;await saveAll();}}
@@ -3649,6 +3649,86 @@ async function instrPaineisSet(id,f,v){var r=instrPaineis.find(function(x){retur
 async function instrPaineisAdd(){var t=prompt('Tag do painel:');if(!t||!t.trim())return;instrPaineis.push({id:_instrId('pnl'),projId:currentProjId||null,tag:t.trim(),doc:'',loc:'',qtd:1,stSup:'Pendente',stMon:'Pendente',stEner:'Pendente'});await _instrSave();}
 async function instrPaineisDel(id){if(!confirm('Excluir painel?'))return;instrPaineis=instrPaineis.filter(function(r){return r.id!==id;});await _instrSave();}
 async function instrPaineisDelAll(){var n=_instrProjFilter(instrPaineis).length;if(!n)return;if(!confirm('Excluir TODOS os '+n+' painéis?'))return;if(currentProjId)instrPaineis=instrPaineis.filter(function(r){return r.projId!==currentProjId;});else instrPaineis=[];await _instrSave();}
+
+
+
+/* ═══════════════════ EXPORTAÇÃO PDF — INSTRUMENTAÇÃO ═══════════════════ */
+function instrExportPDF(tipo) {
+  var proj = projects.find(function(p){return p.id===currentProjId;});
+  var projName = proj ? proj.name : 'Todos os projetos';
+  var now = new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'});
+  var titulo = '', headers = [], rows = [];
+
+  if (tipo === 'tags') {
+    titulo = 'Tags de Instrumentos / Equipamentos';
+    headers = ['Disciplina','Doc. Rastreabilidade','Tag','Cód. Suprimentos','Qtde','Calibração','Classificação','St. Montagem','DT Elét.','DT Pneu.','DT Proc.','Interligação','Aterramento','Loop Teste'];
+    var list = _instrProjFilter(instrTags);
+    rows = list.map(function(r){return [r.disc||'',r.doc||'',r.tag||'',r.codSup||'',r.qtd||'',r.stCal||'',r.classif||'',r.stMon||'',r.stDtEl||'',r.stDtPn||'',r.stDtPr||'',r.stInterl||'',r.stAter||'',r.stLoop||''];});
+  } else if (tipo === 'cabos') {
+    titulo = 'Lista de Cabos';
+    headers = ['Rastreabilidade','Rev.','Disciplina','Tipo de Cabo','Qtde','Origem (De)','Destino (Para)','St. Lançamento','Localização'];
+    var list = _instrProjFilter(instrCabos);
+    rows = list.map(function(r){return [r.doc||'',r.rev||'',r.disc||'',r.tipo||'',r.qtd||'',r.origem||'',r.destino||'',r.stLanc||'',r.loc||''];});
+  } else if (tipo === 'suportes') {
+    titulo = 'Suportes';
+    headers = ['Rastreabilidade','Disciplina','St. Fabricação','St. Pintura','St. Montagem'];
+    var list = _instrProjFilter(instrSups);
+    rows = list.map(function(r){return [r.doc||'',r.disc||'',r.stFab||'',r.stPint||'',r.stMon||''];});
+  } else if (tipo === 'encam') {
+    titulo = 'Encaminhamento';
+    headers = ['Rastreabilidade','Disciplina','Tipo','Diâmetro','Qtde','St. Montagem'];
+    var list = _instrProjFilter(instrEncam);
+    rows = list.map(function(r){return [r.doc||'',r.disc||'',r.tipo||'',r.diam||'',r.qtd||'',r.stMon||''];});
+  }
+
+  if (!rows.length) { alert('Nenhum item para exportar.'); return; }
+
+  // Build status color map for cell backgrounds
+  var statusClr = {'Concluído':'#e8f5e9','Fabricado':'#e8f5e9','Montado':'#e8f5e9','Pintado':'#e8f5e9','Sim':'#e8f5e9',
+    'Em Fabricação':'#fff8e1','Em Montagem':'#fff8e1','Em Execução':'#fff8e1',
+    'N/A':'#f5f5f5','Não':'#fdecea'};
+
+  var thCells = headers.map(function(h){
+    return '<th style="padding:6px 8px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.4px;white-space:nowrap">'+h+'</th>';
+  }).join('');
+
+  var tbody = rows.map(function(row){
+    var tds = row.map(function(cell){
+      var bg = statusClr[cell] ? 'background:'+statusClr[cell]+';' : '';
+      return '<td style="padding:5px 8px;font-size:10px;border-bottom:1px solid #e8eef7;'+bg+'">'+cell+'</td>';
+    }).join('');
+    return '<tr>'+tds+'</tr>';
+  }).join('');
+
+  var html = '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">'
+    +'<title>'+titulo+' — '+projName+'</title>'
+    +'<style>'
+    +'body{font-family:Arial,sans-serif;margin:20px;color:#222}'
+    +'h1{font-size:15px;color:#0B3D91;margin:0 0 2px}'
+    +'h2{font-size:11px;color:#666;font-weight:400;margin:0 0 14px}'
+    +'.info{font-size:10px;color:#888;margin-bottom:12px}'
+    +'table{width:100%;border-collapse:collapse;margin-top:8px}'
+    +'thead{background:#0B3D91;color:#fff}'
+    +'thead tr th{padding:6px 8px;font-size:10px;font-weight:700;letter-spacing:.4px;white-space:nowrap}'
+    +'tbody tr:nth-child(even){background:#f8fafd}'
+    +'@media print{'
+    +'  body{margin:10px}'
+    +'  @page{margin:15mm;size:A4 landscape}'
+    +'}'
+    +'</style></head><body>'
+    +'<h1>🔬 Instrumentação — '+titulo+'</h1>'
+    +'<h2>Projeto: '+projName+'</h2>'
+    +'<div class="info">Gerado em '+now+' · '+rows.length+' registro(s)</div>'
+    +'<table><thead><tr>'+thCells+'</tr></thead><tbody>'+tbody+'</tbody></table>'
+    +'</body></html>';
+
+  var w = window.open('','_blank','width=1100,height=720');
+  if (!w) { alert('Permita pop-ups para exportar o PDF.'); return; }
+  w.document.write(html);
+  w.document.close();
+  w.focus();
+  setTimeout(function(){ w.print(); }, 450);
+}
 
 
 /* ════════════ PLANEJAMENTO DE FABRICAÇÃO ════════════ */
