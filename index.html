@@ -3120,7 +3120,7 @@ function renderInstView(discTabs,bc){
       +'</tr>';
   });
 
-  var ths=['DISCIPLINA','DOC. RASTREABILIDADE','LOCALIZAÇÃO','TAG / EQUIPAMENTO','CÓD. SUPRIMENTOS','QTDE','CONDIÇÃO','CALIBRAÇÃO/INSPEÇÃO','RETIRADA','MONTAGEM','TIP. ELÉT.','TIP. PNEU.','TIP. PROC.','ATERRAMENTO','LOOP TESTE','AÇÕES'];
+  var ths=['DISCIPLINA','DOC. RASTREABILIDADE','LOCALIZAÇÃO','TAG / EQUIPAMENTO','CÓD. SUPRIMENTOS','QTDE','CONDIÇÃO','CALIBRAÇÃO/INSPEÇÃO','RETIRADA','MONTAGEM','TIP. ELÉT.','TIP. PNEU.','TIP. PROC.','ATERRAMENTO','LOOP TESTE','ST. SUPRIMENTOS','AÇÕES'];
   var tbl=filtered.length
     ?'<div style="margin:10px 16px 16px;overflow-x:auto"><table style="width:100%;border-collapse:collapse;min-width:1400px">'
       +'<thead><tr style="background:linear-gradient(90deg,#071d4a,#0B3D91);color:#fff">'
@@ -3409,6 +3409,7 @@ function renderInstrTags(discTabs,bc){
       +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrTagSet','stInterl',SPN,r.stInterl||'Pendente',80)+'</td>'
       +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrTagSet','stAter',SPN,r.stAter||'Pendente',80)+'</td>'
       +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrTagSet','stLoop',SPN,r.stLoop||'Pendente',80)+'</td>'
+      +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrTagSet','stSup',['Em Estoque','Pendente','Data de Chegada'],r.stSup||'Pendente',100)+'</td>'
       +'<td style="padding:4px 6px;text-align:center">'+_instrDelBtn(r.id,'instrTagDel')+'</td>'
       +'</tr>';
   }).join(''):null;
@@ -3418,7 +3419,7 @@ function renderInstrTags(discTabs,bc){
 }
 async function instrTagSet(id,f,v){var r=instrTags.find(function(x){return x.id===id;});if(r){r[f]=v;await saveAll();}}
 async function instrTagAdd(){var t=prompt('Tag do instrumento/equipamento:');if(!t||!t.trim())return;
-  instrTags.push({id:_instrId('tag'),projId:currentProjId||null,disc:'Instrumentação',doc:'',tag:t.trim(),codSup:'',qtd:1,stCal:'Pendente',classif:'Novo',stMon:'Pendente',stDtEl:'Pendente',stDtPn:'Pendente',stDtPr:'Pendente',stInterl:'Pendente',stAter:'Pendente',stLoop:'Pendente'});
+  instrTags.push({id:_instrId('tag'),projId:currentProjId||null,disc:'Instrumentação',doc:'',tag:t.trim(),codSup:'',qtd:1,stCal:'Pendente',classif:'Novo',stMon:'Pendente',stDtEl:'Pendente',stDtPn:'Pendente',stDtPr:'Pendente',stInterl:'Pendente',stAter:'Pendente',stLoop:'Pendente',stSup:'Pendente'});
   await _instrSave();}
 async function instrTagDel(id){if(!confirm('Excluir tag?'))return;instrTags=instrTags.filter(function(r){return r.id!==id;});await _instrSave();}
 async function instrTagDelAll(){var n=_instrProjFilter(instrTags).length;if(!n)return;if(!confirm('Excluir TODAS as '+n+' tags?'))return;if(currentProjId)instrTags=instrTags.filter(function(r){return r.projId!==currentProjId;});else instrTags=[];await _instrSave();}
@@ -3451,15 +3452,16 @@ function renderInstrCabos(discTabs,bc){
       +'<td style="padding:4px 7px;font-size:10px">'+_instrInp(r.id,'instrCaboSet','destino',r.destino,100)+'</td>'
       +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrCaboSet','stLanc',LANC,r.stLanc||'Pendente',95)+'</td>'
       +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrCaboSet','loc',LOC,r.loc||'Campo',100)+'</td>'
+      +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrCaboSet','stSup',['Em Estoque','Pendente','Data de Chegada'],r.stSup||'Pendente',100)+'</td>'
       +'<td style="padding:4px 6px;text-align:center">'+_instrDelBtn(r.id,'instrCaboDel')+'</td>'
       +'</tr>';
   }).join(''):null;
   _instrHeader(discTabs,bc,'Lista de Cabos',kpis,
     _instrFilterBar(_icSearch,'_icSearch','<button onclick="instrExportPDF(\'cabos\')" style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid var(--hbr);background:var(--hg);color:var(--ht);cursor:pointer;display:flex;align-items:center;gap:4px">📄 Exportar PDF</button>','instrCaboAdd','instrCaboDelAll'),
-    _instrTable(['RASTREABILIDADE','REV.','DISCIPLINA','TIPO DE CABO','QTDE','ORIGEM (DE)','DESTINO (PARA)','ST. LANÇAMENTO','LOCALIZAÇÃO','AÇÕES'],rows,'🔌','Nenhum cabo cadastrado'));
+    _instrTable(['RASTREABILIDADE','REV.','DISCIPLINA','TIPO DE CABO','QTDE','ORIGEM (DE)','DESTINO (PARA)','ST. LANÇAMENTO','LOCALIZAÇÃO','ST. SUPRIMENTOS','AÇÕES'],rows,'🔌','Nenhum cabo cadastrado'));
 }
 async function instrCaboSet(id,f,v){var r=instrCabos.find(function(x){return x.id===id;});if(r){r[f]=v;await saveAll();}}
-async function instrCaboAdd(){var d=prompt('Número de rastreabilidade:');if(!d||!d.trim())return;instrCabos.push({id:_instrId('cab'),projId:currentProjId||null,doc:d.trim(),rev:'0',disc:'Instrumentação',tipo:'Par trançado',qtd:null,origem:'',destino:'',stLanc:'Pendente',loc:'Campo'});await _instrSave();}
+async function instrCaboAdd(){var d=prompt('Número de rastreabilidade:');if(!d||!d.trim())return;instrCabos.push({id:_instrId('cab'),projId:currentProjId||null,doc:d.trim(),rev:'0',disc:'Instrumentação',tipo:'Par trançado',qtd:null,origem:'',destino:'',stLanc:'Pendente',loc:'Campo',stSup:'Pendente'});await _instrSave();}
 async function instrCaboDel(id){if(!confirm('Excluir cabo?'))return;instrCabos=instrCabos.filter(function(r){return r.id!==id;});await _instrSave();}
 async function instrCaboDelAll(){var n=_instrProjFilter(instrCabos).length;if(!n)return;if(!confirm('Excluir TODOS os '+n+' cabos?'))return;if(currentProjId)instrCabos=instrCabos.filter(function(r){return r.projId!==currentProjId;});else instrCabos=[];await _instrSave();}
 
@@ -3489,15 +3491,16 @@ function renderInstrSups(discTabs,bc){
       +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrSupSet','stFab',FAB,r.stFab||'Pendente',110)+'</td>'
       +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrSupSet','stPint',PINT,r.stPint||'Pendente',90)+'</td>'
       +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrSupSet','stMon',MON,r.stMon||'Pendente',110)+'</td>'
+      +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrSupSet','stSup',['Em Estoque','Pendente','Data de Chegada'],r.stSup||'Pendente',100)+'</td>'
       +'<td style="padding:4px 6px;text-align:center">'+_instrDelBtn(r.id,'instrSupDel')+'</td>'
       +'</tr>';
   }).join(''):null;
   _instrHeader(discTabs,bc,'Suportes',kpis,
     _instrFilterBar(_isSearch,'_isSearch','<button onclick="instrExportPDF(\'suportes\')" style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid var(--hbr);background:var(--hg);color:var(--ht);cursor:pointer;display:flex;align-items:center;gap:4px">📄 Exportar PDF</button>','instrSupAdd','instrSupDelAll'),
-    _instrTable(['RASTREABILIDADE','DISCIPLINA','ST. FABRICAÇÃO','ST. PINTURA','ST. MONTAGEM','AÇÕES'],rows,'🔧','Nenhum suporte cadastrado'));
+    _instrTable(['RASTREABILIDADE','DISCIPLINA','ST. FABRICAÇÃO','ST. PINTURA','ST. MONTAGEM','ST. SUPRIMENTOS','AÇÕES'],rows,'🔧','Nenhum suporte cadastrado'));
 }
 async function instrSupSet(id,f,v){var r=instrSups.find(function(x){return x.id===id;});if(r){r[f]=v;await saveAll();}}
-async function instrSupAdd(){var d=prompt('Número de rastreabilidade:');if(!d||!d.trim())return;instrSups.push({id:_instrId('sup'),projId:currentProjId||null,doc:d.trim(),disc:'Instrumentação',stFab:'Pendente',stPint:'Pendente',stMon:'Pendente'});await _instrSave();}
+async function instrSupAdd(){var d=prompt('Número de rastreabilidade:');if(!d||!d.trim())return;instrSups.push({id:_instrId('sup'),projId:currentProjId||null,doc:d.trim(),disc:'Instrumentação',stFab:'Pendente',stPint:'Pendente',stMon:'Pendente',stSup:'Pendente'});await _instrSave();}
 async function instrSupDel(id){if(!confirm('Excluir suporte?'))return;instrSups=instrSups.filter(function(r){return r.id!==id;});await _instrSave();}
 async function instrSupDelAll(){var n=_instrProjFilter(instrSups).length;if(!n)return;if(!confirm('Excluir TODOS os '+n+' suportes?'))return;if(currentProjId)instrSups=instrSups.filter(function(r){return r.projId!==currentProjId;});else instrSups=[];await _instrSave();}
 
@@ -3600,16 +3603,17 @@ function renderInstrEncam(discTabs,bc){
       +'<td style="padding:4px 7px;font-size:10px">'+_instrInp(r.id,'instrEncamSet','diam',r.diam,70)+'</td>'
       +'<td style="padding:4px 5px;text-align:center"><input type="number" min="0" step="0.1" value="'+(r.qtd||'')+'" onclick="event.stopPropagation()" onchange="instrEncamSet(\''+r.id+'\',\'qtd\',this.value)" style="width:65px;padding:2px;border:0.5px solid var(--hbr);border-radius:4px;font-size:10px;text-align:center;background:var(--hg);color:var(--ht)"></td>'
       +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrEncamSet','stMon',MON,r.stMon||'Pendente',110)+'</td>'
+      +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrEncamSet','stSup',['Em Estoque','Pendente','Data de Chegada'],r.stSup||'Pendente',100)+'</td>'
       +'<td style="padding:4px 6px;text-align:center">'+_instrDelBtn(r.id,'instrEncamDel')+'</td>'
       +'</tr>';
   }).join(''):null;
   _instrHeader(discTabs,bc,'Encaminhamento',kpis,
     _instrFilterBar(_ieSearch,'_ieSearch','<button onclick="instrExportPDF(\'encam\')" style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid var(--hbr);background:var(--hg);color:var(--ht);cursor:pointer;display:flex;align-items:center;gap:4px">📄 Exportar PDF</button>','instrEncamAdd','instrEncamDelAll'),
-    _instrTable(['RASTREABILIDADE','DISCIPLINA','TIPO DE ENCAMINHAMENTO','DIÂMETRO','QTDE','ST. MONTAGEM','AÇÕES'],rows,'🛤️','Nenhum encaminhamento cadastrado'));
+    _instrTable(['RASTREABILIDADE','DISCIPLINA','TIPO DE ENCAMINHAMENTO','DIÂMETRO','QTDE','ST. MONTAGEM','ST. SUPRIMENTOS','AÇÕES'],rows,'🛤️','Nenhum encaminhamento cadastrado'));
 }
 async function instrEncamSet(id,f,v){var r=instrEncam.find(function(x){return x.id===id;});if(r){r[f]=v;await saveAll();}}
 async function instrEncamAdd(){var d=prompt('Número de rastreabilidade:');if(!d||!d.trim())return;
-  instrEncam.push({id:_instrId('enc'),projId:currentProjId||null,doc:d.trim(),disc:'Instrumentação',tipo:'Eletroduto',diam:'',qtd:null,stMon:'Pendente'});
+  instrEncam.push({id:_instrId('enc'),projId:currentProjId||null,doc:d.trim(),disc:'Instrumentação',tipo:'Eletroduto',diam:'',qtd:null,stMon:'Pendente',stSup:'Pendente'});
   await _instrSave();}
 async function instrEncamDel(id){if(!confirm('Excluir item?'))return;instrEncam=instrEncam.filter(function(r){return r.id!==id;});await _instrSave();}
 async function instrEncamDelAll(){var n=_instrProjFilter(instrEncam).length;if(!n)return;if(!confirm('Excluir TODOS os '+n+' itens?'))return;if(currentProjId)instrEncam=instrEncam.filter(function(r){return r.projId!==currentProjId;});else instrEncam=[];await _instrSave();}
@@ -3661,24 +3665,24 @@ function instrExportPDF(tipo) {
 
   if (tipo === 'tags') {
     titulo = 'Tags de Instrumentos / Equipamentos';
-    headers = ['Disciplina','Doc. Rastreabilidade','Tag','Cód. Suprimentos','Qtde','Calibração','Classificação','St. Montagem','DT Elét.','DT Pneu.','DT Proc.','Interligação','Aterramento','Loop Teste'];
+    headers = ['Disciplina','Doc. Rastreabilidade','Tag','Cód. Suprimentos','Qtde','Calibração','Classificação','St. Montagem','DT Elét.','DT Pneu.','DT Proc.','Interligação','Aterramento','Loop Teste','St. Suprimentos'];
     var list = _instrProjFilter(instrTags);
-    rows = list.map(function(r){return [r.disc||'',r.doc||'',r.tag||'',r.codSup||'',r.qtd||'',r.stCal||'',r.classif||'',r.stMon||'',r.stDtEl||'',r.stDtPn||'',r.stDtPr||'',r.stInterl||'',r.stAter||'',r.stLoop||''];});
+    rows = list.map(function(r){return [r.disc||'',r.doc||'',r.tag||'',r.codSup||'',r.qtd||'',r.stCal||'',r.classif||'',r.stMon||'',r.stDtEl||'',r.stDtPn||'',r.stDtPr||'',r.stInterl||'',r.stAter||'',r.stLoop||'',r.stSup||''];});
   } else if (tipo === 'cabos') {
     titulo = 'Lista de Cabos';
-    headers = ['Rastreabilidade','Rev.','Disciplina','Tipo de Cabo','Qtde','Origem (De)','Destino (Para)','St. Lançamento','Localização'];
+    headers = ['Rastreabilidade','Rev.','Disciplina','Tipo de Cabo','Qtde','Origem (De)','Destino (Para)','St. Lançamento','Localização','St. Suprimentos'];
     var list = _instrProjFilter(instrCabos);
-    rows = list.map(function(r){return [r.doc||'',r.rev||'',r.disc||'',r.tipo||'',r.qtd||'',r.origem||'',r.destino||'',r.stLanc||'',r.loc||''];});
+    rows = list.map(function(r){return [r.doc||'',r.rev||'',r.disc||'',r.tipo||'',r.qtd||'',r.origem||'',r.destino||'',r.stLanc||'',r.loc||'',r.stSup||''];});
   } else if (tipo === 'suportes') {
     titulo = 'Suportes';
-    headers = ['Rastreabilidade','Disciplina','St. Fabricação','St. Pintura','St. Montagem'];
+    headers = ['Rastreabilidade','Disciplina','St. Fabricação','St. Pintura','St. Montagem','St. Suprimentos'];
     var list = _instrProjFilter(instrSups);
-    rows = list.map(function(r){return [r.doc||'',r.disc||'',r.stFab||'',r.stPint||'',r.stMon||''];});
+    rows = list.map(function(r){return [r.doc||'',r.disc||'',r.stFab||'',r.stPint||'',r.stMon||'',r.stSup||''];});
   } else if (tipo === 'encam') {
     titulo = 'Encaminhamento';
-    headers = ['Rastreabilidade','Disciplina','Tipo','Diâmetro','Qtde','St. Montagem'];
+    headers = ['Rastreabilidade','Disciplina','Tipo','Diâmetro','Qtde','St. Montagem','St. Suprimentos'];
     var list = _instrProjFilter(instrEncam);
-    rows = list.map(function(r){return [r.doc||'',r.disc||'',r.tipo||'',r.diam||'',r.qtd||'',r.stMon||''];});
+    rows = list.map(function(r){return [r.doc||'',r.disc||'',r.tipo||'',r.diam||'',r.qtd||'',r.stMon||'',r.stSup||''];});
   }
 
   if (!rows.length) { alert('Nenhum item para exportar.'); return; }
