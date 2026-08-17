@@ -3400,6 +3400,7 @@ function renderInstrTags(discTabs,bc){
       +'<td style="padding:4px 7px;font-weight:700;font-size:11px;font-family:monospace">'+_instrInp(r.id,'instrTagSet','tag',r.tag,100)+'</td>'
       +'<td style="padding:4px 7px;font-size:10px">'+_instrInp(r.id,'instrTagSet','codSup',r.codSup,90)+'</td>'
       +'<td style="padding:4px 5px;text-align:center"><input type="number" min="0" value="'+(r.qtd||1)+'" onclick="event.stopPropagation()" onchange="instrTagSet(\''+r.id+'\',\'qtd\',this.value)" style="width:50px;padding:2px;border:0.5px solid var(--hbr);border-radius:4px;font-size:10px;text-align:center;background:var(--hg);color:var(--ht)"></td>'
+      +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrTagSet','stSup',['Em Estoque','Pendente','Data de Chegada'],r.stSup||'Pendente',100)+'</td>'
       +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrTagSet','stCal',CAL,r.stCal||'Pendente',90)+'</td>'
       +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrTagSet','classif',CLS,r.classif||'Novo',80)+'</td>'
       +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrTagSet','stMon',MON,r.stMon||'Pendente',80)+'</td>'
@@ -3409,13 +3410,12 @@ function renderInstrTags(discTabs,bc){
       +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrTagSet','stInterl',SPN,r.stInterl||'Pendente',80)+'</td>'
       +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrTagSet','stAter',SPN,r.stAter||'Pendente',80)+'</td>'
       +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrTagSet','stLoop',SPN,r.stLoop||'Pendente',80)+'</td>'
-      +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrTagSet','stSup',['Em Estoque','Pendente','Data de Chegada'],r.stSup||'Pendente',100)+'</td>'
       +'<td style="padding:4px 6px;text-align:center">'+_instrDelBtn(r.id,'instrTagDel')+'</td>'
       +'</tr>';
   }).join(''):null;
   _instrHeader(discTabs,bc,'Tags de Instrumentos / Equipamentos',kpis,
     _instrFilterBar(_itSearch,'_itSearch','<button onclick="instrExportPDF(\'tags\')" style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid var(--hbr);background:var(--hg);color:var(--ht);cursor:pointer;display:flex;align-items:center;gap:4px">📄 Exportar PDF</button>','instrTagAdd','instrTagDelAll'),
-    _instrTable(['DISCIPLINA','DOC. RASTREABILIDADE','TAG','CÓD. SUPRIMENTOS','QTDE','CALIBRAÇÃO','CLASSIFICAÇÃO','ST. MONTAGEM','DT ELÉT.','DT PNEU.','DT PROC.','INTERLIGAÇÃO','ATERRAMENTO','LOOP TESTE','AÇÕES'],rows,'🏷️','Nenhuma tag cadastrada'));
+    _instrTable(['DISCIPLINA','DOC. RASTREABILIDADE','TAG','CÓD. SUPRIMENTOS','QTDE','ST. SUPRIMENTOS','CALIBRAÇÃO','CLASSIFICAÇÃO','ST. MONTAGEM','DT ELÉT.','DT PNEU.','DT PROC.','INTERLIGAÇÃO','ATERRAMENTO','LOOP TESTE','AÇÕES'],rows,'🏷️','Nenhuma tag cadastrada'));
 }
 async function instrTagSet(id,f,v){var r=instrTags.find(function(x){return x.id===id;});if(r){r[f]=v;await saveAll();}}
 async function instrTagAdd(){var t=prompt('Tag do instrumento/equipamento:');if(!t||!t.trim())return;
@@ -3452,13 +3452,12 @@ function renderInstrCabos(discTabs,bc){
       +'<td style="padding:4px 7px;font-size:10px">'+_instrInp(r.id,'instrCaboSet','destino',r.destino,100)+'</td>'
       +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrCaboSet','stLanc',LANC,r.stLanc||'Pendente',95)+'</td>'
       +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrCaboSet','loc',LOC,r.loc||'Campo',100)+'</td>'
-      +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrCaboSet','stSup',['Em Estoque','Pendente','Data de Chegada'],r.stSup||'Pendente',100)+'</td>'
       +'<td style="padding:4px 6px;text-align:center">'+_instrDelBtn(r.id,'instrCaboDel')+'</td>'
       +'</tr>';
   }).join(''):null;
   _instrHeader(discTabs,bc,'Lista de Cabos',kpis,
     _instrFilterBar(_icSearch,'_icSearch','<button onclick="instrExportPDF(\'cabos\')" style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid var(--hbr);background:var(--hg);color:var(--ht);cursor:pointer;display:flex;align-items:center;gap:4px">📄 Exportar PDF</button>','instrCaboAdd','instrCaboDelAll'),
-    _instrTable(['RASTREABILIDADE','REV.','DISCIPLINA','TIPO DE CABO','QTDE','ORIGEM (DE)','DESTINO (PARA)','ST. LANÇAMENTO','LOCALIZAÇÃO','ST. SUPRIMENTOS','AÇÕES'],rows,'🔌','Nenhum cabo cadastrado'));
+    _instrTable(['RASTREABILIDADE','REV.','DISCIPLINA','TIPO DE CABO','QTDE','ST. SUPRIMENTOS','ORIGEM (DE)','DESTINO (PARA)','ST. LANÇAMENTO','LOCALIZAÇÃO','AÇÕES'],rows,'🔌','Nenhum cabo cadastrado'));
 }
 async function instrCaboSet(id,f,v){var r=instrCabos.find(function(x){return x.id===id;});if(r){r[f]=v;await saveAll();}}
 async function instrCaboAdd(){var d=prompt('Número de rastreabilidade:');if(!d||!d.trim())return;instrCabos.push({id:_instrId('cab'),projId:currentProjId||null,doc:d.trim(),rev:'0',disc:'Instrumentação',tipo:'Par trançado',qtd:null,origem:'',destino:'',stLanc:'Pendente',loc:'Campo',stSup:'Pendente'});await _instrSave();}
@@ -3603,13 +3602,12 @@ function renderInstrEncam(discTabs,bc){
       +'<td style="padding:4px 7px;font-size:10px">'+_instrInp(r.id,'instrEncamSet','diam',r.diam,70)+'</td>'
       +'<td style="padding:4px 5px;text-align:center"><input type="number" min="0" step="0.1" value="'+(r.qtd||'')+'" onclick="event.stopPropagation()" onchange="instrEncamSet(\''+r.id+'\',\'qtd\',this.value)" style="width:65px;padding:2px;border:0.5px solid var(--hbr);border-radius:4px;font-size:10px;text-align:center;background:var(--hg);color:var(--ht)"></td>'
       +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrEncamSet','stMon',MON,r.stMon||'Pendente',110)+'</td>'
-      +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrEncamSet','stSup',['Em Estoque','Pendente','Data de Chegada'],r.stSup||'Pendente',100)+'</td>'
       +'<td style="padding:4px 6px;text-align:center">'+_instrDelBtn(r.id,'instrEncamDel')+'</td>'
       +'</tr>';
   }).join(''):null;
   _instrHeader(discTabs,bc,'Encaminhamento',kpis,
     _instrFilterBar(_ieSearch,'_ieSearch','<button onclick="instrExportPDF(\'encam\')" style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid var(--hbr);background:var(--hg);color:var(--ht);cursor:pointer;display:flex;align-items:center;gap:4px">📄 Exportar PDF</button>','instrEncamAdd','instrEncamDelAll'),
-    _instrTable(['RASTREABILIDADE','DISCIPLINA','TIPO DE ENCAMINHAMENTO','DIÂMETRO','QTDE','ST. MONTAGEM','ST. SUPRIMENTOS','AÇÕES'],rows,'🛤️','Nenhum encaminhamento cadastrado'));
+    _instrTable(['RASTREABILIDADE','DISCIPLINA','TIPO DE ENCAMINHAMENTO','DIÂMETRO','QTDE','ST. SUPRIMENTOS','ST. MONTAGEM','AÇÕES'],rows,'🛤️','Nenhum encaminhamento cadastrado'));
 }
 async function instrEncamSet(id,f,v){var r=instrEncam.find(function(x){return x.id===id;});if(r){r[f]=v;await saveAll();}}
 async function instrEncamAdd(){var d=prompt('Número de rastreabilidade:');if(!d||!d.trim())return;
