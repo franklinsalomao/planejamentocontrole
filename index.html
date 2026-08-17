@@ -3369,124 +3369,138 @@ function _instrTable(headers, rows, emptyIcon, emptyMsg){
    Status: Calibração · Retirada · Montagem · Aterramento
    Tip: Elétrico · Pneumático · Processo · Loop Teste
 ══════════════════════════════════════════════════════════════════════ */
+/* ══════════════ 1. TAGS DE INSTRUMENTOS / EQUIPAMENTOS ════════════════
+   Disciplina · Doc. Rastreabilidade · TAG · Cód. Sup. · Qtde · Calibração
+   Classificação · St. Montagem · DT Elét/Pneu/Proc · Interligação · Aterramento · Loop
+══════════════════════════════════════════════════════════════════════ */
+/* ══════════════ 1. TAGS DE INSTRUMENTOS / EQUIPAMENTOS ════════════════
+   Disciplina · Doc. Rastreabilidade · TAG · Cód. Sup. · Qtde · Calibração
+   Classificação · St. Montagem · DT Elét/Pneu/Proc · Interligação · Aterramento · Loop
+══════════════════════════════════════════════════════════════════════ */
 let _itSearch='';
 function renderInstrTags(discTabs,bc){
   var list=_instrProjFilter(instrTags);
   var filtered=list.filter(function(r){return !_itSearch||JSON.stringify(r).toLowerCase().includes(_itSearch.toLowerCase());});
   var total=list.length;
-  var monOk=list.filter(function(r){return r.stMon==='Concluído';}).length;
-  var calOk=list.filter(function(r){return r.stCal==='Concluído';}).length;
+  var calOk =list.filter(function(r){return r.stCal==='Concluído';}).length;
+  var monOk =list.filter(function(r){return r.stMon==='Sim';}).length;
   var loopOk=list.filter(function(r){return r.stLoop==='Sim';}).length;
   var kpis='<div class="sum-bar" style="margin:10px 16px 0;gap:8px">'
-    +_instrKpi(total,'Tags','var(--hb)')
+    +_instrKpi(total,'Tags/Equip.','var(--hb)')
     +_instrKpiPct(calOk,total,'Calibração','#0B3D91')
     +_instrKpiPct(monOk,total,'Montagem','#0077b6')
-    +_instrKpi(loopOk+'/'+total,'Loop Teste OK','#1a8c4e')
+    +_instrKpiPct(loopOk,total,'Loop Teste','#7b1fa2')
     +'</div>';
+  var SPN=['Pendente','Sim','N/A'];
+  var CAL=['Pendente','Concluído','N/A'];
+  var MON=['Pendente','Sim'];
+  var CLS=['Novo','Existente'];
+  var DISC=['Instrumentação','Elétrica'];
   var rows=filtered.length?filtered.map(function(r){
     return '<tr style="border-bottom:1px solid #f0f4fb">'
-      +'<td style="padding:5px 8px;font-weight:700;font-size:11px;font-family:monospace">'+_instrInp(r.id,'instrTagSet','tag',r.tag,100)+'</td>'
-      +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrTagSet','tipo',INSTR_TAG_TIPO,r.tipo||'Transmissor',110)+'</td>'
-      +'<td style="padding:5px 8px;font-size:10px">'+_instrInp(r.id,'instrTagSet','loc',r.loc,90)+'</td>'
-      +'<td style="padding:5px 8px;font-size:10px">'+_instrInp(r.id,'instrTagSet','area',r.area,60)+'</td>'
-      +'<td style="padding:5px 8px;font-size:10px">'+_instrInp(r.id,'instrTagSet','codSup',r.codSup,90)+'</td>'
-      +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrTagSet','cond',INSTR_COND,r.cond||'Novo',80)+'</td>'
-      +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrTagSet','stCal',INSTR_ST3,r.stCal||'Pendente',95)+'</td>'
-      +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrTagSet','stRet',INSTR_ST3,r.stRet||'Pendente',95)+'</td>'
-      +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrTagSet','stMon',INSTR_ST3,r.stMon||'Pendente',95)+'</td>'
-      +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrTagSet','stAter',INSTR_ST3,r.stAter||'Pendente',95)+'</td>'
-      +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrTagSet','tipEl',INSTR_SN,r.tipEl||'N/A',55)+'</td>'
-      +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrTagSet','tipPn',INSTR_SN,r.tipPn||'N/A',55)+'</td>'
-      +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrTagSet','tipPr',INSTR_SN,r.tipPr||'N/A',55)+'</td>'
-      +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrTagSet','stLoop',INSTR_SN,r.stLoop||'N/A',55)+'</td>'
+      +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrTagSet','disc',DISC,r.disc||'Instrumentação',100)+'</td>'
+      +'<td style="padding:4px 7px;font-size:10px">'+_instrInp(r.id,'instrTagSet','doc',r.doc,110)+'</td>'
+      +'<td style="padding:4px 7px;font-weight:700;font-size:11px;font-family:monospace">'+_instrInp(r.id,'instrTagSet','tag',r.tag,100)+'</td>'
+      +'<td style="padding:4px 7px;font-size:10px">'+_instrInp(r.id,'instrTagSet','codSup',r.codSup,90)+'</td>'
+      +'<td style="padding:4px 5px;text-align:center"><input type="number" min="0" value="'+(r.qtd||1)+'" onclick="event.stopPropagation()" onchange="instrTagSet(\''+r.id+'\',\'qtd\',this.value)" style="width:50px;padding:2px;border:0.5px solid var(--hbr);border-radius:4px;font-size:10px;text-align:center;background:var(--hg);color:var(--ht)"></td>'
+      +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrTagSet','stCal',CAL,r.stCal||'Pendente',90)+'</td>'
+      +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrTagSet','classif',CLS,r.classif||'Novo',80)+'</td>'
+      +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrTagSet','stMon',MON,r.stMon||'Pendente',80)+'</td>'
+      +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrTagSet','stDtEl',SPN,r.stDtEl||'Pendente',80)+'</td>'
+      +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrTagSet','stDtPn',SPN,r.stDtPn||'Pendente',80)+'</td>'
+      +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrTagSet','stDtPr',SPN,r.stDtPr||'Pendente',80)+'</td>'
+      +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrTagSet','stInterl',SPN,r.stInterl||'Pendente',80)+'</td>'
+      +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrTagSet','stAter',SPN,r.stAter||'Pendente',80)+'</td>'
+      +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrTagSet','stLoop',SPN,r.stLoop||'Pendente',80)+'</td>'
       +'<td style="padding:4px 6px;text-align:center">'+_instrDelBtn(r.id,'instrTagDel')+'</td>'
       +'</tr>';
   }).join(''):null;
-  _instrHeader(discTabs,bc,'Tags de Instrumentos',kpis,
+  _instrHeader(discTabs,bc,'Tags de Instrumentos / Equipamentos',kpis,
     _instrFilterBar(_itSearch,'_itSearch','','instrTagAdd','instrTagDelAll'),
-    _instrTable(['TAG','TIPO','LOCALIZAÇÃO','ÁREA','CÓD. SUP.','CONDIÇÃO','CALIBRAÇÃO','RETIRADA','MONTAGEM','ATERRAMENTO','TIP.EL','TIP.PN','TIP.PR','LOOP','AÇÕES'],rows,'🏷️','Nenhuma tag cadastrada'));
+    _instrTable(['DISCIPLINA','DOC. RASTREABILIDADE','TAG','CÓD. SUPRIMENTOS','QTDE','CALIBRAÇÃO','CLASSIFICAÇÃO','ST. MONTAGEM','DT ELÉT.','DT PNEU.','DT PROC.','INTERLIGAÇÃO','ATERRAMENTO','LOOP TESTE','AÇÕES'],rows,'🏷️','Nenhuma tag cadastrada'));
 }
 async function instrTagSet(id,f,v){var r=instrTags.find(function(x){return x.id===id;});if(r){r[f]=v;await saveAll();}}
-async function instrTagAdd(){var t=prompt('Tag do instrumento:');if(!t||!t.trim())return;instrTags.push({id:_instrId('tag'),projId:currentProjId||null,tag:t.trim(),tipo:'Transmissor',loc:'',area:'',codSup:'',cond:'Novo',stCal:'Pendente',stRet:'Pendente',stMon:'Pendente',stAter:'Pendente',tipEl:'N/A',tipPn:'N/A',tipPr:'N/A',stLoop:'N/A'});await _instrSave();}
+async function instrTagAdd(){var t=prompt('Tag do instrumento/equipamento:');if(!t||!t.trim())return;
+  instrTags.push({id:_instrId('tag'),projId:currentProjId||null,disc:'Instrumentação',doc:'',tag:t.trim(),codSup:'',qtd:1,stCal:'Pendente',classif:'Novo',stMon:'Pendente',stDtEl:'Pendente',stDtPn:'Pendente',stDtPr:'Pendente',stInterl:'Pendente',stAter:'Pendente',stLoop:'Pendente'});
+  await _instrSave();}
 async function instrTagDel(id){if(!confirm('Excluir tag?'))return;instrTags=instrTags.filter(function(r){return r.id!==id;});await _instrSave();}
 async function instrTagDelAll(){var n=_instrProjFilter(instrTags).length;if(!n)return;if(!confirm('Excluir TODAS as '+n+' tags?'))return;if(currentProjId)instrTags=instrTags.filter(function(r){return r.projId!==currentProjId;});else instrTags=[];await _instrSave();}
 
 /* ══════════════ 2. LISTA DE CABOS ══════════════════════════════════════
-   Nº Lista · Tipo · Origem · Destino · Qtd Plan · Qtd Exec · Tag · Status DT
+   Rastreabilidade · Rev. · Disciplina · Tipo · Qtde · Origem/Destino · St.Lançamento · Loc
 ══════════════════════════════════════════════════════════════════════ */
 let _icSearch='';
 function renderInstrCabos(discTabs,bc){
   var list=_instrProjFilter(instrCabos);
   var filtered=list.filter(function(r){return !_icSearch||JSON.stringify(r).toLowerCase().includes(_icSearch.toLowerCase());});
   var total=list.length;
-  var qtdP=list.reduce(function(s,r){return s+(parseFloat(r.qtdPlan)||0);},0);
-  var qtdE=list.reduce(function(s,r){return s+(parseFloat(r.qtdExec)||0);},0);
-  var pct=qtdP>0?Math.round(qtdE/qtdP*100):0;
-  var pctClr=pct>=100?'#1a8c4e':pct>=70?'#c07000':'#0077b6';
+  var lancOk=list.filter(function(r){return r.stLanc==='Concluído';}).length;
   var kpis='<div class="sum-bar" style="margin:10px 16px 0;gap:8px">'
     +_instrKpi(total,'Cabos','var(--hb)')
-    +_instrKpi(qtdP.toLocaleString('pt-BR',{maximumFractionDigits:1})+' m','Qtd Planejada','var(--hb)')
-    +'<div class="sum-card"><div class="sum-val" style="color:'+pctClr+'">'+pct+'%</div><div class="sum-lbl">Executado</div><div class="kpi-bar" style="margin-top:4px"><div style="width:'+Math.min(pct,100)+'%;height:5px;border-radius:3px;background:'+pctClr+'"></div></div></div>'
+    +_instrKpiPct(lancOk,total,'Lançamento','#0077b6')
     +'</div>';
+  var DISC=['Instrumentação','Elétrica'];
+  var TIPO=['Par trançado','Multiplex','Fieldbus','HART','Energia','Controle','Pneumático','Outro'];
+  var LANC=['Pendente','Em Execução','Concluído'];
+  var LOC=['Campo','Sala de Controle','Subestação','Outro'];
   var rows=filtered.length?filtered.map(function(r){
-    var p=r.qtdPlan>0?Math.round((parseFloat(r.qtdExec)||0)/parseFloat(r.qtdPlan)*100):0;
-    var pc=p>=100?'#1a8c4e':p>=70?'#c07000':'#0077b6';
     return '<tr style="border-bottom:1px solid #f0f4fb">'
-      +'<td style="padding:5px 8px;font-size:11px;font-family:monospace">'+_instrInp(r.id,'instrCaboSet','nr',r.nr,100)+'</td>'
-      +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrCaboSet','tipo',INSTR_CAB_TIPO,r.tipo||'Elétrico',90)+'</td>'
-      +'<td style="padding:5px 8px;font-size:10px">'+_instrInp(r.id,'instrCaboSet','origem',r.origem,90)+'</td>'
-      +'<td style="padding:5px 8px;font-size:10px">'+_instrInp(r.id,'instrCaboSet','destino',r.destino,90)+'</td>'
-      +'<td style="padding:5px 8px;font-size:10px">'+_instrInp(r.id,'instrCaboSet','codSup',r.codSup,80)+'</td>'
-      +'<td style="padding:5px 8px;text-align:right;font-size:11px;font-weight:600">'+(r.qtdPlan!=null?parseFloat(r.qtdPlan).toLocaleString('pt-BR',{maximumFractionDigits:1}):'—')+'</td>'
-      +'<td style="padding:4px 6px"><div style="display:flex;align-items:center;gap:4px">'
-        +'<input type="number" min="0" step="0.1" value="'+(r.qtdExec||'')+'" onclick="event.stopPropagation()" onchange="instrCaboSet(\''+r.id+'\',\'qtdExec\',this.value)" style="width:65px;padding:2px 5px;border:0.5px solid var(--hbr);border-radius:5px;font-size:10px;text-align:right;background:var(--hg);color:var(--ht)">'
-        +'<div style="width:32px;height:5px;background:#e8eef7;border-radius:3px;overflow:hidden"><div style="height:100%;width:'+Math.min(p,100)+'%;background:'+pc+'"></div></div>'
-        +'<span style="font-size:9px;font-weight:700;color:'+pc+'">'+p+'%</span>'
-      +'</div></td>'
-      +'<td style="padding:5px 8px;font-size:10px">'+_instrInp(r.id,'instrCaboSet','tag',r.tag,80)+'</td>'
-      +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrCaboSet','stDT',INSTR_ST3,r.stDT||'Pendente',90)+'</td>'
+      +'<td style="padding:4px 7px;font-size:11px;font-family:monospace">'+_instrInp(r.id,'instrCaboSet','doc',r.doc,120)+'</td>'
+      +'<td style="padding:4px 7px;font-size:10px">'+_instrInp(r.id,'instrCaboSet','rev',r.rev,40)+'</td>'
+      +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrCaboSet','disc',DISC,r.disc||'Instrumentação',100)+'</td>'
+      +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrCaboSet','tipo',TIPO,r.tipo||'Par trançado',110)+'</td>'
+      +'<td style="padding:4px 5px;text-align:center"><input type="number" min="0" step="0.1" value="'+(r.qtd||'')+'" onclick="event.stopPropagation()" onchange="instrCaboSet(\''+r.id+'\',\'qtd\',this.value)" style="width:60px;padding:2px;border:0.5px solid var(--hbr);border-radius:4px;font-size:10px;text-align:center;background:var(--hg);color:var(--ht)"></td>'
+      +'<td style="padding:4px 7px;font-size:10px">'+_instrInp(r.id,'instrCaboSet','origem',r.origem,100)+'</td>'
+      +'<td style="padding:4px 7px;font-size:10px">'+_instrInp(r.id,'instrCaboSet','destino',r.destino,100)+'</td>'
+      +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrCaboSet','stLanc',LANC,r.stLanc||'Pendente',95)+'</td>'
+      +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrCaboSet','loc',LOC,r.loc||'Campo',100)+'</td>'
       +'<td style="padding:4px 6px;text-align:center">'+_instrDelBtn(r.id,'instrCaboDel')+'</td>'
       +'</tr>';
   }).join(''):null;
   _instrHeader(discTabs,bc,'Lista de Cabos',kpis,
     _instrFilterBar(_icSearch,'_icSearch','','instrCaboAdd','instrCaboDelAll'),
-    _instrTable(['Nº LISTA','TIPO','ORIGEM','DESTINO','CÓD. SUP.','QTD PLAN.(m)','QTD EXEC.(m)','TAG','STATUS DT','AÇÕES'],rows,'🔌','Nenhum cabo cadastrado'));
+    _instrTable(['RASTREABILIDADE','REV.','DISCIPLINA','TIPO DE CABO','QTDE','ORIGEM (DE)','DESTINO (PARA)','ST. LANÇAMENTO','LOCALIZAÇÃO','AÇÕES'],rows,'🔌','Nenhum cabo cadastrado'));
 }
 async function instrCaboSet(id,f,v){var r=instrCabos.find(function(x){return x.id===id;});if(r){r[f]=v;await saveAll();}}
-async function instrCaboAdd(){var nr=prompt('Nº da lista de cabos:');if(!nr||!nr.trim())return;instrCabos.push({id:_instrId('cab'),projId:currentProjId||null,nr:nr.trim(),tipo:'Elétrico',origem:'',destino:'',codSup:'',qtdPlan:null,qtdExec:null,tag:'',stDT:'Pendente'});await _instrSave();}
+async function instrCaboAdd(){var d=prompt('Número de rastreabilidade:');if(!d||!d.trim())return;instrCabos.push({id:_instrId('cab'),projId:currentProjId||null,doc:d.trim(),rev:'0',disc:'Instrumentação',tipo:'Par trançado',qtd:null,origem:'',destino:'',stLanc:'Pendente',loc:'Campo'});await _instrSave();}
 async function instrCaboDel(id){if(!confirm('Excluir cabo?'))return;instrCabos=instrCabos.filter(function(r){return r.id!==id;});await _instrSave();}
 async function instrCaboDelAll(){var n=_instrProjFilter(instrCabos).length;if(!n)return;if(!confirm('Excluir TODOS os '+n+' cabos?'))return;if(currentProjId)instrCabos=instrCabos.filter(function(r){return r.projId!==currentProjId;});else instrCabos=[];await _instrSave();}
 
 /* ══════════════ 3. SUPORTES ═════════════════════════════════════════════
-   Rastreabilidade · Qtd · Status: Fab · Pintura · Montagem
+   Rastreabilidade · Disciplina · St. Fabricação · St. Pintura · St. Montagem
 ══════════════════════════════════════════════════════════════════════ */
 let _isSearch='';
 function renderInstrSups(discTabs,bc){
   var list=_instrProjFilter(instrSups);
-  var filtered=list.filter(function(r){return !_isSearch||String(r.doc||'').toLowerCase().includes(_isSearch.toLowerCase());});
+  var filtered=list.filter(function(r){return !_isSearch||JSON.stringify(r).toLowerCase().includes(_isSearch.toLowerCase());});
   var total=list.length;
-  var fabOk=list.filter(function(r){return r.fab==='Fabricado'||r.fab==='Montado';}).length;
-  var monOk=list.filter(function(r){return r.fab==='Montado';}).length;
+  var fabOk=list.filter(function(r){return r.stFab==='Fabricado';}).length;
+  var monOk=list.filter(function(r){return r.stMon==='Montado';}).length;
   var kpis='<div class="sum-bar" style="margin:10px 16px 0;gap:8px">'
     +_instrKpi(total,'Suportes','var(--hb)')
     +_instrKpiPct(fabOk,total,'Fabricação','#0B3D91')
     +_instrKpiPct(monOk,total,'Montagem','#0077b6')
     +'</div>';
+  var DISC=['Instrumentação','Elétrica'];
+  var FAB=['Pendente','Em Fabricação','Fabricado'];
+  var PINT=['Pendente','Pintado','N/A'];
+  var MON=['Pendente','Em Montagem','Montado'];
   var rows=filtered.length?filtered.map(function(r){
     return '<tr style="border-bottom:1px solid #f0f4fb">'
-      +'<td style="padding:5px 8px;font-size:11px;font-family:monospace">'+_instrInp(r.id,'instrSupSet','doc',r.doc,140)+'</td>'
-      +'<td style="padding:4px 6px;text-align:center"><input type="number" min="0" value="'+(r.qtd||1)+'" onclick="event.stopPropagation()" onchange="instrSupSet(\''+r.id+'\',\'qtd\',this.value)" style="width:60px;padding:2px 5px;border:0.5px solid var(--hbr);border-radius:5px;font-size:10px;text-align:center;background:var(--hg);color:var(--ht)"></td>'
-      +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrSupSet','fab',INSTR_SUP_ST,r.fab||'Pendente',110)+'</td>'
-      +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrSupSet','pintura',['Pendente','Pintado','N/A'],r.pintura||'Pendente',90)+'</td>'
+      +'<td style="padding:4px 7px;font-size:11px;font-family:monospace">'+_instrInp(r.id,'instrSupSet','doc',r.doc,150)+'</td>'
+      +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrSupSet','disc',DISC,r.disc||'Instrumentação',100)+'</td>'
+      +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrSupSet','stFab',FAB,r.stFab||'Pendente',110)+'</td>'
+      +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrSupSet','stPint',PINT,r.stPint||'Pendente',90)+'</td>'
+      +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrSupSet','stMon',MON,r.stMon||'Pendente',110)+'</td>'
       +'<td style="padding:4px 6px;text-align:center">'+_instrDelBtn(r.id,'instrSupDel')+'</td>'
       +'</tr>';
   }).join(''):null;
   _instrHeader(discTabs,bc,'Suportes',kpis,
     _instrFilterBar(_isSearch,'_isSearch','','instrSupAdd','instrSupDelAll'),
-    _instrTable(['RASTREABILIDADE','QTD','STATUS FABRICAÇÃO','STATUS PINTURA','AÇÕES'],rows,'🔧','Nenhum suporte cadastrado'));
+    _instrTable(['RASTREABILIDADE','DISCIPLINA','ST. FABRICAÇÃO','ST. PINTURA','ST. MONTAGEM','AÇÕES'],rows,'🔧','Nenhum suporte cadastrado'));
 }
 async function instrSupSet(id,f,v){var r=instrSups.find(function(x){return x.id===id;});if(r){r[f]=v;await saveAll();}}
-async function instrSupAdd(){var d=prompt('Número do documento (rastreabilidade):');if(!d||!d.trim())return;instrSups.push({id:_instrId('sup'),projId:currentProjId||null,doc:d.trim(),qtd:1,fab:'Pendente',pintura:'Pendente'});await _instrSave();}
+async function instrSupAdd(){var d=prompt('Número de rastreabilidade:');if(!d||!d.trim())return;instrSups.push({id:_instrId('sup'),projId:currentProjId||null,doc:d.trim(),disc:'Instrumentação',stFab:'Pendente',stPint:'Pendente',stMon:'Pendente'});await _instrSave();}
 async function instrSupDel(id){if(!confirm('Excluir suporte?'))return;instrSups=instrSups.filter(function(r){return r.id!==id;});await _instrSave();}
 async function instrSupDelAll(){var n=_instrProjFilter(instrSups).length;if(!n)return;if(!confirm('Excluir TODOS os '+n+' suportes?'))return;if(currentProjId)instrSups=instrSups.filter(function(r){return r.projId!==currentProjId;});else instrSups=[];await _instrSave();}
 
@@ -3561,49 +3575,50 @@ async function instrInterlDelAll(){var n=_instrProjFilter(instrInterl).length;if
 
 /* ══════════════ 6. ENCAMINHAMENTO ══════════════════════════════════════
    Rastreabilidade · Tipo · Diâm · Cód. Sup. · Status Sup. · Qtd Proj · Qtd Mont
+let _ieSearch='';
+/* ══════════════ 6. ENCAMINHAMENTO ══════════════════════════════════════
+   Rastreabilidade · Disciplina · Tipo · Diâm · Qtde · Status Montagem
+══════════════════════════════════════════════════════════════════════ */
+/* ══════════════ 6. ENCAMINHAMENTO ══════════════════════════════════════
+   Rastreabilidade · Disciplina · Tipo (Eletroduto/Eletrocalha/Leito) · Diâm · Qtde · St. Montagem
 ══════════════════════════════════════════════════════════════════════ */
 let _ieSearch='';
 function renderInstrEncam(discTabs,bc){
   var list=_instrProjFilter(instrEncam);
   var filtered=list.filter(function(r){return !_ieSearch||JSON.stringify(r).toLowerCase().includes(_ieSearch.toLowerCase());});
   var total=list.length;
-  var qtdP=list.reduce(function(s,r){return s+(parseFloat(r.qtdProj)||0);},0);
-  var qtdM=list.reduce(function(s,r){return s+(parseFloat(r.qtdMont)||0);},0);
-  var pct=qtdP>0?Math.round(qtdM/qtdP*100):0;
+  var monOk=list.filter(function(r){return r.stMon==='Montado';}).length;
   var kpis='<div class="sum-bar" style="margin:10px 16px 0;gap:8px">'
     +_instrKpi(total,'Itens','var(--hb)')
-    +_instrKpi(qtdP.toLocaleString('pt-BR',{maximumFractionDigits:1}),'Qtd Projetada','var(--hb)')
-    +'<div class="sum-card"><div class="sum-val" style="color:'+(pct>=100?'#1a8c4e':pct>=70?'#c07000':'#0077b6')+'">'+pct+'%</div><div class="sum-lbl">Montado</div><div class="kpi-bar" style="margin-top:4px"><div style="width:'+Math.min(pct,100)+'%;height:5px;border-radius:3px;background:'+(pct>=100?'#1a8c4e':pct>=70?'#c07000':'#0077b6')+'"></div></div></div>'
+    +_instrKpiPct(monOk,total,'Montagem','#0077b6')
     +'</div>';
+  var DISC=['Instrumentação','Elétrica'];
+  var TIPO=['Eletroduto','Eletrocalha','Leito','Outro'];
+  var MON=['Pendente','Em Montagem','Montado'];
   var rows=filtered.length?filtered.map(function(r){
-    var p=r.qtdProj>0?Math.round((parseFloat(r.qtdMont)||0)/parseFloat(r.qtdProj)*100):0;
-    var pc=p>=100?'#1a8c4e':p>=70?'#c07000':'#0077b6';
     return '<tr style="border-bottom:1px solid #f0f4fb">'
-      +'<td style="padding:5px 8px;font-size:11px;font-family:monospace">'+_instrInp(r.id,'instrEncamSet','doc',r.doc,130)+'</td>'
-      +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrEncamSet','tipo',INSTR_ENCAM_TIPO,r.tipo||'Eletrocalha',110)+'</td>'
-      +'<td style="padding:5px 8px;font-size:10px">'+_instrInp(r.id,'instrEncamSet','diam',r.diam,60)+'</td>'
-      +'<td style="padding:5px 8px;font-size:10px">'+_instrInp(r.id,'instrEncamSet','codSup',r.codSup,90)+'</td>'
-      +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrEncamSet','stSup',['Pendente','Em Compra','Comprado','N/A'],r.stSup||'Pendente',95)+'</td>'
-      +'<td style="padding:5px 8px;text-align:center"><input type="number" min="0" step="0.1" value="'+(r.qtdProj||'')+'" onclick="event.stopPropagation()" onchange="instrEncamSet(\''+r.id+'\',\'qtdProj\',this.value)" style="width:65px;padding:2px 5px;border:0.5px solid var(--hbr);border-radius:5px;font-size:10px;text-align:center;background:var(--hg);color:var(--ht)"></td>'
-      +'<td style="padding:5px 8px"><div style="display:flex;align-items:center;gap:4px">'
-        +'<input type="number" min="0" step="0.1" value="'+(r.qtdMont||'')+'" onclick="event.stopPropagation()" onchange="instrEncamSet(\''+r.id+'\',\'qtdMont\',this.value)" style="width:65px;padding:2px 5px;border:0.5px solid var(--hbr);border-radius:5px;font-size:10px;text-align:center;background:var(--hg);color:var(--ht)">'
-        +'<div style="width:32px;height:5px;background:#e8eef7;border-radius:3px;overflow:hidden"><div style="height:100%;width:'+Math.min(p,100)+'%;background:'+pc+'"></div></div>'
-        +'<span style="font-size:9px;font-weight:700;color:'+pc+'">'+p+'%</span>'
-      +'</div></td>'
+      +'<td style="padding:4px 7px;font-size:11px;font-family:monospace">'+_instrInp(r.id,'instrEncamSet','doc',r.doc,150)+'</td>'
+      +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrEncamSet','disc',DISC,r.disc||'Instrumentação',100)+'</td>'
+      +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrEncamSet','tipo',TIPO,r.tipo||'Eletroduto',110)+'</td>'
+      +'<td style="padding:4px 7px;font-size:10px">'+_instrInp(r.id,'instrEncamSet','diam',r.diam,70)+'</td>'
+      +'<td style="padding:4px 5px;text-align:center"><input type="number" min="0" step="0.1" value="'+(r.qtd||'')+'" onclick="event.stopPropagation()" onchange="instrEncamSet(\''+r.id+'\',\'qtd\',this.value)" style="width:65px;padding:2px;border:0.5px solid var(--hbr);border-radius:4px;font-size:10px;text-align:center;background:var(--hg);color:var(--ht)"></td>'
+      +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrEncamSet','stMon',MON,r.stMon||'Pendente',110)+'</td>'
       +'<td style="padding:4px 6px;text-align:center">'+_instrDelBtn(r.id,'instrEncamDel')+'</td>'
       +'</tr>';
   }).join(''):null;
   _instrHeader(discTabs,bc,'Encaminhamento',kpis,
     _instrFilterBar(_ieSearch,'_ieSearch','','instrEncamAdd','instrEncamDelAll'),
-    _instrTable(['RASTREABILIDADE','TIPO','DIÂM.','CÓD. SUP.','STATUS SUP.','QTD PROJ.','QTD MONT.','AÇÕES'],rows,'🛤️','Nenhum encaminhamento cadastrado'));
+    _instrTable(['RASTREABILIDADE','DISCIPLINA','TIPO DE ENCAMINHAMENTO','DIÂMETRO','QTDE','ST. MONTAGEM','AÇÕES'],rows,'🛤️','Nenhum encaminhamento cadastrado'));
 }
 async function instrEncamSet(id,f,v){var r=instrEncam.find(function(x){return x.id===id;});if(r){r[f]=v;await saveAll();}}
-async function instrEncamAdd(){var d=prompt('Número do documento:');if(!d||!d.trim())return;instrEncam.push({id:_instrId('enc'),projId:currentProjId||null,doc:d.trim(),tipo:'Eletrocalha',diam:'',codSup:'',stSup:'Pendente',qtdProj:null,qtdMont:null});await _instrSave();}
+async function instrEncamAdd(){var d=prompt('Número de rastreabilidade:');if(!d||!d.trim())return;
+  instrEncam.push({id:_instrId('enc'),projId:currentProjId||null,doc:d.trim(),disc:'Instrumentação',tipo:'Eletroduto',diam:'',qtd:null,stMon:'Pendente'});
+  await _instrSave();}
 async function instrEncamDel(id){if(!confirm('Excluir item?'))return;instrEncam=instrEncam.filter(function(r){return r.id!==id;});await _instrSave();}
 async function instrEncamDelAll(){var n=_instrProjFilter(instrEncam).length;if(!n)return;if(!confirm('Excluir TODOS os '+n+' itens?'))return;if(currentProjId)instrEncam=instrEncam.filter(function(r){return r.projId!==currentProjId;});else instrEncam=[];await _instrSave();}
 
 /* ══════════════ 7. PAINÉIS ═════════════════════════════════════════════
-   Tag Painel · Rastreabilidade · Localização · Qtd · Status: Sup · Montagem · Energização
+   Tag Painel · Rastreabilidade · Localização · Qtd · Status Sup/Montagem/Energização
 ══════════════════════════════════════════════════════════════════════ */
 let _ipSearch='';
 function renderInstrPaineis(discTabs,bc){
