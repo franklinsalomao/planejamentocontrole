@@ -3239,7 +3239,7 @@ function renderInfraView(discTabs,bc){
   var tbl=filtered.length
     ?'<div style="margin:10px 16px 16px;overflow-x:auto"><table style="width:100%;border-collapse:collapse;min-width:900px">'
       +'<thead><tr style="background:linear-gradient(90deg,#071d4a,#0B3D91);color:#fff">'
-      +ths2.map(function(h){return '<th style="padding:8px 10px;font-size:9px;letter-spacing:.4px;white-space:nowrap;text-align:center">'+h+'</th>';}).join('')
+      +ths2.map(function(h){return '<th style="padding:9px 10px;font-size:9.5px;font-weight:800;letter-spacing:.5px;white-space:nowrap;text-align:center">'+h+'</th>';}).join('')
       +'</tr></thead><tbody>'+rows+'</tbody></table></div>'
     :'<div class="ph-panel"><div style="font-size:32px">🏗️</div><strong>Nenhum item cadastrado</strong><span style="font-size:11px">Clique em "+ Item" para adicionar.</span></div>';
 
@@ -3361,6 +3361,40 @@ function _instrTable(headers, rows, emptyIcon, emptyMsg){
     +_instrTH(headers)+'<tbody>'+rows+'</tbody></table></div>';
 }
 
+
+/* ─── Status Suprimentos + Data de Chegada condicional ─────────────────
+   Em Estoque → data N/A (cinza)   ·   Em Compra → campo de data editável
+   Pendente   → data desabilitada
+──────────────────────────────────────────────────────────────────────── */
+const INSTR_SUP_OPTS = ['Em Estoque','Pendente','Em Compra'];
+
+function _instrSupCells(id, setFn, stSup, dtChegada) {
+  var v = stSup || 'Pendente';
+  var bg = v==='Em Estoque' ? '#c8f5d0' : v==='Em Compra' ? '#fff3cd' : 'var(--hg)';
+  var sel = '<select onchange="'+setFn+'(\''+id+'\',\'stSup\',this.value)" '
+    +'style="font-size:10px;font-weight:700;padding:3px 5px;border-radius:5px;border:0.5px solid var(--hbr);background:'+bg+';color:#1a3a5c;max-width:105px">'
+    + INSTR_SUP_OPTS.map(function(o){return '<option value="'+o+'" '+(v===o?'selected':'')+'>'+o+'</option>';}).join('')
+    + '</select>';
+
+  var dtCell;
+  if (v === 'Em Compra') {
+    var hoje = new Date().toISOString().slice(0,10);
+    var atrasado = dtChegada && dtChegada < hoje;
+    dtCell = '<input type="date" value="'+(dtChegada||'')+'" onclick="event.stopPropagation()" '
+      +'onchange="'+setFn+'(\''+id+'\',\'dtChegada\',this.value)" '
+      +'style="padding:3px 5px;border:0.5px solid '+(atrasado?'#e57373':'var(--hbr)')+';border-radius:5px;font-size:10px;font-weight:600;'
+      +'background:'+(atrasado?'#fdecea':'var(--hg)')+';color:'+(atrasado?'#c62828':'var(--ht)')+'">'
+      + (atrasado ? '<div style="font-size:8px;font-weight:700;color:#c62828;margin-top:1px">⚠️ ATRASADO</div>' : '');
+  } else if (v === 'Em Estoque') {
+    dtCell = '<span style="font-size:10px;font-weight:700;color:#8a94a6;background:#f5f5f5;padding:3px 10px;border-radius:5px">N/A</span>';
+  } else {
+    dtCell = '<span style="font-size:10px;color:#b0b8c4">—</span>';
+  }
+
+  return '<td style="padding:4px 6px;text-align:center">'+sel+'</td>'
+       + '<td style="padding:4px 6px;text-align:center">'+dtCell+'</td>';
+}
+
 /* ══════════════ 1. TAGS DE INSTRUMENTOS ════════════════════════════════
    Tag · Tipo · Localização · Área · Cód. Suprimentos · Condição
    Status: Calibração · Retirada · Montagem · Aterramento
@@ -3400,7 +3434,7 @@ function renderInstrTags(discTabs,bc){
       +'<td style="padding:4px 7px;font-weight:700;font-size:11px;font-family:monospace">'+_instrInp(r.id,'instrTagSet','tag',r.tag,100)+'</td>'
       +'<td style="padding:4px 7px;font-size:10px">'+_instrInp(r.id,'instrTagSet','codSup',r.codSup,90)+'</td>'
       +'<td style="padding:4px 5px;text-align:center"><input type="number" min="0" value="'+(r.qtd||1)+'" onclick="event.stopPropagation()" onchange="instrTagSet(\''+r.id+'\',\'qtd\',this.value)" style="width:50px;padding:2px;border:0.5px solid var(--hbr);border-radius:4px;font-size:10px;text-align:center;background:var(--hg);color:var(--ht)"></td>'
-      +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrTagSet','stSup',['Em Estoque','Pendente','Data de Chegada'],r.stSup||'Pendente',100)+'</td>'
+      +_instrSupCells(r.id,'instrTagSet',r.stSup,r.dtChegada)
       +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrTagSet','stCal',CAL,r.stCal||'Pendente',90)+'</td>'
       +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrTagSet','classif',CLS,r.classif||'Novo',80)+'</td>'
       +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrTagSet','stMon',MON,r.stMon||'Pendente',80)+'</td>'
@@ -3415,11 +3449,11 @@ function renderInstrTags(discTabs,bc){
   }).join(''):null;
   _instrHeader(discTabs,bc,'Tags de Instrumentos / Equipamentos',kpis,
     _instrFilterBar(_itSearch,'_itSearch','<button onclick="instrTagImportXLSX()" style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid #a5d6a7;background:rgba(46,125,50,.1);color:#2e7d32;cursor:pointer">📥 Importar XLSX</button><button onclick="instrExportPDF(\'tags\')" style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid var(--hbr);background:var(--hg);color:var(--ht);cursor:pointer">📄 Exportar PDF</button>','instrTagAdd','instrTagDelAll'),
-    _instrTable(['DISCIPLINA','DOC. RASTREABILIDADE','TAG','CÓD. SUPRIMENTOS','QTDE','ST. SUPRIMENTOS','CALIBRAÇÃO','CLASSIFICAÇÃO','ST. MONTAGEM','DT ELÉT.','DT PNEU.','DT PROC.','INTERLIGAÇÃO','ATERRAMENTO','LOOP TESTE','AÇÕES'],rows,'🏷️','Nenhuma tag cadastrada'));
+    _instrTable(['DISCIPLINA','DOC. RASTREABILIDADE','TAG','CÓD. SUPRIMENTOS','QTDE','ST. SUPRIMENTOS','DATA CHEGADA','CALIBRAÇÃO','CLASSIFICAÇÃO','ST. MONTAGEM','DT ELÉT.','DT PNEU.','DT PROC.','INTERLIGAÇÃO','ATERRAMENTO','LOOP TESTE','AÇÕES'],rows,'🏷️','Nenhuma tag cadastrada'));
 }
 async function instrTagSet(id,f,v){var r=instrTags.find(function(x){return x.id===id;});if(r){r[f]=v;await saveAll();}}
 async function instrTagAdd(){var t=prompt('Tag do instrumento/equipamento:');if(!t||!t.trim())return;
-  instrTags.push({id:_instrId('tag'),projId:currentProjId||null,disc:'Instrumentação',doc:'',tag:t.trim(),codSup:'',qtd:1,stCal:'Pendente',classif:'Novo',stMon:'Pendente',stDtEl:'Pendente',stDtPn:'Pendente',stDtPr:'Pendente',stInterl:'Pendente',stAter:'Pendente',stLoop:'Pendente',stSup:'Pendente'});
+  instrTags.push({id:_instrId('tag'),projId:currentProjId||null,disc:'Instrumentação',doc:'',tag:t.trim(),codSup:'',qtd:1,stCal:'Pendente',classif:'Novo',stMon:'Pendente',stDtEl:'Pendente',stDtPn:'Pendente',stDtPr:'Pendente',stInterl:'Pendente',stAter:'Pendente',stLoop:'Pendente',stSup:'Pendente',dtChegada:''});
   await _instrSave();}
 async function instrTagDel(id){if(!confirm('Excluir tag?'))return;instrTags=instrTags.filter(function(r){return r.id!==id;});await _instrSave();}
 async function instrTagDelAll(){var n=_instrProjFilter(instrTags).length;if(!n)return;if(!confirm('Excluir TODAS as '+n+' tags?'))return;if(currentProjId)instrTags=instrTags.filter(function(r){return r.projId!==currentProjId;});else instrTags=[];await _instrSave();}
@@ -3448,7 +3482,7 @@ function renderInstrCabos(discTabs,bc){
       +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrCaboSet','disc',DISC,r.disc||'Instrumentação',100)+'</td>'
       +'<td style="padding:4px 7px;font-size:10px;font-family:monospace">'+_instrInp(r.id,'instrCaboSet','secao',r.secao,120)+'</td>'
       +'<td style="padding:4px 5px;text-align:center"><input type="number" min="0" step="0.1" value="'+(r.qtd||'')+'" onclick="event.stopPropagation()" onchange="instrCaboSet(\''+r.id+'\',\'qtd\',this.value)" style="width:60px;padding:2px;border:0.5px solid var(--hbr);border-radius:4px;font-size:10px;text-align:center;background:var(--hg);color:var(--ht)"></td>'
-      +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrCaboSet','stSup',['Em Estoque','Pendente','Data de Chegada'],r.stSup||'Pendente',100)+'</td>'
+      +_instrSupCells(r.id,'instrCaboSet',r.stSup,r.dtChegada)
       +'<td style="padding:4px 7px;font-size:10px">'+_instrInp(r.id,'instrCaboSet','codSup',r.codSup,90)+'</td>'
       +'<td style="padding:4px 7px;font-size:10px">'+_instrInp(r.id,'instrCaboSet','origem',r.origem,100)+'</td>'
       +'<td style="padding:4px 7px;font-size:10px">'+_instrInp(r.id,'instrCaboSet','destino',r.destino,110)+'</td>'
@@ -3461,10 +3495,10 @@ function renderInstrCabos(discTabs,bc){
   }).join(''):null;
   _instrHeader(discTabs,bc,'Lista de Cabos',kpis,
     _instrFilterBar(_icSearch,'_icSearch','<button onclick="instrCaboImportXLSX()" style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid #a5d6a7;background:rgba(46,125,50,.1);color:#2e7d32;cursor:pointer">📥 Importar XLSX</button><button onclick="instrExportPDF(\'cabos\')" style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid var(--hbr);background:var(--hg);color:var(--ht);cursor:pointer">📄 Exportar PDF</button>','instrCaboAdd','instrCaboDelAll'),
-    _instrTable(['RASTREABILIDADE','REV.','DISCIPLINA','SEÇÃO DO CABO','QTDE','ST. SUPRIMENTOS','CÓD. SUPRIMENTOS','ORIGEM (DE)','DESTINO (PARA)','STATUS LANÇAMENTO','DATA LANÇAMENTO','QTDE REAL LANÇADO','LOCALIZAÇÃO','AÇÕES'],rows,'🔌','Nenhum cabo cadastrado'));
+    _instrTable(['RASTREABILIDADE','REV.','DISCIPLINA','SEÇÃO DO CABO','QTDE','ST. SUPRIMENTOS','DATA CHEGADA','CÓD. SUPRIMENTOS','ORIGEM (DE)','DESTINO (PARA)','STATUS LANÇAMENTO','DATA LANÇAMENTO','QTDE REAL LANÇADO','LOCALIZAÇÃO','AÇÕES'],rows,'🔌','Nenhum cabo cadastrado'));
 }
 async function instrCaboSet(id,f,v){var r=instrCabos.find(function(x){return x.id===id;});if(r){r[f]=v;await saveAll();}}
-async function instrCaboAdd(){var d=prompt('Número de rastreabilidade:');if(!d||!d.trim())return;instrCabos.push({id:_instrId('cab'),projId:currentProjId||null,doc:d.trim(),rev:'0',disc:'Instrumentação',secao:'',qtd:null,stSup:'Pendente',codSup:'',origem:'',destino:'',stLanc2:'Pendente',dtLanc:'',qtdReal:null,loc:'Campo'});await _instrSave();}
+async function instrCaboAdd(){var d=prompt('Número de rastreabilidade:');if(!d||!d.trim())return;instrCabos.push({id:_instrId('cab'),projId:currentProjId||null,doc:d.trim(),rev:'0',disc:'Instrumentação',secao:'',qtd:null,stSup:'Pendente',dtChegada:'',codSup:'',origem:'',destino:'',stLanc2:'Pendente',dtLanc:'',qtdReal:null,loc:'Campo'});await _instrSave();}
 async function instrCaboDel(id){if(!confirm('Excluir cabo?'))return;instrCabos=instrCabos.filter(function(r){return r.id!==id;});await _instrSave();}
 async function instrCaboDelAll(){var n=_instrProjFilter(instrCabos).length;if(!n)return;if(!confirm('Excluir TODOS os '+n+' cabos?'))return;if(currentProjId)instrCabos=instrCabos.filter(function(r){return r.projId!==currentProjId;});else instrCabos=[];await _instrSave();}
 
@@ -3504,7 +3538,7 @@ function renderInstrSups(discTabs,bc){
     _instrTable(['RASTREABILIDADE','DISCIPLINA','INSTRUMENTO','TIPO DE SUPORTE','ST. FABRICAÇÃO','ST. PINTURA','ST. MONTAGEM','AÇÕES'],rows,'🔧','Nenhum suporte cadastrado'));
 }
 async function instrSupSet(id,f,v){var r=instrSups.find(function(x){return x.id===id;});if(r){r[f]=v;await saveAll();}}
-async function instrSupAdd(){var d=prompt('Número de rastreabilidade:');if(!d||!d.trim())return;instrSups.push({id:_instrId('sup'),projId:currentProjId||null,doc:d.trim(),disc:'Instrumentação',instrumento:'',tipoSup:'',stFab:'Pendente',stPint:'Pendente',stMon:'Pendente',stSup:'Pendente'});await _instrSave();}
+async function instrSupAdd(){var d=prompt('Número de rastreabilidade:');if(!d||!d.trim())return;instrSups.push({id:_instrId('sup'),projId:currentProjId||null,doc:d.trim(),disc:'Instrumentação',instrumento:'',tipoSup:'',stFab:'Pendente',stPint:'Pendente',stMon:'Pendente',stSup:'Pendente',dtChegada:''});await _instrSave();}
 async function instrSupDel(id){if(!confirm('Excluir suporte?'))return;instrSups=instrSups.filter(function(r){return r.id!==id;});await _instrSave();}
 async function instrSupDelAll(){var n=_instrProjFilter(instrSups).length;if(!n)return;if(!confirm('Excluir TODOS os '+n+' suportes?'))return;if(currentProjId)instrSups=instrSups.filter(function(r){return r.projId!==currentProjId;});else instrSups=[];await _instrSave();}
 
@@ -3606,13 +3640,14 @@ function renderInstrEncam(discTabs,bc){
       +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrEncamSet','tipo',TIPO,r.tipo||'Eletroduto',110)+'</td>'
       +'<td style="padding:4px 7px;font-size:10px">'+_instrInp(r.id,'instrEncamSet','diam',r.diam,70)+'</td>'
       +'<td style="padding:4px 5px;text-align:center"><input type="number" min="0" step="0.1" value="'+(r.qtd||'')+'" onclick="event.stopPropagation()" onchange="instrEncamSet(\''+r.id+'\',\'qtd\',this.value)" style="width:65px;padding:2px;border:0.5px solid var(--hbr);border-radius:4px;font-size:10px;text-align:center;background:var(--hg);color:var(--ht)"></td>'
+      +_instrSupCells(r.id,'instrEncamSet',r.stSup,r.dtChegada)
       +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrEncamSet','stMon',MON,r.stMon||'Pendente',110)+'</td>'
       +'<td style="padding:4px 6px;text-align:center">'+_instrDelBtn(r.id,'instrEncamDel')+'</td>'
       +'</tr>';
   }).join(''):null;
   _instrHeader(discTabs,bc,'Encaminhamento',kpis,
     _instrFilterBar(_ieSearch,'_ieSearch','<button onclick="instrExportPDF(\'encam\')" style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid var(--hbr);background:var(--hg);color:var(--ht);cursor:pointer;display:flex;align-items:center;gap:4px">📄 Exportar PDF</button>','instrEncamAdd','instrEncamDelAll'),
-    _instrTable(['RASTREABILIDADE','DISCIPLINA','TIPO DE ENCAMINHAMENTO','DIÂMETRO','QTDE','ST. SUPRIMENTOS','ST. MONTAGEM','AÇÕES'],rows,'🛤️','Nenhum encaminhamento cadastrado'));
+    _instrTable(['RASTREABILIDADE','DISCIPLINA','TIPO DE ENCAMINHAMENTO','DIÂMETRO','QTDE','ST. SUPRIMENTOS','DATA CHEGADA','ST. MONTAGEM','AÇÕES'],rows,'🛤️','Nenhum encaminhamento cadastrado'));
 }
 async function instrEncamSet(id,f,v){var r=instrEncam.find(function(x){return x.id===id;});if(r){r[f]=v;await saveAll();}}
 async function instrEncamAdd(){var d=prompt('Número de rastreabilidade:');if(!d||!d.trim())return;
@@ -3668,24 +3703,24 @@ function instrExportPDF(tipo) {
 
   if (tipo === 'tags') {
     titulo = 'Tags de Instrumentos / Equipamentos';
-    headers = ['Disciplina','Doc. Rastreabilidade','Tag','Cód. Suprimentos','Qtde','Calibração','Classificação','St. Montagem','DT Elét.','DT Pneu.','DT Proc.','Interligação','Aterramento','Loop Teste','St. Suprimentos'];
+    headers = ['Disciplina','Doc. Rastreabilidade','Tag','Cód. Suprimentos','Qtde','Calibração','Classificação','St. Montagem','DT Elét.','DT Pneu.','DT Proc.','Interligação','Aterramento','Loop Teste','St. Suprimentos','Data Chegada'];
     var list = _instrProjFilter(instrTags);
-    rows = list.map(function(r){return [r.disc||'',r.doc||'',r.tag||'',r.codSup||'',r.qtd||'',r.stCal||'',r.classif||'',r.stMon||'',r.stDtEl||'',r.stDtPn||'',r.stDtPr||'',r.stInterl||'',r.stAter||'',r.stLoop||'',r.stSup||''];});
+    rows = list.map(function(r){return [r.disc||'',r.doc||'',r.tag||'',r.codSup||'',r.qtd||'',r.stCal||'',r.classif||'',r.stMon||'',r.stDtEl||'',r.stDtPn||'',r.stDtPr||'',r.stInterl||'',r.stAter||'',r.stLoop||'',r.stSup||'',r.dtChegada||''];});
   } else if (tipo === 'cabos') {
     titulo = 'Lista de Cabos';
-    headers = ['Rastreabilidade','Rev.','Disciplina','Tipo de Cabo','Qtde','Origem (De)','Destino (Para)','St. Lançamento','Localização','St. Suprimentos'];
+    headers = ['Rastreabilidade','Rev.','Disciplina','Tipo de Cabo','Qtde','Origem (De)','Destino (Para)','St. Lançamento','Localização','St. Suprimentos','Data Chegada'];
     var list = _instrProjFilter(instrCabos);
-    rows = list.map(function(r){return [r.doc||'',r.rev||'',r.disc||'',r.tipo||'',r.qtd||'',r.origem||'',r.destino||'',r.stLanc||'',r.loc||'',r.stSup||''];});
+    rows = list.map(function(r){return [r.doc||'',r.rev||'',r.disc||'',r.tipo||'',r.qtd||'',r.origem||'',r.destino||'',r.stLanc2||'',r.loc||'',r.stSup||'',r.dtChegada||''];});
   } else if (tipo === 'suportes') {
     titulo = 'Suportes';
-    headers = ['Rastreabilidade','Disciplina','St. Fabricação','St. Pintura','St. Montagem','St. Suprimentos'];
+    headers = ['Rastreabilidade','Disciplina','St. Fabricação','St. Pintura','St. Montagem','St. Suprimentos','Data Chegada'];
     var list = _instrProjFilter(instrSups);
     rows = list.map(function(r){return [r.doc||'',r.disc||'',r.stFab||'',r.stPint||'',r.stMon||'',r.stSup||''];});
   } else if (tipo === 'encam') {
     titulo = 'Encaminhamento';
     headers = ['Rastreabilidade','Disciplina','Tipo','Diâmetro','Qtde','St. Montagem','St. Suprimentos'];
     var list = _instrProjFilter(instrEncam);
-    rows = list.map(function(r){return [r.doc||'',r.disc||'',r.tipo||'',r.diam||'',r.qtd||'',r.stMon||'',r.stSup||''];});
+    rows = list.map(function(r){return [r.doc||'',r.disc||'',r.tipo||'',r.diam||'',r.qtd||'',r.stMon||'',r.stSup||'',r.dtChegada||''];});
   }
 
   if (!rows.length) { alert('Nenhum item para exportar.'); return; }
@@ -3838,6 +3873,7 @@ function _instrCaboProcessRows(rows, setStatus, setPreview) {
     secao:   _colIdx(headers, ['secao','seccao','tipo de cabo','cabo','section','bitola','mm']),
     qtd:     _colIdx(headers, ['qtde planejada','qtde plan','qtde','quantidade planejada','comprimento','metragem','qty']),
     stSup:   _colIdx(headers, ['st sup','status sup','suprimento','supply']),
+    dtChegada: _colIdx(headers, ['data chegada','dt chegada','previsao','prazo','entrega']),
     codSup:  _colIdx(headers, ['cod sup','codigo sup','cod. sup','material','part']),
     origem:  _colIdx(headers, ['origem','de','from','source','procedencia']),
     destino: _colIdx(headers, ['destino','para','to','dest']),
@@ -3845,6 +3881,7 @@ function _instrCaboProcessRows(rows, setStatus, setPreview) {
     dtLanc:  _colIdx(headers, ['data lanc','dt lanc','data de lancamento']),
     qtdReal: _colIdx(headers, ['qtde real','qtd real','real lançado','executado','realizado']),
     loc:     _colIdx(headers, ['localizacao','local','campo','subestacao','sala']),
+    dtChegada: _colIdx(headers, ['data chegada','dt chegada','previsao','prazo','entrega']),
   };
 
   // Show detected columns
@@ -3853,7 +3890,7 @@ function _instrCaboProcessRows(rows, setStatus, setPreview) {
   setPreview('<div style="margin-bottom:6px;font-weight:600">Colunas detectadas:</div>'+detected);
 
   var added=0, skipped=0;
-  var sup_map = {'estoque':'Em Estoque','em estoque':'Em Estoque','pendente':'Pendente','chegada':'Data de Chegada'};
+  var sup_map = {'estoque':'Em Estoque','em estoque':'Em Estoque','compra':'Em Compra','em compra':'Em Compra','comprado':'Em Compra','pendente':'Pendente'};
   var loc_map = {'campo':'Campo','sala':'Sala de Controle','controle':'Sala de Controle','subestacao':'Subestação','subestação':'Subestação'};
   var lanc_map = {'pendente':'Pendente','andamento':'Em andamento','concluido':'Concluído','concluído':'Concluído'};
 
@@ -3884,6 +3921,7 @@ function _instrCaboProcessRows(rows, setStatus, setPreview) {
       dtLanc:  COL.dtLanc>=0  ? String(row[COL.dtLanc]||'').trim() : '',
       qtdReal: COL.qtdReal>=0 ? (parseFloat(row[COL.qtdReal])||null) : null,
       loc:     COL.loc>=0     ? mapVal(row[COL.loc], loc_map, 'Campo') : 'Campo',
+      dtChegada: COL.dtChegada>=0 ? String(row[COL.dtChegada]||'').trim() : '',
     });
     added++;
   }
@@ -3934,7 +3972,7 @@ function _instrTagProcessRows(rows, setStatus, setPreview) {
   var cal_map  = {'concluido':'Concluído','concluído':'Concluído','pendente':'Pendente','n/a':'N/A','na':'N/A'};
   var mon_map  = {'sim':'Sim','yes':'Sim','pendente':'Pendente'};
   var spn_map  = {'sim':'Sim','yes':'Sim','pendente':'Pendente','n/a':'N/A','na':'N/A'};
-  var sup_map  = {'estoque':'Em Estoque','em estoque':'Em Estoque','pendente':'Pendente','chegada':'Data de Chegada'};
+  var sup_map  = {'estoque':'Em Estoque','em estoque':'Em Estoque','compra':'Em Compra','em compra':'Em Compra','comprado':'Em Compra','pendente':'Pendente'};
   var cls_map  = {'novo':'Novo','new':'Novo','existente':'Existente','exist':'Existente'};
 
   function mapVal(raw, map, def) {
@@ -3966,6 +4004,7 @@ function _instrTagProcessRows(rows, setStatus, setPreview) {
       stAter:   COL.stAter>=0  ? mapVal(row[COL.stAter], spn_map,  'Pendente') : 'Pendente',
       stLoop:   COL.stLoop>=0  ? mapVal(row[COL.stLoop], spn_map,  'Pendente') : 'Pendente',
       stSup:    COL.stSup>=0   ? mapVal(row[COL.stSup],  sup_map,  'Pendente') : 'Pendente',
+      dtChegada: COL.dtChegada>=0 ? String(row[COL.dtChegada]||'').trim() : '',
     });
     added++;
   }
