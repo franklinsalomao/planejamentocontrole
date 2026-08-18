@@ -3528,17 +3528,20 @@ function renderInstrSups(discTabs,bc){
       +'<td style="padding:4px 7px;font-size:10px">'+_instrInp(r.id,'instrSupSet','instrumento',r.instrumento,100)+'</td>'
       +'<td style="padding:4px 7px;font-size:10px">'+_instrInp(r.id,'instrSupSet','tipoSup',r.tipoSup,90)+'</td>'
       +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrSupSet','stFab',FAB,r.stFab||'Pendente',110)+'</td>'
+      +'<td style="padding:4px 5px;text-align:center"><input type="date" value="'+(r.dtFab||'')+'" onclick="event.stopPropagation()" onchange="instrSupSet(\''+r.id+'\',\'dtFab\',this.value)" style="padding:3px 5px;border:0.5px solid var(--hbr);border-radius:5px;font-size:10px;font-weight:600;background:var(--hg);color:var(--ht)"></td>'
       +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrSupSet','stPint',PINT,r.stPint||'Pendente',90)+'</td>'
+      +'<td style="padding:4px 5px;text-align:center"><input type="date" value="'+(r.dtPint||'')+'" onclick="event.stopPropagation()" onchange="instrSupSet(\''+r.id+'\',\'dtPint\',this.value)" style="padding:3px 5px;border:0.5px solid var(--hbr);border-radius:5px;font-size:10px;font-weight:600;background:var(--hg);color:var(--ht)"></td>'
       +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrSupSet','stMon',MON,r.stMon||'Pendente',110)+'</td>'
+      +'<td style="padding:4px 5px;text-align:center"><input type="date" value="'+(r.dtMon||'')+'" onclick="event.stopPropagation()" onchange="instrSupSet(\''+r.id+'\',\'dtMon\',this.value)" style="padding:3px 5px;border:0.5px solid var(--hbr);border-radius:5px;font-size:10px;font-weight:600;background:var(--hg);color:var(--ht)"></td>'
       +'<td style="padding:4px 6px;text-align:center">'+_instrDelBtn(r.id,'instrSupDel')+'</td>'
       +'</tr>';
   }).join(''):null;
   _instrHeader(discTabs,bc,'Suportes',kpis,
     _instrFilterBar(_isSearch,'_isSearch','<button onclick="instrExportPDF(\'suportes\')" style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid var(--hbr);background:var(--hg);color:var(--ht);cursor:pointer;display:flex;align-items:center;gap:4px">📄 Exportar PDF</button>','instrSupAdd','instrSupDelAll'),
-    _instrTable(['RASTREABILIDADE','DISCIPLINA','INSTRUMENTO','TIPO DE SUPORTE','ST. FABRICAÇÃO','ST. PINTURA','ST. MONTAGEM','AÇÕES'],rows,'🔧','Nenhum suporte cadastrado'));
+    _instrTable(['RASTREABILIDADE','DISCIPLINA','INSTRUMENTO','TIPO DE SUPORTE','ST. FABRICAÇÃO','DT. FABRICAÇÃO','ST. PINTURA','DT. PINTURA','ST. MONTAGEM','DT. MONTAGEM','AÇÕES'],rows,'🔧','Nenhum suporte cadastrado'));
 }
 async function instrSupSet(id,f,v){var r=instrSups.find(function(x){return x.id===id;});if(r){r[f]=v;await saveAll();}}
-async function instrSupAdd(){var d=prompt('Número de rastreabilidade:');if(!d||!d.trim())return;instrSups.push({id:_instrId('sup'),projId:currentProjId||null,doc:d.trim(),disc:'Instrumentação',instrumento:'',tipoSup:'',stFab:'Pendente',stPint:'Pendente',stMon:'Pendente',stSup:'Pendente',dtChegada:''});await _instrSave();}
+async function instrSupAdd(){var d=prompt('Número de rastreabilidade:');if(!d||!d.trim())return;instrSups.push({id:_instrId('sup'),projId:currentProjId||null,doc:d.trim(),disc:'Instrumentação',instrumento:'',tipoSup:'',stFab:'Pendente',stPint:'Pendente',stMon:'Pendente',dtFab:'',dtPint:'',dtMon:'',stSup:'Pendente',dtChegada:''});await _instrSave();}
 async function instrSupDel(id){if(!confirm('Excluir suporte?'))return;instrSups=instrSups.filter(function(r){return r.id!==id;});await _instrSave();}
 async function instrSupDelAll(){var n=_instrProjFilter(instrSups).length;if(!n)return;if(!confirm('Excluir TODOS os '+n+' suportes?'))return;if(currentProjId)instrSups=instrSups.filter(function(r){return r.projId!==currentProjId;});else instrSups=[];await _instrSave();}
 
@@ -3713,9 +3716,9 @@ function instrExportPDF(tipo) {
     rows = list.map(function(r){return [r.doc||'',r.rev||'',r.disc||'',r.tipo||'',r.qtd||'',r.origem||'',r.destino||'',r.stLanc2||'',r.loc||'',r.stSup||'',r.dtChegada||''];});
   } else if (tipo === 'suportes') {
     titulo = 'Suportes';
-    headers = ['Rastreabilidade','Disciplina','St. Fabricação','St. Pintura','St. Montagem','St. Suprimentos','Data Chegada'];
+    headers = ['Rastreabilidade','Disciplina','Instrumento','Tipo de Suporte','St. Fabricação','Dt. Fabricação','St. Pintura','Dt. Pintura','St. Montagem','Dt. Montagem'];
     var list = _instrProjFilter(instrSups);
-    rows = list.map(function(r){return [r.doc||'',r.disc||'',r.stFab||'',r.stPint||'',r.stMon||'',r.stSup||''];});
+    rows = list.map(function(r){return [r.doc||'',r.disc||'',r.instrumento||'',r.tipoSup||'',r.stFab||'',r.dtFab||'',r.stPint||'',r.dtPint||'',r.stMon||'',r.dtMon||''];});
   } else if (tipo === 'encam') {
     titulo = 'Encaminhamento';
     headers = ['Rastreabilidade','Disciplina','Tipo','Diâmetro','Qtde','St. Montagem','St. Suprimentos'];
