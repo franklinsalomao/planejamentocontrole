@@ -2841,7 +2841,7 @@ function renderDTView(discTabs,bc){
     +'<button style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:1px solid #e0c8c8;background:#fdecea;color:var(--hd);cursor:pointer" onclick="delAllDT()">🗑️ Excluir Tudo</button>'
     +'</div>';
 
-  var clr=function(v){return v==='Concluído'?'#e8f5e9':v==='Em Execução'?'#fff8e1':v==='N/A'?'#f5f5f5':'var(--hg)';};
+  var clr=function(v){return v==='Concluído'?'#c8f5d0':v==='Em Execução'?'#fff8e1':v==='N/A'?'#f5f5f5':'var(--hg)';};
   var sel=function(id,field,opts,val){
     return '<select onchange="dtSetField(\''+id+'\',\''+field+'\',this.value)" style="font-size:10px;padding:3px 5px;border-radius:5px;border:0.5px solid var(--hbr);background:'+clr(val)+';color:var(--ht);max-width:110px">'
       +opts.map(function(o){return '<option value="'+o+'" '+(val===o?'selected':'')+'>'+o+'</option>';}).join('')+'</select>';
@@ -3331,9 +3331,9 @@ function _instrInp(id,fn,field,val,w){
   return '<input type="text" value="'+String(val||'').replace(/"/g,'&quot;')+'" onclick="event.stopPropagation()" onchange="'+fn+'(\''+id+'\',\''+field+'\',this.value)" style="width:'+(w||80)+'px;padding:2px 5px;border:0.5px solid var(--hbr);border-radius:5px;font-size:10px;background:var(--hg);color:var(--ht)">';
 }
 function _instrSel(id,fn,field,opts,val,w){
-  var clrMap={'Concluído':'#e8f5e9','Sim':'#e8f5e9','Comprado':'#e8f5e9','Fabricado':'#e8f5e9','Montado':'#e8f5e9',
-    'Em Execução':'#fff8e1','Em Compra':'#fff8e1','Em Fabricação':'#fff8e1',
-    'N/A':'#f5f5f5','Não':'#fdecea'};
+  var clrMap={'Concluído':'#c8f5d0','Sim':'#c8f5d0','Comprado':'#c8f5d0','Fabricado':'#c8f5d0','Montado':'#c8f5d0','Pintado':'#c8f5d0','Em Estoque':'#c8f5d0',
+    'Em Fabricação':'#fff8e1','Em Montagem':'#fff8e1','Em Execução':'#fff8e1','Em andamento':'#fff8e1',
+    'N/A':'#f5f5f5','Não':'#fdecea','Data de Chegada':'#fff3cd'};
   var bg=clrMap[val]||'var(--hg)';
   return '<select onchange="'+fn+'(\''+id+'\',\''+field+'\',this.value)" style="font-size:10px;padding:2px 4px;border-radius:5px;border:0.5px solid var(--hbr);background:'+bg+';color:var(--ht);max-width:'+(w||100)+'px">'
     +opts.map(function(o){return '<option value="'+o+'" '+(val===o?'selected':'')+'>'+o+'</option>';}).join('')+'</select>';
@@ -3438,29 +3438,33 @@ function renderInstrCabos(discTabs,bc){
     +_instrKpiPct(lancOk,total,'Lançamento','#0077b6')
     +'</div>';
   var DISC=['Instrumentação','Elétrica'];
-  var TIPO=['Par trançado','Multiplex','Fieldbus','HART','Energia','Controle','Pneumático','Outro'];
-  var LANC=['Pendente','Em Execução','Concluído'];
   var LOC=['Campo','Sala de Controle','Subestação','Outro'];
+  var LANC_ST=['Pendente','Em andamento','Concluído'];
   var rows=filtered.length?filtered.map(function(r){
+    var bgLanc=r.stLanc2==='Concluído'?'background:#c8f5d0;':r.stLanc2==='Em andamento'?'background:#fff8e1;':'';
     return '<tr style="border-bottom:1px solid #f0f4fb">'
       +'<td style="padding:4px 7px;font-size:11px;font-family:monospace">'+_instrInp(r.id,'instrCaboSet','doc',r.doc,120)+'</td>'
       +'<td style="padding:4px 7px;font-size:10px">'+_instrInp(r.id,'instrCaboSet','rev',r.rev,40)+'</td>'
       +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrCaboSet','disc',DISC,r.disc||'Instrumentação',100)+'</td>'
-      +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrCaboSet','tipo',TIPO,r.tipo||'Par trançado',110)+'</td>'
+      +'<td style="padding:4px 7px;font-size:10px;font-family:monospace">'+_instrInp(r.id,'instrCaboSet','secao',r.secao,120)+'</td>'
       +'<td style="padding:4px 5px;text-align:center"><input type="number" min="0" step="0.1" value="'+(r.qtd||'')+'" onclick="event.stopPropagation()" onchange="instrCaboSet(\''+r.id+'\',\'qtd\',this.value)" style="width:60px;padding:2px;border:0.5px solid var(--hbr);border-radius:4px;font-size:10px;text-align:center;background:var(--hg);color:var(--ht)"></td>'
+      +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrCaboSet','stSup',['Em Estoque','Pendente','Data de Chegada'],r.stSup||'Pendente',100)+'</td>'
+      +'<td style="padding:4px 7px;font-size:10px">'+_instrInp(r.id,'instrCaboSet','codSup',r.codSup,90)+'</td>'
       +'<td style="padding:4px 7px;font-size:10px">'+_instrInp(r.id,'instrCaboSet','origem',r.origem,100)+'</td>'
-      +'<td style="padding:4px 7px;font-size:10px">'+_instrInp(r.id,'instrCaboSet','destino',r.destino,100)+'</td>'
-      +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrCaboSet','stLanc',LANC,r.stLanc||'Pendente',95)+'</td>'
+      +'<td style="padding:4px 7px;font-size:10px">'+_instrInp(r.id,'instrCaboSet','destino',r.destino,110)+'</td>'
+      +'<td style="padding:4px 6px;'+bgLanc+'">'+_instrSel(r.id,'instrCaboSet','stLanc2',LANC_ST,r.stLanc2||'Pendente',100)+'</td>'
+      +'<td style="padding:4px 5px;text-align:center"><input type="date" value="'+(r.dtLanc||'')+'" onclick="event.stopPropagation()" onchange="instrCaboSet(\''+r.id+'\',\'dtLanc\',this.value)" style="padding:2px 4px;border:0.5px solid var(--hbr);border-radius:4px;font-size:10px;background:var(--hg);color:var(--ht)"></td>'
+      +'<td style="padding:4px 5px;text-align:center"><input type="number" min="0" step="0.1" value="'+(r.qtdReal||'')+'" onclick="event.stopPropagation()" onchange="instrCaboSet(\''+r.id+'\',\'qtdReal\',this.value)" style="width:65px;padding:2px;border:0.5px solid var(--hbr);border-radius:4px;font-size:10px;text-align:center;background:var(--hg);color:var(--ht)"></td>'
       +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrCaboSet','loc',LOC,r.loc||'Campo',100)+'</td>'
       +'<td style="padding:4px 6px;text-align:center">'+_instrDelBtn(r.id,'instrCaboDel')+'</td>'
       +'</tr>';
   }).join(''):null;
   _instrHeader(discTabs,bc,'Lista de Cabos',kpis,
     _instrFilterBar(_icSearch,'_icSearch','<button onclick="instrExportPDF(\'cabos\')" style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid var(--hbr);background:var(--hg);color:var(--ht);cursor:pointer;display:flex;align-items:center;gap:4px">📄 Exportar PDF</button>','instrCaboAdd','instrCaboDelAll'),
-    _instrTable(['RASTREABILIDADE','REV.','DISCIPLINA','TIPO DE CABO','QTDE','ST. SUPRIMENTOS','ORIGEM (DE)','DESTINO (PARA)','ST. LANÇAMENTO','LOCALIZAÇÃO','AÇÕES'],rows,'🔌','Nenhum cabo cadastrado'));
+    _instrTable(['RASTREABILIDADE','REV.','DISCIPLINA','SEÇÃO DO CABO','QTDE','ST. SUPRIMENTOS','CÓD. SUPRIMENTOS','ORIGEM (DE)','DESTINO (PARA)','STATUS LANÇAMENTO','DATA LANÇAMENTO','QTDE REAL LANÇADO','LOCALIZAÇÃO','AÇÕES'],rows,'🔌','Nenhum cabo cadastrado'));
 }
 async function instrCaboSet(id,f,v){var r=instrCabos.find(function(x){return x.id===id;});if(r){r[f]=v;await saveAll();}}
-async function instrCaboAdd(){var d=prompt('Número de rastreabilidade:');if(!d||!d.trim())return;instrCabos.push({id:_instrId('cab'),projId:currentProjId||null,doc:d.trim(),rev:'0',disc:'Instrumentação',tipo:'Par trançado',qtd:null,origem:'',destino:'',stLanc:'Pendente',loc:'Campo',stSup:'Pendente'});await _instrSave();}
+async function instrCaboAdd(){var d=prompt('Número de rastreabilidade:');if(!d||!d.trim())return;instrCabos.push({id:_instrId('cab'),projId:currentProjId||null,doc:d.trim(),rev:'0',disc:'Instrumentação',secao:'',qtd:null,stSup:'Pendente',codSup:'',origem:'',destino:'',stLanc2:'Pendente',dtLanc:'',qtdReal:null,loc:'Campo'});await _instrSave();}
 async function instrCaboDel(id){if(!confirm('Excluir cabo?'))return;instrCabos=instrCabos.filter(function(r){return r.id!==id;});await _instrSave();}
 async function instrCaboDelAll(){var n=_instrProjFilter(instrCabos).length;if(!n)return;if(!confirm('Excluir TODOS os '+n+' cabos?'))return;if(currentProjId)instrCabos=instrCabos.filter(function(r){return r.projId!==currentProjId;});else instrCabos=[];await _instrSave();}
 
@@ -3487,6 +3491,8 @@ function renderInstrSups(discTabs,bc){
     return '<tr style="border-bottom:1px solid #f0f4fb">'
       +'<td style="padding:4px 7px;font-size:11px;font-family:monospace">'+_instrInp(r.id,'instrSupSet','doc',r.doc,150)+'</td>'
       +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrSupSet','disc',DISC,r.disc||'Instrumentação',100)+'</td>'
+      +'<td style="padding:4px 7px;font-size:10px">'+_instrInp(r.id,'instrSupSet','instrumento',r.instrumento,100)+'</td>'
+      +'<td style="padding:4px 7px;font-size:10px">'+_instrInp(r.id,'instrSupSet','tipoSup',r.tipoSup,90)+'</td>'
       +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrSupSet','stFab',FAB,r.stFab||'Pendente',110)+'</td>'
       +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrSupSet','stPint',PINT,r.stPint||'Pendente',90)+'</td>'
       +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrSupSet','stMon',MON,r.stMon||'Pendente',110)+'</td>'
@@ -3496,10 +3502,10 @@ function renderInstrSups(discTabs,bc){
   }).join(''):null;
   _instrHeader(discTabs,bc,'Suportes',kpis,
     _instrFilterBar(_isSearch,'_isSearch','<button onclick="instrExportPDF(\'suportes\')" style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid var(--hbr);background:var(--hg);color:var(--ht);cursor:pointer;display:flex;align-items:center;gap:4px">📄 Exportar PDF</button>','instrSupAdd','instrSupDelAll'),
-    _instrTable(['RASTREABILIDADE','DISCIPLINA','ST. FABRICAÇÃO','ST. PINTURA','ST. MONTAGEM','ST. SUPRIMENTOS','AÇÕES'],rows,'🔧','Nenhum suporte cadastrado'));
+    _instrTable(['RASTREABILIDADE','DISCIPLINA','INSTRUMENTO','TIPO DE SUPORTE','ST. FABRICAÇÃO','ST. PINTURA','ST. MONTAGEM','ST. SUPRIMENTOS','AÇÕES'],rows,'🔧','Nenhum suporte cadastrado'));
 }
 async function instrSupSet(id,f,v){var r=instrSups.find(function(x){return x.id===id;});if(r){r[f]=v;await saveAll();}}
-async function instrSupAdd(){var d=prompt('Número de rastreabilidade:');if(!d||!d.trim())return;instrSups.push({id:_instrId('sup'),projId:currentProjId||null,doc:d.trim(),disc:'Instrumentação',stFab:'Pendente',stPint:'Pendente',stMon:'Pendente',stSup:'Pendente'});await _instrSave();}
+async function instrSupAdd(){var d=prompt('Número de rastreabilidade:');if(!d||!d.trim())return;instrSups.push({id:_instrId('sup'),projId:currentProjId||null,doc:d.trim(),disc:'Instrumentação',instrumento:'',tipoSup:'',stFab:'Pendente',stPint:'Pendente',stMon:'Pendente',stSup:'Pendente'});await _instrSave();}
 async function instrSupDel(id){if(!confirm('Excluir suporte?'))return;instrSups=instrSups.filter(function(r){return r.id!==id;});await _instrSave();}
 async function instrSupDelAll(){var n=_instrProjFilter(instrSups).length;if(!n)return;if(!confirm('Excluir TODOS os '+n+' suportes?'))return;if(currentProjId)instrSups=instrSups.filter(function(r){return r.projId!==currentProjId;});else instrSups=[];await _instrSave();}
 
@@ -3686,7 +3692,7 @@ function instrExportPDF(tipo) {
   if (!rows.length) { alert('Nenhum item para exportar.'); return; }
 
   // Build status color map for cell backgrounds
-  var statusClr = {'Concluído':'#e8f5e9','Fabricado':'#e8f5e9','Montado':'#e8f5e9','Pintado':'#e8f5e9','Sim':'#e8f5e9',
+  var statusClr = {'Concluído':'#c8f5d0','Fabricado':'#c8f5d0','Montado':'#c8f5d0','Pintado':'#c8f5d0','Sim':'#c8f5d0',
     'Em Fabricação':'#fff8e1','Em Montagem':'#fff8e1','Em Execução':'#fff8e1',
     'N/A':'#f5f5f5','Não':'#fdecea'};
 
