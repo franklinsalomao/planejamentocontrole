@@ -3414,7 +3414,7 @@ function renderInstrTags(discTabs,bc){
       +'</tr>';
   }).join(''):null;
   _instrHeader(discTabs,bc,'Tags de Instrumentos / Equipamentos',kpis,
-    _instrFilterBar(_itSearch,'_itSearch','<button onclick="instrExportPDF(\'tags\')" style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid var(--hbr);background:var(--hg);color:var(--ht);cursor:pointer;display:flex;align-items:center;gap:4px">📄 Exportar PDF</button>','instrTagAdd','instrTagDelAll'),
+    _instrFilterBar(_itSearch,'_itSearch','<button onclick="instrTagImportXLSX()" style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid #a5d6a7;background:rgba(46,125,50,.1);color:#2e7d32;cursor:pointer">📥 Importar XLSX</button><button onclick="instrExportPDF(\'tags\')" style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid var(--hbr);background:var(--hg);color:var(--ht);cursor:pointer">📄 Exportar PDF</button>','instrTagAdd','instrTagDelAll'),
     _instrTable(['DISCIPLINA','DOC. RASTREABILIDADE','TAG','CÓD. SUPRIMENTOS','QTDE','ST. SUPRIMENTOS','CALIBRAÇÃO','CLASSIFICAÇÃO','ST. MONTAGEM','DT ELÉT.','DT PNEU.','DT PROC.','INTERLIGAÇÃO','ATERRAMENTO','LOOP TESTE','AÇÕES'],rows,'🏷️','Nenhuma tag cadastrada'));
 }
 async function instrTagSet(id,f,v){var r=instrTags.find(function(x){return x.id===id;});if(r){r[f]=v;await saveAll();}}
@@ -3460,7 +3460,7 @@ function renderInstrCabos(discTabs,bc){
       +'</tr>';
   }).join(''):null;
   _instrHeader(discTabs,bc,'Lista de Cabos',kpis,
-    _instrFilterBar(_icSearch,'_icSearch','<button onclick="instrExportPDF(\'cabos\')" style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid var(--hbr);background:var(--hg);color:var(--ht);cursor:pointer;display:flex;align-items:center;gap:4px">📄 Exportar PDF</button>','instrCaboAdd','instrCaboDelAll'),
+    _instrFilterBar(_icSearch,'_icSearch','<button onclick="instrCaboImportXLSX()" style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid #a5d6a7;background:rgba(46,125,50,.1);color:#2e7d32;cursor:pointer">📥 Importar XLSX</button><button onclick="instrExportPDF(\'cabos\')" style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid var(--hbr);background:var(--hg);color:var(--ht);cursor:pointer">📄 Exportar PDF</button>','instrCaboAdd','instrCaboDelAll'),
     _instrTable(['RASTREABILIDADE','REV.','DISCIPLINA','SEÇÃO DO CABO','QTDE','ST. SUPRIMENTOS','CÓD. SUPRIMENTOS','ORIGEM (DE)','DESTINO (PARA)','STATUS LANÇAMENTO','DATA LANÇAMENTO','QTDE REAL LANÇADO','LOCALIZAÇÃO','AÇÕES'],rows,'🔌','Nenhum cabo cadastrado'));
 }
 async function instrCaboSet(id,f,v){var r=instrCabos.find(function(x){return x.id===id;});if(r){r[f]=v;await saveAll();}}
@@ -3735,6 +3735,248 @@ function instrExportPDF(tipo) {
   w.document.close();
   w.focus();
   setTimeout(function(){ w.print(); }, 450);
+}
+
+
+
+/* ══════════════════════════════════════════════════════════════════════
+   IMPORTAÇÃO XLSX — INSTRUMENTAÇÃO
+   Cabos: Rastreab · Rev · Disc · Seção · Qtde · St.Sup · CódSup
+          Origem · Destino · St.Lançamento · DtLançamento · QtdReal · Local
+   Tags:  Disc · Doc · TAG · CódSup · Qtde · Calibração · Classificação
+          St.Montagem · DT Elét · DT Pneu · DT Proc · Interlig · Aterr · Loop · St.Sup
+══════════════════════════════════════════════════════════════════════ */
+
+/* ── Generic XLSX modal ── */
+function _instrXLSXModal(title, hint, onFile) {
+  var old = document.getElementById('instr-xlsx-modal');
+  if (old) old.remove();
+  var m = document.createElement('div');
+  m.id = 'instr-xlsx-modal';
+  m.style.cssText = 'position:fixed;inset:0;background:rgba(10,20,50,.55);z-index:3000;display:flex;align-items:center;justify-content:center;padding:16px';
+  m.innerHTML =
+    '<div style="background:#fff;border-radius:12px;padding:24px 28px;width:520px;max-width:97vw;box-shadow:0 8px 40px rgba(0,0,0,.28);position:relative">'
+    +'<button onclick="document.getElementById(\'instr-xlsx-modal\').remove()" style="position:absolute;top:14px;right:14px;background:none;border:none;font-size:18px;color:#999;cursor:pointer">✕</button>'
+    +'<div style="font-size:14px;font-weight:700;color:#2e7d32;margin-bottom:4px">📥 '+title+'</div>'
+    +'<div style="font-size:10px;color:#5a6a85;margin-bottom:14px">'+hint+'</div>'
+    +'<div style="border:2px dashed #a5d6a7;border-radius:8px;padding:26px;text-align:center;cursor:pointer;background:#f1f8e9;margin-bottom:12px" '
+      +'ondragover="event.preventDefault();this.style.borderColor=\'#2e7d32\'" '
+      +'ondragleave="this.style.borderColor=\'#a5d6a7\'" '
+      +'ondrop="event.preventDefault();this.style.borderColor=\'#a5d6a7\';var f=[...event.dataTransfer.files].find(function(x){return /\\.xlsx$/i.test(x.name);});if(f){document.getElementById(\'instr-xlsx-status\').textContent=\'📂 \'+f.name;_instrXLSXRead(f,_instrXLSXCallback);}else{document.getElementById(\'instr-xlsx-status\').textContent=\'❌ Selecione um arquivo .xlsx\';}" '
+      +'onclick="document.getElementById(\'instr-xlsx-file\').click()">'
+      +'<div style="font-size:26px;margin-bottom:6px">📊</div>'
+      +'<div style="font-size:11px;font-weight:600;color:#2e7d32">Clique ou arraste o arquivo XLSX aqui</div>'
+      +'<div style="font-size:9.5px;color:#5a6a85;margin-top:3px">A primeira linha deve conter os cabeçalhos das colunas</div>'
+    +'</div>'
+    +'<input type="file" id="instr-xlsx-file" accept=".xlsx,.xls" style="display:none" onchange="if(this.files[0]){document.getElementById(\'instr-xlsx-status\').textContent=\'📂 \'+this.files[0].name;_instrXLSXRead(this.files[0],_instrXLSXCallback);}">'
+    +'<div id="instr-xlsx-status" style="font-size:11px;color:#5a6a85;min-height:18px;text-align:center"></div>'
+    +'<div id="instr-xlsx-preview" style="margin-top:10px;font-size:10px;color:#444;max-height:120px;overflow-y:auto"></div>'
+    +'<div style="display:flex;justify-content:flex-end;margin-top:12px">'
+      +'<button onclick="document.getElementById(\'instr-xlsx-modal\').remove()" style="padding:7px 16px;border:1px solid #ddd;border-radius:7px;background:#f5f5f5;cursor:pointer;font-size:12px">Fechar</button>'
+    +'</div></div>';
+  window._instrXLSXCallback = onFile;
+  document.body.appendChild(m);
+}
+
+async function _instrXLSXRead(file, callback) {
+  var setStatus = function(msg){var el=document.getElementById('instr-xlsx-status');if(el)el.textContent=msg;};
+  var setPreview = function(html){var el=document.getElementById('instr-xlsx-preview');if(el)el.innerHTML=html;};
+  try {
+    setStatus('⏳ Lendo arquivo...');
+    if (typeof XLSX === 'undefined') {
+      setStatus('❌ Biblioteca XLSX não carregada. Aguarde e tente novamente.');
+      return;
+    }
+    var buf = await file.arrayBuffer();
+    var wb = XLSX.read(new Uint8Array(buf), {type:'array', cellDates:true});
+    var ws = wb.Sheets[wb.SheetNames[0]];
+    var rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
+    if (!rows || rows.length < 2) { setStatus('❌ Planilha vazia ou sem dados.'); return; }
+    setStatus('✅ ' + (rows.length-1) + ' linha(s) encontrada(s). Processando...');
+    callback(rows, setStatus, setPreview);
+  } catch(err) {
+    setStatus('❌ Erro: ' + err.message);
+    console.error('[XLSX Import]', err);
+  }
+}
+
+/* ── Normalise header text for matching ── */
+function _normH(s) {
+  return String(s||'').toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/[^a-z0-9]/g,' ').replace(/\s+/g,' ').trim();
+}
+
+/* ── Find column index by keyword list ── */
+function _colIdx(headers, keywords) {
+  var nh = headers.map(_normH);
+  for (var k=0; k<keywords.length; k++) {
+    var kw = keywords[k];
+    for (var i=0; i<nh.length; i++) {
+      if (nh[i].indexOf(kw) >= 0) return i;
+    }
+  }
+  return -1;
+}
+
+/* ════════════════ CABOS IMPORT ════════════════ */
+function instrCaboImportXLSX() {
+  _instrXLSXModal(
+    'Importar Lista de Cabos via XLSX',
+    'Colunas detectadas automaticamente: Rastreabilidade · Rev · Disciplina · Seção do Cabo · Qtde · Cód. Sup. · Origem · Destino · Localização',
+    _instrCaboProcessRows
+  );
+}
+
+function _instrCaboProcessRows(rows, setStatus, setPreview) {
+  var headers = rows[0];
+  // Column mapping
+  var COL = {
+    doc:     _colIdx(headers, ['rastreabilidade','lista de cabo','nr lista','numero','doc']),
+    rev:     _colIdx(headers, ['rev','revisao','revision']),
+    disc:    _colIdx(headers, ['disciplina','disc']),
+    secao:   _colIdx(headers, ['secao','seccao','tipo de cabo','cabo','section','bitola','mm']),
+    qtd:     _colIdx(headers, ['qtde planejada','qtde plan','qtde','quantidade planejada','comprimento','metragem','qty']),
+    stSup:   _colIdx(headers, ['st sup','status sup','suprimento','supply']),
+    codSup:  _colIdx(headers, ['cod sup','codigo sup','cod. sup','material','part']),
+    origem:  _colIdx(headers, ['origem','de','from','source','procedencia']),
+    destino: _colIdx(headers, ['destino','para','to','dest']),
+    stLanc:  _colIdx(headers, ['status lanc','st lanc','lancamento status']),
+    dtLanc:  _colIdx(headers, ['data lanc','dt lanc','data de lancamento']),
+    qtdReal: _colIdx(headers, ['qtde real','qtd real','real lançado','executado','realizado']),
+    loc:     _colIdx(headers, ['localizacao','local','campo','subestacao','sala']),
+  };
+
+  // Show detected columns
+  var detected = Object.keys(COL).filter(function(k){return COL[k]>=0;})
+    .map(function(k){return '<span style="background:#e8f5e9;padding:1px 5px;border-radius:3px;margin:2px;display:inline-block">'+k+'→col '+(COL[k]+1)+'</span>';}).join('');
+  setPreview('<div style="margin-bottom:6px;font-weight:600">Colunas detectadas:</div>'+detected);
+
+  var added=0, skipped=0;
+  var sup_map = {'estoque':'Em Estoque','em estoque':'Em Estoque','pendente':'Pendente','chegada':'Data de Chegada'};
+  var loc_map = {'campo':'Campo','sala':'Sala de Controle','controle':'Sala de Controle','subestacao':'Subestação','subestação':'Subestação'};
+  var lanc_map = {'pendente':'Pendente','andamento':'Em andamento','concluido':'Concluído','concluído':'Concluído'};
+
+  function mapVal(raw, map, def) {
+    if (!raw) return def;
+    var r = _normH(raw);
+    for (var k in map) { if (r.indexOf(k)>=0) return map[k]; }
+    return String(raw).trim() || def;
+  }
+
+  for (var i=1; i<rows.length; i++) {
+    var row = rows[i];
+    var docVal = COL.doc>=0 ? String(row[COL.doc]||'').trim() : '';
+    if (!docVal) { skipped++; continue; }
+    instrCabos.push({
+      id: _instrId('cab'),
+      projId: currentProjId||null,
+      doc:     docVal,
+      rev:     COL.rev>=0     ? String(row[COL.rev]||'0').trim() : '0',
+      disc:    COL.disc>=0    ? String(row[COL.disc]||'Instrumentação').trim() : 'Instrumentação',
+      secao:   COL.secao>=0   ? String(row[COL.secao]||'').trim() : '',
+      qtd:     COL.qtd>=0     ? (parseFloat(row[COL.qtd])||null) : null,
+      stSup:   COL.stSup>=0   ? mapVal(row[COL.stSup], sup_map, 'Pendente') : 'Pendente',
+      codSup:  COL.codSup>=0  ? String(row[COL.codSup]||'').trim() : '',
+      origem:  COL.origem>=0  ? String(row[COL.origem]||'').trim() : '',
+      destino: COL.destino>=0 ? String(row[COL.destino]||'').trim() : '',
+      stLanc2: COL.stLanc>=0  ? mapVal(row[COL.stLanc], lanc_map, 'Pendente') : 'Pendente',
+      dtLanc:  COL.dtLanc>=0  ? String(row[COL.dtLanc]||'').trim() : '',
+      qtdReal: COL.qtdReal>=0 ? (parseFloat(row[COL.qtdReal])||null) : null,
+      loc:     COL.loc>=0     ? mapVal(row[COL.loc], loc_map, 'Campo') : 'Campo',
+    });
+    added++;
+  }
+
+  saveAll().then(function(){
+    setStatus('✅ ' + added + ' cabo(s) importado(s)' + (skipped?' · '+skipped+' linha(s) ignorada(s)':'') + '. Fechando...');
+    setTimeout(function(){
+      var m=document.getElementById('instr-xlsx-modal'); if(m)m.remove();
+      renderIsoView();
+    }, 1800);
+  });
+}
+
+/* ════════════════ TAGS / INSTRUMENTOS IMPORT ════════════════ */
+function instrTagImportXLSX() {
+  _instrXLSXModal(
+    'Importar Lista de Instrumentos / Equipamentos via XLSX',
+    'Colunas detectadas automaticamente: Disciplina · Doc. Rastreabilidade · TAG · Cód. Sup. · Qtde · Calibração · Classificação · St. Montagem · DT Elét/Pneu/Proc · Interligação · Aterramento · Loop · St. Sup.',
+    _instrTagProcessRows
+  );
+}
+
+function _instrTagProcessRows(rows, setStatus, setPreview) {
+  var headers = rows[0];
+  var COL = {
+    disc:    _colIdx(headers, ['disciplina','disc']),
+    doc:     _colIdx(headers, ['rastreabilidade','doc rastreab','doc','lista','numero']),
+    tag:     _colIdx(headers, ['tag','instrumento','equipamento']),
+    codSup:  _colIdx(headers, ['cod sup','codigo sup','cod. sup','material','part number']),
+    qtd:     _colIdx(headers, ['qtde','quantidade','qty']),
+    stCal:   _colIdx(headers, ['calibracao','calibração','calib','inspecao','inspeção']),
+    classif: _colIdx(headers, ['classificacao','classificação','class','condicao','condição','novo','existente']),
+    stMon:   _colIdx(headers, ['st montagem','status montagem','montagem']),
+    stDtEl:  _colIdx(headers, ['dt elet','dt el','dt elét','eletrico','elétrico','tip el']),
+    stDtPn:  _colIdx(headers, ['dt pneu','pneumatico','pneumático','tip pn']),
+    stDtPr:  _colIdx(headers, ['dt proc','processo','tip pr']),
+    stInterl:_colIdx(headers, ['interligacao','interligação','interlig']),
+    stAter:  _colIdx(headers, ['aterramento','aterr']),
+    stLoop:  _colIdx(headers, ['loop','loop teste']),
+    stSup:   _colIdx(headers, ['st sup','status sup','suprimento','supply']),
+  };
+
+  var detected = Object.keys(COL).filter(function(k){return COL[k]>=0;})
+    .map(function(k){return '<span style="background:#e8f5e9;padding:1px 5px;border-radius:3px;margin:2px;display:inline-block">'+k+'→col '+(COL[k]+1)+'</span>';}).join('');
+  setPreview('<div style="margin-bottom:6px;font-weight:600">Colunas detectadas:</div>'+detected);
+
+  var added=0, skipped=0;
+  var cal_map  = {'concluido':'Concluído','concluído':'Concluído','pendente':'Pendente','n/a':'N/A','na':'N/A'};
+  var mon_map  = {'sim':'Sim','yes':'Sim','pendente':'Pendente'};
+  var spn_map  = {'sim':'Sim','yes':'Sim','pendente':'Pendente','n/a':'N/A','na':'N/A'};
+  var sup_map  = {'estoque':'Em Estoque','em estoque':'Em Estoque','pendente':'Pendente','chegada':'Data de Chegada'};
+  var cls_map  = {'novo':'Novo','new':'Novo','existente':'Existente','exist':'Existente'};
+
+  function mapVal(raw, map, def) {
+    if (raw===null||raw===undefined||raw==='') return def;
+    var r = _normH(raw);
+    for (var k in map) { if (r.indexOf(k)>=0) return map[k]; }
+    return String(raw).trim() || def;
+  }
+
+  for (var i=1; i<rows.length; i++) {
+    var row = rows[i];
+    var tagVal = COL.tag>=0 ? String(row[COL.tag]||'').trim() : '';
+    if (!tagVal) { skipped++; continue; }
+    instrTags.push({
+      id:       _instrId('tag'),
+      projId:   currentProjId||null,
+      disc:     COL.disc>=0    ? String(row[COL.disc]||'Instrumentação').trim() : 'Instrumentação',
+      doc:      COL.doc>=0     ? String(row[COL.doc]||'').trim() : '',
+      tag:      tagVal,
+      codSup:   COL.codSup>=0  ? String(row[COL.codSup]||'').trim() : '',
+      qtd:      COL.qtd>=0     ? (parseInt(row[COL.qtd])||1) : 1,
+      stCal:    COL.stCal>=0   ? mapVal(row[COL.stCal],  cal_map,  'Pendente') : 'Pendente',
+      classif:  COL.classif>=0 ? mapVal(row[COL.classif],cls_map,  'Novo')     : 'Novo',
+      stMon:    COL.stMon>=0   ? mapVal(row[COL.stMon],  mon_map,  'Pendente') : 'Pendente',
+      stDtEl:   COL.stDtEl>=0  ? mapVal(row[COL.stDtEl], spn_map,  'Pendente') : 'Pendente',
+      stDtPn:   COL.stDtPn>=0  ? mapVal(row[COL.stDtPn], spn_map,  'Pendente') : 'Pendente',
+      stDtPr:   COL.stDtPr>=0  ? mapVal(row[COL.stDtPr], spn_map,  'Pendente') : 'Pendente',
+      stInterl: COL.stInterl>=0? mapVal(row[COL.stInterl],spn_map, 'Pendente') : 'Pendente',
+      stAter:   COL.stAter>=0  ? mapVal(row[COL.stAter], spn_map,  'Pendente') : 'Pendente',
+      stLoop:   COL.stLoop>=0  ? mapVal(row[COL.stLoop], spn_map,  'Pendente') : 'Pendente',
+      stSup:    COL.stSup>=0   ? mapVal(row[COL.stSup],  sup_map,  'Pendente') : 'Pendente',
+    });
+    added++;
+  }
+
+  saveAll().then(function(){
+    setStatus('✅ ' + added + ' instrumento(s) importado(s)' + (skipped?' · '+skipped+' linha(s) ignorada(s)':'') + '. Fechando...');
+    setTimeout(function(){
+      var m=document.getElementById('instr-xlsx-modal'); if(m)m.remove();
+      renderIsoView();
+    }, 1800);
+  });
 }
 
 
