@@ -3496,13 +3496,12 @@ function renderInstrSups(discTabs,bc){
       +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrSupSet','stFab',FAB,r.stFab||'Pendente',110)+'</td>'
       +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrSupSet','stPint',PINT,r.stPint||'Pendente',90)+'</td>'
       +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrSupSet','stMon',MON,r.stMon||'Pendente',110)+'</td>'
-      +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrSupSet','stSup',['Em Estoque','Pendente','Data de Chegada'],r.stSup||'Pendente',100)+'</td>'
       +'<td style="padding:4px 6px;text-align:center">'+_instrDelBtn(r.id,'instrSupDel')+'</td>'
       +'</tr>';
   }).join(''):null;
   _instrHeader(discTabs,bc,'Suportes',kpis,
     _instrFilterBar(_isSearch,'_isSearch','<button onclick="instrExportPDF(\'suportes\')" style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid var(--hbr);background:var(--hg);color:var(--ht);cursor:pointer;display:flex;align-items:center;gap:4px">📄 Exportar PDF</button>','instrSupAdd','instrSupDelAll'),
-    _instrTable(['RASTREABILIDADE','DISCIPLINA','INSTRUMENTO','TIPO DE SUPORTE','ST. FABRICAÇÃO','ST. PINTURA','ST. MONTAGEM','ST. SUPRIMENTOS','AÇÕES'],rows,'🔧','Nenhum suporte cadastrado'));
+    _instrTable(['RASTREABILIDADE','DISCIPLINA','INSTRUMENTO','TIPO DE SUPORTE','ST. FABRICAÇÃO','ST. PINTURA','ST. MONTAGEM','AÇÕES'],rows,'🔧','Nenhum suporte cadastrado'));
 }
 async function instrSupSet(id,f,v){var r=instrSups.find(function(x){return x.id===id;});if(r){r[f]=v;await saveAll();}}
 async function instrSupAdd(){var d=prompt('Número de rastreabilidade:');if(!d||!d.trim())return;instrSups.push({id:_instrId('sup'),projId:currentProjId||null,doc:d.trim(),disc:'Instrumentação',instrumento:'',tipoSup:'',stFab:'Pendente',stPint:'Pendente',stMon:'Pendente',stSup:'Pendente'});await _instrSave();}
