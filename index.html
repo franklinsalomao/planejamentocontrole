@@ -3482,20 +3482,20 @@ function renderInstrCabos(discTabs,bc){
       +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrCaboSet','disc',DISC,r.disc||'Instrumentação',100)+'</td>'
       +'<td style="padding:4px 7px;font-size:10px;font-family:monospace">'+_instrInp(r.id,'instrCaboSet','secao',r.secao,120)+'</td>'
       +'<td style="padding:4px 5px;text-align:center"><input type="number" min="0" step="0.1" value="'+(r.qtd||'')+'" onclick="event.stopPropagation()" onchange="instrCaboSet(\''+r.id+'\',\'qtd\',this.value)" style="width:60px;padding:2px;border:0.5px solid var(--hbr);border-radius:4px;font-size:10px;text-align:center;background:var(--hg);color:var(--ht)"></td>'
+      +'<td style="padding:4px 5px;text-align:center"><input type="number" min="0" step="0.1" value="'+(r.qtdReal||'')+'" onclick="event.stopPropagation()" onchange="instrCaboSet(\''+r.id+'\',\'qtdReal\',this.value)" style="width:65px;padding:2px;border:0.5px solid var(--hbr);border-radius:4px;font-size:10px;text-align:center;background:var(--hg);color:var(--ht)"></td>'
       +_instrSupCells(r.id,'instrCaboSet',r.stSup,r.dtChegada)
       +'<td style="padding:4px 7px;font-size:10px">'+_instrInp(r.id,'instrCaboSet','codSup',r.codSup,90)+'</td>'
       +'<td style="padding:4px 7px;font-size:10px">'+_instrInp(r.id,'instrCaboSet','origem',r.origem,100)+'</td>'
       +'<td style="padding:4px 7px;font-size:10px">'+_instrInp(r.id,'instrCaboSet','destino',r.destino,110)+'</td>'
       +'<td style="padding:4px 6px;'+bgLanc+'">'+_instrSel(r.id,'instrCaboSet','stLanc2',LANC_ST,r.stLanc2||'Pendente',100)+'</td>'
       +'<td style="padding:4px 5px;text-align:center"><input type="date" value="'+(r.dtLanc||'')+'" onclick="event.stopPropagation()" onchange="instrCaboSet(\''+r.id+'\',\'dtLanc\',this.value)" style="padding:2px 4px;border:0.5px solid var(--hbr);border-radius:4px;font-size:10px;background:var(--hg);color:var(--ht)"></td>'
-      +'<td style="padding:4px 5px;text-align:center"><input type="number" min="0" step="0.1" value="'+(r.qtdReal||'')+'" onclick="event.stopPropagation()" onchange="instrCaboSet(\''+r.id+'\',\'qtdReal\',this.value)" style="width:65px;padding:2px;border:0.5px solid var(--hbr);border-radius:4px;font-size:10px;text-align:center;background:var(--hg);color:var(--ht)"></td>'
       +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrCaboSet','loc',LOC,r.loc||'Campo',100)+'</td>'
       +'<td style="padding:4px 6px;text-align:center">'+_instrDelBtn(r.id,'instrCaboDel')+'</td>'
       +'</tr>';
   }).join(''):null;
   _instrHeader(discTabs,bc,'Lista de Cabos',kpis,
     _instrFilterBar(_icSearch,'_icSearch','<button onclick="instrCaboImportXLSX()" style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid #a5d6a7;background:rgba(46,125,50,.1);color:#2e7d32;cursor:pointer">📥 Importar XLSX</button><button onclick="instrExportPDF(\'cabos\')" style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid var(--hbr);background:var(--hg);color:var(--ht);cursor:pointer">📄 Exportar PDF</button>','instrCaboAdd','instrCaboDelAll'),
-    _instrTable(['RASTREABILIDADE','REV.','DISCIPLINA','SEÇÃO DO CABO','QTDE','ST. SUPRIMENTOS','DATA CHEGADA','CÓD. SUPRIMENTOS','ORIGEM (DE)','DESTINO (PARA)','STATUS LANÇAMENTO','DATA LANÇAMENTO','QTDE REAL LANÇADO','LOCALIZAÇÃO','AÇÕES'],rows,'🔌','Nenhum cabo cadastrado'));
+    _instrTable(['RASTREABILIDADE','REV.','DISCIPLINA','SEÇÃO DO CABO','QTDE PROJETADA','QTDE REAL LANÇADO','ST. SUPRIMENTOS','DATA CHEGADA','CÓD. SUPRIMENTOS','ORIGEM (DE)','DESTINO (PARA)','STATUS LANÇAMENTO','DATA LANÇAMENTO','LOCALIZAÇÃO','AÇÕES'],rows,'🔌','Nenhum cabo cadastrado'));
 }
 async function instrCaboSet(id,f,v){var r=instrCabos.find(function(x){return x.id===id;});if(r){r[f]=v;await saveAll();}}
 async function instrCaboAdd(){var d=prompt('Número de rastreabilidade:');if(!d||!d.trim())return;instrCabos.push({id:_instrId('cab'),projId:currentProjId||null,doc:d.trim(),rev:'0',disc:'Instrumentação',secao:'',qtd:null,stSup:'Pendente',dtChegada:'',codSup:'',origem:'',destino:'',stLanc2:'Pendente',dtLanc:'',qtdReal:null,loc:'Campo'});await _instrSave();}
