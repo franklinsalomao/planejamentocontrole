@@ -3376,20 +3376,20 @@ function _instrSupCells(id, setFn, stSup, dtChegada) {
     + INSTR_SUP_OPTS.map(function(o){return '<option value="'+o+'" '+(v===o?'selected':'')+'>'+o+'</option>';}).join('')
     + '</select>';
 
-  var dtCell;
-  if (v === 'Em Compra') {
-    var hoje = new Date().toISOString().slice(0,10);
-    var atrasado = dtChegada && dtChegada < hoje;
-    dtCell = '<input type="date" value="'+(dtChegada||'')+'" onclick="event.stopPropagation()" '
-      +'onchange="'+setFn+'(\''+id+'\',\'dtChegada\',this.value)" '
-      +'style="padding:3px 5px;border:0.5px solid '+(atrasado?'#e57373':'var(--hbr)')+';border-radius:5px;font-size:10px;font-weight:600;'
-      +'background:'+(atrasado?'#fdecea':'var(--hg)')+';color:'+(atrasado?'#c62828':'var(--ht)')+'">'
-      + (atrasado ? '<div style="font-size:8px;font-weight:700;color:#c62828;margin-top:1px">⚠️ ATRASADO</div>' : '');
-  } else if (v === 'Em Estoque') {
-    dtCell = '<span style="font-size:10px;font-weight:700;color:#8a94a6;background:#f5f5f5;padding:3px 10px;border-radius:5px">N/A</span>';
-  } else {
-    dtCell = '<span style="font-size:10px;color:#b0b8c4">—</span>';
-  }
+  // Data de chegada — sempre editavel, independente do status
+  var hoje = new Date().toISOString().slice(0,10);
+  var atrasado = dtChegada && dtChegada < hoje && v !== 'Em Estoque';
+  var dtBorda = atrasado ? '#e57373' : 'var(--hbr)';
+  var dtBg    = atrasado ? '#fdecea' : (v==='Em Estoque' ? '#f5f5f5' : 'var(--hg)');
+  var dtCor   = atrasado ? '#c62828' : (v==='Em Estoque' ? '#8a94a6' : 'var(--ht)');
+
+  var dtCell = '<input type="date" value="'+(dtChegada||'')+'" onclick="event.stopPropagation()" '
+    +'onchange="'+setFn+'(\''+id+'\',\'dtChegada\',this.value)" '
+    +'title="'+(v==='Em Estoque'?'Item em estoque — data opcional':'Previsao de chegada')+'" '
+    +'style="padding:3px 5px;border:0.5px solid '+dtBorda+';border-radius:5px;font-size:10px;font-weight:600;'
+    +'background:'+dtBg+';color:'+dtCor+'">'
+    + (atrasado ? '<div style="font-size:8px;font-weight:700;color:#c62828;margin-top:1px">ATRASADO</div>' : '')
+    + (!dtChegada && v==='Em Estoque' ? '<div style="font-size:8px;font-weight:700;color:#8a94a6;margin-top:1px">N/A</div>' : '');
 
   return '<td style="padding:4px 6px;text-align:center">'+sel+'</td>'
        + '<td style="padding:4px 6px;text-align:center">'+dtCell+'</td>';
