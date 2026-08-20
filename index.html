@@ -3409,6 +3409,53 @@ function _instrSupCells(id, setFn, stSup, dtChegada) {
    Classificação · St. Montagem · DT Elét/Pneu/Proc · Interligação · Aterramento · Loop
 ══════════════════════════════════════════════════════════════════════ */
 let _itSearch='';
+
+/* ─── DT: existencia (Sim/N/A) + status de execucao ────────────────────
+   Se o DT nao se aplica (N/A) o status fica N/A e nao e editavel.
+   Se existe (Sim) o status alterna entre Pendente e Executado.
+──────────────────────────────────────────────────────────────────────── */
+const INSTR_DT_PRES = ['Sim', 'N/A'];
+const INSTR_DT_EXEC = ['Pendente', 'Executado'];
+
+function _instrDtCells(id, setFn, presField, presRaw, exField, exRaw) {
+  // legado: valor "Pendente" gravado na coluna de existencia vira Sim + status Pendente
+  var pres = (presRaw === 'Sim' || presRaw === 'Pendente') ? 'Sim' : 'N/A';
+  var bgP = pres === 'Sim' ? '#c8f5d0' : '#f5f5f5';
+  var selP = '<select onchange="' + setFn + '(\'' + id + '\',\'' + presField + '\',this.value)" '
+    + 'style="font-size:10px;font-weight:700;padding:3px 5px;border-radius:5px;border:0.5px solid var(--hbr);background:' + bgP + ';color:#1a3a5c;max-width:70px">'
+    + INSTR_DT_PRES.map(function (o) { return '<option value="' + o + '" ' + (pres === o ? 'selected' : '') + '>' + o + '</option>'; }).join('')
+    + '</select>';
+
+  var exCell;
+  if (pres === 'N/A') {
+    exCell = '<span style="font-size:10px;font-weight:700;color:#8a94a6;background:#f5f5f5;padding:3px 10px;border-radius:5px">N/A</span>';
+  } else {
+    var ex = (exRaw === 'Executado') ? 'Executado' : 'Pendente';
+    var bgE = ex === 'Executado' ? '#c8f5d0' : '#fff8e1';
+    exCell = '<select onchange="' + setFn + '(\'' + id + '\',\'' + exField + '\',this.value)" '
+      + 'style="font-size:10px;font-weight:700;padding:3px 5px;border-radius:5px;border:0.5px solid var(--hbr);background:' + bgE + ';color:#1a3a5c;max-width:95px">'
+      + INSTR_DT_EXEC.map(function (o) { return '<option value="' + o + '" ' + (ex === o ? 'selected' : '') + '>' + o + '</option>'; }).join('')
+      + '</select>';
+  }
+
+  return '<td style="padding:4px 6px;text-align:center">' + selP + '</td>'
+       + '<td style="padding:4px 6px;text-align:center">' + exCell + '</td>';
+}
+
+/* Ao mudar a existencia do DT, ajusta o status correspondente */
+async function instrTagSetDt(id, field, value) {
+  var r = instrTags.find(function (x) { return x.id === id; });
+  if (!r) return;
+  r[field] = value;
+  var pares = { stDtEl: 'stDtElEx', stDtPn: 'stDtPnEx', stDtPr: 'stDtPrEx' };
+  if (pares[field]) {
+    if (value === 'N/A') r[pares[field]] = 'N/A';
+    else if (r[pares[field]] !== 'Executado') r[pares[field]] = 'Pendente';
+  }
+  await saveAll();
+  renderIsoView();
+}
+
 function renderInstrTags(discTabs,bc){
   var list=_instrProjFilter(instrTags);
   var filtered=list.filter(function(r){return !_itSearch||JSON.stringify(r).toLowerCase().includes(_itSearch.toLowerCase());});
@@ -3439,9 +3486,9 @@ function renderInstrTags(discTabs,bc){
       +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrTagSet','stCal',CAL,r.stCal||'Pendente',90)+'</td>'
       +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrTagSet','classif',CLS,r.classif||'Novo',80)+'</td>'
       +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrTagSet','stMon',MON,r.stMon||'Pendente',80)+'</td>'
-      +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrTagSet','stDtEl',SPN,r.stDtEl||'Pendente',80)+'</td>'
-      +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrTagSet','stDtPn',SPN,r.stDtPn||'Pendente',80)+'</td>'
-      +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrTagSet','stDtPr',SPN,r.stDtPr||'Pendente',80)+'</td>'
+      +_instrDtCells(r.id,'instrTagSetDt','stDtEl',r.stDtEl,'stDtElEx',r.stDtElEx)
+      +_instrDtCells(r.id,'instrTagSetDt','stDtPn',r.stDtPn,'stDtPnEx',r.stDtPnEx)
+      +_instrDtCells(r.id,'instrTagSetDt','stDtPr',r.stDtPr,'stDtPrEx',r.stDtPrEx)
       +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrTagSet','stInterl',SPN,r.stInterl||'Pendente',80)+'</td>'
       +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrTagSet','stAter',SPN,r.stAter||'Pendente',80)+'</td>'
       +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrTagSet','stLoop',SPN,r.stLoop||'Pendente',80)+'</td>'
@@ -3450,11 +3497,11 @@ function renderInstrTags(discTabs,bc){
   }).join(''):null;
   _instrHeader(discTabs,bc,'Tags de Instrumentos / Equipamentos',kpis,
     _instrFilterBar(_itSearch,'_itSearch','<button onclick="instrTagImportPDF()" style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid #b0ddf0;background:rgba(0,119,182,.1);color:#0077b6;cursor:pointer">📎 Importar PDF</button><button onclick="instrTagImportXLSX()" style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid #a5d6a7;background:rgba(46,125,50,.1);color:#2e7d32;cursor:pointer">📥 Importar XLSX</button><button onclick="instrExportPDF(\'tags\')" style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid var(--hbr);background:var(--hg);color:var(--ht);cursor:pointer">📄 Exportar PDF</button>','instrTagAdd','instrTagDelAll'),
-    _instrTable(['DISCIPLINA','DOC. RASTREABILIDADE','TAG','LINHA / EQUIPAMENTO','CÓD. SUPRIMENTOS','QTDE','ST. SUPRIMENTOS','DATA CHEGADA','CALIBRAÇÃO','CLASSIFICAÇÃO','ST. MONTAGEM','DT ELÉT.','DT PNEU.','DT PROC.','INTERLIGAÇÃO','ATERRAMENTO','LOOP TESTE','AÇÕES'],rows,'🏷️','Nenhuma tag cadastrada'));
+    _instrTable(['DISCIPLINA','DOC. RASTREABILIDADE','TAG','LINHA / EQUIPAMENTO','CÓD. SUPRIMENTOS','QTDE','ST. SUPRIMENTOS','DATA CHEGADA','CALIBRAÇÃO','CLASSIFICAÇÃO','ST. MONTAGEM','DT ELÉT.','ST. DT ELÉT.','DT PNEU.','ST. DT PNEU.','DT PROC.','ST. DT PROC.','INTERLIGAÇÃO','ATERRAMENTO','LOOP TESTE','AÇÕES'],rows,'🏷️','Nenhuma tag cadastrada'));
 }
 async function instrTagSet(id,f,v){var r=instrTags.find(function(x){return x.id===id;});if(r){r[f]=v;await saveAll();}}
 async function instrTagAdd(){var t=prompt('Tag do instrumento/equipamento:');if(!t||!t.trim())return;
-  instrTags.push({id:_instrId('tag'),projId:currentProjId||null,disc:'Instrumentação',doc:'',tag:t.trim(),linhaEquip:'',codSup:'',qtd:1,stCal:'Pendente',classif:'Novo',stMon:'Pendente',stDtEl:'Pendente',stDtPn:'Pendente',stDtPr:'Pendente',stInterl:'Pendente',stAter:'Pendente',stLoop:'Pendente',stSup:'Pendente',dtChegada:''});
+  instrTags.push({id:_instrId('tag'),projId:currentProjId||null,disc:'Instrumentação',doc:'',tag:t.trim(),linhaEquip:'',codSup:'',qtd:1,stCal:'Pendente',classif:'Novo',stMon:'Pendente',stDtEl:'N/A',stDtElEx:'N/A',stDtPn:'N/A',stDtPnEx:'N/A',stDtPr:'N/A',stDtPrEx:'N/A',stInterl:'Pendente',stAter:'Pendente',stLoop:'Pendente',stSup:'Pendente',dtChegada:''});
   await _instrSave();}
 async function instrTagDel(id){if(!confirm('Excluir tag?'))return;instrTags=instrTags.filter(function(r){return r.id!==id;});await _instrSave();}
 async function instrTagDelAll(){var n=_instrProjFilter(instrTags).length;if(!n)return;if(!confirm('Excluir TODAS as '+n+' tags?'))return;if(currentProjId)instrTags=instrTags.filter(function(r){return r.projId!==currentProjId;});else instrTags=[];await _instrSave();}
@@ -3707,9 +3754,9 @@ function instrExportPDF(tipo) {
 
   if (tipo === 'tags') {
     titulo = 'Tags de Instrumentos / Equipamentos';
-    headers = ['Disciplina','Doc. Rastreabilidade','Tag','Linha / Equipamento','Cód. Suprimentos','Qtde','Calibração','Classificação','St. Montagem','DT Elét.','DT Pneu.','DT Proc.','Interligação','Aterramento','Loop Teste','St. Suprimentos','Data Chegada'];
+    headers = ['Disciplina','Doc. Rastreabilidade','Tag','Linha / Equipamento','Cód. Suprimentos','Qtde','Calibração','Classificação','St. Montagem','DT Elét.','St. DT Elét.','DT Pneu.','St. DT Pneu.','DT Proc.','St. DT Proc.','Interligação','Aterramento','Loop Teste','St. Suprimentos','Data Chegada'];
     var list = _instrProjFilter(instrTags);
-    rows = list.map(function(r){return [r.disc||'',r.doc||'',r.tag||'',r.linhaEquip||'',r.codSup||'',r.qtd||'',r.stCal||'',r.classif||'',r.stMon||'',r.stDtEl||'',r.stDtPn||'',r.stDtPr||'',r.stInterl||'',r.stAter||'',r.stLoop||'',r.stSup||'',r.dtChegada||''];});
+    rows = list.map(function(r){return [r.disc||'',r.doc||'',r.tag||'',r.linhaEquip||'',r.codSup||'',r.qtd||'',r.stCal||'',r.classif||'',r.stMon||'',r.stDtEl||'',r.stDtElEx||'',r.stDtPn||'',r.stDtPnEx||'',r.stDtPr||'',r.stDtPrEx||'',r.stInterl||'',r.stAter||'',r.stLoop||'',r.stSup||'',r.dtChegada||''];});
   } else if (tipo === 'cabos') {
     titulo = 'Lista de Cabos';
     headers = ['Rastreabilidade','Rev.','Disciplina','Tipo de Cabo','Qtde','Origem (De)','Destino (Para)','St. Lançamento','Localização','St. Suprimentos','Data Chegada'];
@@ -4001,9 +4048,12 @@ function _instrTagProcessRows(rows, setStatus, setPreview) {
       stCal:    COL.stCal>=0   ? mapVal(row[COL.stCal],  cal_map,  'Pendente') : 'Pendente',
       classif:  COL.classif>=0 ? mapVal(row[COL.classif],cls_map,  'Novo')     : 'Novo',
       stMon:    COL.stMon>=0   ? mapVal(row[COL.stMon],  mon_map,  'Pendente') : 'Pendente',
-      stDtEl:   COL.stDtEl>=0  ? mapVal(row[COL.stDtEl], spn_map,  'Pendente') : 'Pendente',
-      stDtPn:   COL.stDtPn>=0  ? mapVal(row[COL.stDtPn], spn_map,  'Pendente') : 'Pendente',
-      stDtPr:   COL.stDtPr>=0  ? mapVal(row[COL.stDtPr], spn_map,  'Pendente') : 'Pendente',
+      stDtEl:   COL.stDtEl>=0  ? mapVal(row[COL.stDtEl], spn_map,  'N/A') : 'N/A',
+      stDtElEx: (COL.stDtEl>=0  ? mapVal(row[COL.stDtEl], spn_map,  'N/A') : 'N/A')==='N/A'?'N/A':'Pendente',
+      stDtPn:   COL.stDtPn>=0  ? mapVal(row[COL.stDtPn], spn_map,  'N/A') : 'N/A',
+      stDtPnEx: (COL.stDtPn>=0  ? mapVal(row[COL.stDtPn], spn_map,  'N/A') : 'N/A')==='N/A'?'N/A':'Pendente',
+      stDtPr:   COL.stDtPr>=0  ? mapVal(row[COL.stDtPr], spn_map,  'N/A') : 'N/A',
+      stDtPrEx: (COL.stDtPr>=0  ? mapVal(row[COL.stDtPr], spn_map,  'N/A') : 'N/A')==='N/A'?'N/A':'Pendente',
       stInterl: COL.stInterl>=0? mapVal(row[COL.stInterl],spn_map, 'Pendente') : 'Pendente',
       stAter:   COL.stAter>=0  ? mapVal(row[COL.stAter], spn_map,  'Pendente') : 'Pendente',
       stLoop:   COL.stLoop>=0  ? mapVal(row[COL.stLoop], spn_map,  'Pendente') : 'Pendente',
@@ -4517,8 +4567,11 @@ function instrTagImportPDF() {
         classif: /^novo/i.test(_liNorm(r.status)) ? 'Novo' : 'Existente',
         stMon: 'Pendente',
         stDtEl: _liToSimNA(r.dtEletricaRaw),
+        stDtElEx: _liToSimNA(r.dtEletricaRaw)==='Sim'?'Pendente':'N/A',
         stDtPn: _liToSimNA(r.dtPneumaticoRaw),
+        stDtPnEx: _liToSimNA(r.dtPneumaticoRaw)==='Sim'?'Pendente':'N/A',
         stDtPr: _liToSimNA(r.dtProcessoRaw),
+        stDtPrEx: _liToSimNA(r.dtProcessoRaw)==='Sim'?'Pendente':'N/A',
         stInterl: 'Pendente', stAter: 'Pendente', stLoop: 'Pendente'
       });
       added++;
