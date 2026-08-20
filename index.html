@@ -3346,11 +3346,43 @@ function _instrHeader(discTabs,bc,title,kpis,filterBar,tbl){
     +'<div style="padding:10px 16px 4px;font-size:15px;font-weight:700;color:var(--hb)">🔬 Instrumentação — '+title+'</div>'
     +kpis+filterBar+tbl+'</div>';
 }
-function _instrFilterBar(search,searchKey,extraSelects,addFn,delAllFn){
+/* ─── Filtro por AREA, derivada do numero de rastreabilidade ───────────
+   Ex.: BK-BA01-08200-LI-80-00005  ->  area "08200"
+──────────────────────────────────────────────────────────────────────── */
+let _itArea='', _icArea='', _isArea='', _ieArea='';
+
+function _instrArea(doc){
+  var s=String(doc||'').trim();
+  if(!s) return '';
+  var m=s.match(/^[A-Za-z0-9]+-[A-Za-z0-9]+-(\d{3,6})-/);   /* BK-BA01-08200-... */
+  if(m) return m[1];
+  m=s.match(/^[A-Za-z0-9]+-(\d{3,6})-/);                     /* BA01-08200-...    */
+  return m ? m[1] : '';
+}
+function _instrAreas(list){
+  var seen={}, out=[];
+  list.forEach(function(r){
+    var a=_instrArea(r.doc);
+    if(a && !seen[a]){ seen[a]=1; out.push(a); }
+  });
+  return out.sort();
+}
+function _instrAreaSel(varName, list, cur){
+  var areas=_instrAreas(list);
+  if(!areas.length) return '';
+  return '<select onchange="'+varName+'=this.value;renderIsoView()" title="Filtrar pela area contida na rastreabilidade" '
+    +'style="font-size:11px;font-weight:700;padding:4px 7px;border:0.5px solid var(--hbr);border-radius:5px;'
+    +'background:'+(cur?'#c8f5d0':'var(--hg)')+';color:var(--ht)">'
+    +'<option value="">\uD83D\uDCCD Area (todas)</option>'
+    +areas.map(function(a){return '<option value="'+a+'" '+(cur===a?'selected':'')+'>Area '+a+'</option>';}).join('')
+    +'</select>';
+}
+
+function _instrFilterBar(search,searchKey,extraSelects,addFn,delAllFn,areaKey){
   return '<div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid var(--hbr)">'
     +'<input placeholder="🔍 Buscar..." value="'+(search||'')+'" oninput="'+searchKey+'=this.value;renderIsoView()" style="font-size:11px;padding:4px 8px;border:0.5px solid var(--hbr);border-radius:5px;background:var(--hg);color:var(--ht);min-width:160px">'
     +(extraSelects||'')
-    +'<button class="btn-clr" onclick="'+searchKey+'=\'\';renderIsoView()">✕</button>'
+    +'<button class="btn-clr" onclick="'+searchKey+'=\'\';'+(areaKey?areaKey+'=\'\';':'')+'renderIsoView()">✕</button>'
     +'<button class="btn btn-cyan" style="height:27px;font-size:11px;background:rgba(0,90,180,.85)" onclick="'+addFn+'()">+ Novo</button>'
     +'<button style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:1px solid #e0c8c8;background:#fdecea;color:var(--hd);cursor:pointer" onclick="'+delAllFn+'()">🗑️ Excluir Tudo</button>'
     +'</div>';
@@ -3458,7 +3490,7 @@ async function instrTagSetDt(id, field, value) {
 
 function renderInstrTags(discTabs,bc){
   var list=_instrProjFilter(instrTags);
-  var filtered=list.filter(function(r){return !_itSearch||JSON.stringify(r).toLowerCase().includes(_itSearch.toLowerCase());});
+  var filtered=list.filter(function(r){return (!_itArea||_instrArea(r.doc)===_itArea) && (!_itSearch||JSON.stringify(r).toLowerCase().includes(_itSearch.toLowerCase()));});
   var total=list.length;
   var calOk =list.filter(function(r){return r.stCal==='Concluído';}).length;
   var monOk =list.filter(function(r){return r.stMon==='Sim';}).length;
@@ -3496,7 +3528,7 @@ function renderInstrTags(discTabs,bc){
       +'</tr>';
   }).join(''):null;
   _instrHeader(discTabs,bc,'Tags de Instrumentos / Equipamentos',kpis,
-    _instrFilterBar(_itSearch,'_itSearch','<button onclick="instrTagImportPDF()" style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid #b0ddf0;background:rgba(0,119,182,.1);color:#0077b6;cursor:pointer">📎 Importar PDF</button><button onclick="instrTagImportXLSX()" style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid #a5d6a7;background:rgba(46,125,50,.1);color:#2e7d32;cursor:pointer">📥 Importar XLSX</button><button onclick="instrExportPDF(\'tags\')" style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid var(--hbr);background:var(--hg);color:var(--ht);cursor:pointer">📄 Exportar PDF</button>','instrTagAdd','instrTagDelAll'),
+    _instrFilterBar(_itSearch,'_itSearch',_instrAreaSel('_itArea',list,_itArea)+'<button onclick="instrTagImportPDF()" style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid #b0ddf0;background:rgba(0,119,182,.1);color:#0077b6;cursor:pointer">📎 Importar PDF</button><button onclick="instrTagImportXLSX()" style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid #a5d6a7;background:rgba(46,125,50,.1);color:#2e7d32;cursor:pointer">📥 Importar XLSX</button><button onclick="instrExportPDF(\'tags\')" style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid var(--hbr);background:var(--hg);color:var(--ht);cursor:pointer">📄 Exportar PDF</button>','instrTagAdd','instrTagDelAll','_itArea'),
     _instrTable(['DISCIPLINA','DOC. RASTREABILIDADE','TAG','LINHA / EQUIPAMENTO','CÓD. SUPRIMENTOS','QTDE','ST. SUPRIMENTOS','DATA CHEGADA','CALIBRAÇÃO','CLASSIFICAÇÃO','ST. MONTAGEM','DT ELÉT.','ST. DT ELÉT.','DT PNEU.','ST. DT PNEU.','DT PROC.','ST. DT PROC.','INTERLIGAÇÃO','ATERRAMENTO','LOOP TESTE','AÇÕES'],rows,'🏷️','Nenhuma tag cadastrada'));
 }
 async function instrTagSet(id,f,v){var r=instrTags.find(function(x){return x.id===id;});if(r){r[f]=v;await saveAll();}}
@@ -3512,7 +3544,7 @@ async function instrTagDelAll(){var n=_instrProjFilter(instrTags).length;if(!n)r
 let _icSearch='';
 function renderInstrCabos(discTabs,bc){
   var list=_instrProjFilter(instrCabos);
-  var filtered=list.filter(function(r){return !_icSearch||JSON.stringify(r).toLowerCase().includes(_icSearch.toLowerCase());});
+  var filtered=list.filter(function(r){return (!_icArea||_instrArea(r.doc)===_icArea) && (!_icSearch||JSON.stringify(r).toLowerCase().includes(_icSearch.toLowerCase()));});
   var total=list.length;
   var lancOk=list.filter(function(r){return r.stLanc==='Concluído';}).length;
   var kpis='<div class="sum-bar" style="margin:10px 16px 0;gap:8px">'
@@ -3542,7 +3574,7 @@ function renderInstrCabos(discTabs,bc){
       +'</tr>';
   }).join(''):null;
   _instrHeader(discTabs,bc,'Lista de Cabos',kpis,
-    _instrFilterBar(_icSearch,'_icSearch','<button onclick="instrCaboImportXLSX()" style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid #a5d6a7;background:rgba(46,125,50,.1);color:#2e7d32;cursor:pointer">📥 Importar XLSX</button><button onclick="instrExportPDF(\'cabos\')" style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid var(--hbr);background:var(--hg);color:var(--ht);cursor:pointer">📄 Exportar PDF</button>','instrCaboAdd','instrCaboDelAll'),
+    _instrFilterBar(_icSearch,'_icSearch',_instrAreaSel('_icArea',list,_icArea)+'<button onclick="instrCaboImportXLSX()" style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid #a5d6a7;background:rgba(46,125,50,.1);color:#2e7d32;cursor:pointer">📥 Importar XLSX</button><button onclick="instrExportPDF(\'cabos\')" style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid var(--hbr);background:var(--hg);color:var(--ht);cursor:pointer">📄 Exportar PDF</button>','instrCaboAdd','instrCaboDelAll','_icArea'),
     _instrTable(['RASTREABILIDADE','REV.','DISCIPLINA','SEÇÃO DO CABO','QTDE PROJETADA','QTDE REAL LANÇADO','ST. SUPRIMENTOS','DATA CHEGADA','CÓD. SUPRIMENTOS','ORIGEM (DE)','DESTINO (PARA)','STATUS LANÇAMENTO','DATA LANÇAMENTO','LOCALIZAÇÃO','AÇÕES'],rows,'🔌','Nenhum cabo cadastrado'));
 }
 async function instrCaboSet(id,f,v){var r=instrCabos.find(function(x){return x.id===id;});if(r){r[f]=v;await saveAll();}}
@@ -3556,7 +3588,7 @@ async function instrCaboDelAll(){var n=_instrProjFilter(instrCabos).length;if(!n
 let _isSearch='';
 function renderInstrSups(discTabs,bc){
   var list=_instrProjFilter(instrSups);
-  var filtered=list.filter(function(r){return !_isSearch||JSON.stringify(r).toLowerCase().includes(_isSearch.toLowerCase());});
+  var filtered=list.filter(function(r){return (!_isArea||_instrArea(r.doc)===_isArea) && (!_isSearch||JSON.stringify(r).toLowerCase().includes(_isSearch.toLowerCase()));});
   var total=list.length;
   var fabOk=list.filter(function(r){return r.stFab==='Fabricado';}).length;
   var monOk=list.filter(function(r){return r.stMon==='Montado';}).length;
@@ -3585,7 +3617,7 @@ function renderInstrSups(discTabs,bc){
       +'</tr>';
   }).join(''):null;
   _instrHeader(discTabs,bc,'Suportes',kpis,
-    _instrFilterBar(_isSearch,'_isSearch','<button onclick="instrSupImportXLSX()" style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid #a5d6a7;background:rgba(46,125,50,.1);color:#2e7d32;cursor:pointer">📥 Importar XLSX</button><button onclick="instrSupImportPDF()" style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid #b0ddf0;background:rgba(0,119,182,.1);color:#0077b6;cursor:pointer">📎 Importar PDF</button><button onclick="instrExportPDF(\'suportes\')" style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid var(--hbr);background:var(--hg);color:var(--ht);cursor:pointer;display:flex;align-items:center;gap:4px">📄 Exportar PDF</button>','instrSupAdd','instrSupDelAll'),
+    _instrFilterBar(_isSearch,'_isSearch',_instrAreaSel('_isArea',list,_isArea)+'<button onclick="instrSupImportXLSX()" style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid #a5d6a7;background:rgba(46,125,50,.1);color:#2e7d32;cursor:pointer">📥 Importar XLSX</button><button onclick="instrSupImportPDF()" style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid #b0ddf0;background:rgba(0,119,182,.1);color:#0077b6;cursor:pointer">📎 Importar PDF</button><button onclick="instrExportPDF(\'suportes\')" style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid var(--hbr);background:var(--hg);color:var(--ht);cursor:pointer;display:flex;align-items:center;gap:4px">📄 Exportar PDF</button>','instrSupAdd','instrSupDelAll','_isArea'),
     _instrTable(['RASTREABILIDADE','DISCIPLINA','INSTRUMENTO','TIPO DE SUPORTE','ST. FABRICAÇÃO','DT. FABRICAÇÃO','ST. PINTURA','DT. PINTURA','ST. MONTAGEM','DT. MONTAGEM','AÇÕES'],rows,'🔧','Nenhum suporte cadastrado'));
 }
 async function instrSupSet(id,f,v){var r=instrSups.find(function(x){return x.id===id;});if(r){r[f]=v;await saveAll();}}
@@ -3674,7 +3706,7 @@ let _ieSearch='';
 let _ieSearch='';
 function renderInstrEncam(discTabs,bc){
   var list=_instrProjFilter(instrEncam);
-  var filtered=list.filter(function(r){return !_ieSearch||JSON.stringify(r).toLowerCase().includes(_ieSearch.toLowerCase());});
+  var filtered=list.filter(function(r){return (!_ieArea||_instrArea(r.doc)===_ieArea) && (!_ieSearch||JSON.stringify(r).toLowerCase().includes(_ieSearch.toLowerCase()));});
   var total=list.length;
   var monOk=list.filter(function(r){return r.stMon==='Montado';}).length;
   var kpis='<div class="sum-bar" style="margin:10px 16px 0;gap:8px">'
@@ -3697,7 +3729,7 @@ function renderInstrEncam(discTabs,bc){
       +'</tr>';
   }).join(''):null;
   _instrHeader(discTabs,bc,'Encaminhamento',kpis,
-    _instrFilterBar(_ieSearch,'_ieSearch','<button onclick="instrExportPDF(\'encam\')" style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid var(--hbr);background:var(--hg);color:var(--ht);cursor:pointer;display:flex;align-items:center;gap:4px">📄 Exportar PDF</button>','instrEncamAdd','instrEncamDelAll'),
+    _instrFilterBar(_ieSearch,'_ieSearch',_instrAreaSel('_ieArea',list,_ieArea)+'<button onclick="instrExportPDF(\'encam\')" style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid var(--hbr);background:var(--hg);color:var(--ht);cursor:pointer;display:flex;align-items:center;gap:4px">📄 Exportar PDF</button>','instrEncamAdd','instrEncamDelAll','_ieArea'),
     _instrTable(['RASTREABILIDADE','DISCIPLINA','TIPO DE ENCAMINHAMENTO','DIÂMETRO','QTDE','ST. SUPRIMENTOS','DATA CHEGADA','ST. MONTAGEM','AÇÕES'],rows,'🛤️','Nenhum encaminhamento cadastrado'));
 }
 async function instrEncamSet(id,f,v){var r=instrEncam.find(function(x){return x.id===id;});if(r){r[f]=v;await saveAll();}}
