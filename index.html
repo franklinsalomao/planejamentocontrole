@@ -3537,7 +3537,7 @@ function renderInstrSups(discTabs,bc){
       +'</tr>';
   }).join(''):null;
   _instrHeader(discTabs,bc,'Suportes',kpis,
-    _instrFilterBar(_isSearch,'_isSearch','<button onclick="instrExportPDF(\'suportes\')" style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid var(--hbr);background:var(--hg);color:var(--ht);cursor:pointer;display:flex;align-items:center;gap:4px">📄 Exportar PDF</button>','instrSupAdd','instrSupDelAll'),
+    _instrFilterBar(_isSearch,'_isSearch','<button onclick="instrSupImportXLSX()" style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid #a5d6a7;background:rgba(46,125,50,.1);color:#2e7d32;cursor:pointer">📥 Importar XLSX</button><button onclick="instrSupImportPDF()" style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid #b0ddf0;background:rgba(0,119,182,.1);color:#0077b6;cursor:pointer">📎 Importar PDF</button><button onclick="instrExportPDF(\'suportes\')" style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid var(--hbr);background:var(--hg);color:var(--ht);cursor:pointer;display:flex;align-items:center;gap:4px">📄 Exportar PDF</button>','instrSupAdd','instrSupDelAll'),
     _instrTable(['RASTREABILIDADE','DISCIPLINA','INSTRUMENTO','TIPO DE SUPORTE','ST. FABRICAÇÃO','DT. FABRICAÇÃO','ST. PINTURA','DT. PINTURA','ST. MONTAGEM','DT. MONTAGEM','AÇÕES'],rows,'🔧','Nenhum suporte cadastrado'));
 }
 async function instrSupSet(id,f,v){var r=instrSups.find(function(x){return x.id===id;});if(r){r[f]=v;await saveAll();}}
@@ -4021,6 +4021,270 @@ function _instrTagProcessRows(rows, setStatus, setPreview) {
   });
 }
 
+
+
+/* ══════════════════════════════════════════════════════════════════════
+   IMPORTAÇÃO — CONTROLE DE SUPORTES (INSTRUMENTAÇÃO)
+   Aceita XLSX e PDF (tabela com texto selecionável).
+   Colunas reconhecidas: Rastreabilidade · Disciplina · Instrumento ·
+   Tipo de Suporte · St./Dt. Fabricação · St./Dt. Pintura · St./Dt. Montagem
+══════════════════════════════════════════════════════════════════════ */
+
+/* Normaliza datas dd/mm/aaaa, aaaa-mm-dd ou serial Excel -> aaaa-mm-dd */
+function _instrDateNorm(v) {
+  if (v === null || v === undefined || v === '') return '';
+  if (v instanceof Date && !isNaN(v)) return v.toISOString().slice(0, 10);
+  var s = String(v).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  var m = s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/);
+  if (m) {
+    var d = m[1].padStart(2, '0'), mo = m[2].padStart(2, '0'), y = m[3];
+    if (y.length === 2) y = '20' + y;
+    return y + '-' + mo + '-' + d;
+  }
+  if (/^\d{5}$/.test(s)) {
+    var dt = new Date(Date.UTC(1899, 11, 30) + parseInt(s, 10) * 86400000);
+    if (!isNaN(dt)) return dt.toISOString().slice(0, 10);
+  }
+  return '';
+}
+
+/* Localiza a linha de cabeçalho dentro das linhas extraídas */
+function _instrFindHeader(rows, keywords) {
+  var best = -1, bestScore = 0;
+  var limit = Math.min(rows.length, 25);
+  for (var i = 0; i < limit; i++) {
+    var cells = (rows[i] || []).map(_normH);
+    var score = 0;
+    for (var k = 0; k < keywords.length; k++) {
+      for (var c = 0; c < cells.length; c++) {
+        if (cells[c].indexOf(keywords[k]) >= 0) { score++; break; }
+      }
+    }
+    if (score > bestScore) { bestScore = score; best = i; }
+  }
+  return bestScore >= 2 ? best : -1;
+}
+
+/* Processa linhas (vindas de XLSX ou PDF) e grava em instrSups */
+function _instrSupProcessRows(rows, setStatus, setPreview) {
+  var hIdx = _instrFindHeader(rows, ['rastreab', 'suporte', 'instrumento', 'disciplina', 'fabricacao', 'montagem']);
+  if (hIdx < 0) {
+    setStatus('Nao foi possivel localizar o cabecalho das colunas.');
+    setPreview('<div style="color:#c62828">Verifique se o arquivo possui uma linha de cabecalho com termos como "Rastreabilidade", "Instrumento" ou "Tipo de Suporte".</div>');
+    return;
+  }
+  var headers = rows[hIdx];
+
+  var COL = {
+    doc:         _colIdx(headers, ['rastreabilidade', 'rastreab', 'documento', 'desenho', 'doc']),
+    disc:        _colIdx(headers, ['disciplina', 'disc']),
+    instrumento: _colIdx(headers, ['instrumento', 'tag', 'equipamento']),
+    tipoSup:     _colIdx(headers, ['tipo de suporte', 'tipo suporte', 'tipo', 'modelo']),
+    stFab:       _colIdx(headers, ['st fabricacao', 'status fabricacao', 'fabricacao', 'fabricado']),
+    dtFab:       _colIdx(headers, ['dt fabricacao', 'data fabricacao', 'data de fabricacao']),
+    stPint:      _colIdx(headers, ['st pintura', 'status pintura', 'pintura', 'pintado']),
+    dtPint:      _colIdx(headers, ['dt pintura', 'data pintura', 'data de pintura']),
+    stMon:       _colIdx(headers, ['st montagem', 'status montagem', 'montagem', 'montado']),
+    dtMon:       _colIdx(headers, ['dt montagem', 'data montagem', 'data de montagem'])
+  };
+
+  var chips = Object.keys(COL).filter(function (k) { return COL[k] >= 0; })
+    .map(function (k) {
+      return '<span style="background:#e8f5e9;padding:1px 5px;border-radius:3px;margin:2px;display:inline-block">'
+        + k + ' -> col ' + (COL[k] + 1) + '</span>';
+    }).join('');
+  setPreview('<div style="margin-bottom:6px;font-weight:600">Colunas detectadas:</div>' + chips);
+
+  var fabMap  = { 'fabricado': 'Fabricado', 'em fabricacao': 'Em Fabricação', 'fabricacao': 'Em Fabricação', 'pendente': 'Pendente' };
+  var pintMap = { 'pintado': 'Pintado', 'n a': 'N/A', 'na': 'N/A', 'pendente': 'Pendente' };
+  var monMap  = { 'montado': 'Montado', 'em montagem': 'Em Montagem', 'montagem': 'Em Montagem', 'pendente': 'Pendente' };
+
+  function mapVal(raw, map, def) {
+    if (raw === null || raw === undefined || raw === '') return def;
+    var r = _normH(raw);
+    for (var k in map) { if (r.indexOf(k) >= 0) return map[k]; }
+    return def;
+  }
+  function txt(row, i) { return i >= 0 ? String(row[i] === undefined ? '' : row[i]).trim() : ''; }
+
+  var added = 0, skipped = 0;
+  for (var i = hIdx + 1; i < rows.length; i++) {
+    var row = rows[i] || [];
+    var docVal = txt(row, COL.doc);
+    var instVal = txt(row, COL.instrumento);
+    if (!docVal && !instVal) { skipped++; continue; }
+    instrSups.push({
+      id: _instrId('sup'),
+      projId: currentProjId || null,
+      doc: docVal || instVal,
+      disc: txt(row, COL.disc) || 'Instrumentação',
+      instrumento: instVal,
+      tipoSup: txt(row, COL.tipoSup),
+      stFab: mapVal(txt(row, COL.stFab), fabMap, 'Pendente'),
+      dtFab: _instrDateNorm(txt(row, COL.dtFab)),
+      stPint: mapVal(txt(row, COL.stPint), pintMap, 'Pendente'),
+      dtPint: _instrDateNorm(txt(row, COL.dtPint)),
+      stMon: mapVal(txt(row, COL.stMon), monMap, 'Pendente'),
+      dtMon: _instrDateNorm(txt(row, COL.dtMon))
+    });
+    added++;
+  }
+
+  if (!added) {
+    setStatus('Nenhuma linha valida encontrada abaixo do cabecalho.');
+    return;
+  }
+
+  saveAll().then(function () {
+    setStatus(added + ' suporte(s) importado(s)' + (skipped ? ' - ' + skipped + ' linha(s) ignorada(s)' : '') + '.');
+    setTimeout(function () {
+      var m = document.getElementById('instr-sup-import-modal');
+      if (m) m.remove();
+      var x = document.getElementById('instr-xlsx-modal');
+      if (x) x.remove();
+      renderIsoView();
+    }, 1600);
+  });
+}
+
+/* ── Import XLSX (reaproveita o modal generico) ── */
+function instrSupImportXLSX() {
+  _instrXLSXModal(
+    'Importar Suportes via XLSX',
+    'Colunas detectadas automaticamente: Rastreabilidade, Disciplina, Instrumento, Tipo de Suporte, Status e Datas de Fabricacao/Pintura/Montagem.',
+    _instrSupProcessRows
+  );
+}
+
+/* ── Import PDF (modal montado via DOM, sem HTML inline) ── */
+function instrSupImportPDF() {
+  var old = document.getElementById('instr-sup-import-modal');
+  if (old) old.remove();
+
+  var ov = document.createElement('div');
+  ov.id = 'instr-sup-import-modal';
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(10,20,50,.55);z-index:3000;display:flex;align-items:center;justify-content:center;padding:16px';
+
+  var box = document.createElement('div');
+  box.style.cssText = 'background:#fff;border-radius:12px;padding:24px 28px;width:520px;max-width:97vw;box-shadow:0 8px 40px rgba(0,0,0,.28);position:relative';
+
+  var close = document.createElement('button');
+  close.textContent = '\u2715';
+  close.style.cssText = 'position:absolute;top:14px;right:14px;background:none;border:none;font-size:18px;color:#999;cursor:pointer';
+  close.onclick = function () { ov.remove(); };
+
+  var title = document.createElement('div');
+  title.style.cssText = 'font-size:14px;font-weight:700;color:#0077b6;margin-bottom:4px';
+  title.textContent = '\uD83D\uDCCE Importar Suportes via PDF';
+
+  var hint = document.createElement('div');
+  hint.style.cssText = 'font-size:10px;color:#5a6a85;margin-bottom:14px';
+  hint.textContent = 'O PDF precisa ter texto selecionavel (nao funciona com paginas escaneadas). A tabela deve ter uma linha de cabecalho.';
+
+  var drop = document.createElement('div');
+  drop.style.cssText = 'border:2px dashed #b0ddf0;border-radius:8px;padding:26px;text-align:center;cursor:pointer;background:#f4f9ff;margin-bottom:12px';
+  drop.innerHTML = '<div style="font-size:26px;margin-bottom:6px">\uD83D\uDCC4</div>'
+    + '<div style="font-size:11px;font-weight:600;color:#0077b6">Clique ou arraste o PDF aqui</div>';
+
+  var input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.pdf';
+  input.style.display = 'none';
+
+  var status = document.createElement('div');
+  status.style.cssText = 'font-size:11px;color:#5a6a85;min-height:18px;text-align:center';
+
+  var preview = document.createElement('div');
+  preview.style.cssText = 'margin-top:10px;font-size:10px;color:#444;max-height:130px;overflow-y:auto';
+
+  var footer = document.createElement('div');
+  footer.style.cssText = 'display:flex;justify-content:flex-end;margin-top:12px';
+  var btnClose = document.createElement('button');
+  btnClose.textContent = 'Fechar';
+  btnClose.style.cssText = 'padding:7px 16px;border:1px solid #ddd;border-radius:7px;background:#f5f5f5;cursor:pointer;font-size:12px';
+  btnClose.onclick = function () { ov.remove(); };
+  footer.appendChild(btnClose);
+
+  function setStatus(t) { status.textContent = t; }
+  function setPreview(h) { preview.innerHTML = h; }
+
+  function handle(file) {
+    if (!file || !/\.pdf$/i.test(file.name)) { setStatus('Selecione um arquivo .pdf'); return; }
+    setStatus('Lendo ' + file.name + '...');
+    _instrPdfRows(file, setStatus).then(function (rows) {
+      if (!rows || !rows.length) { setStatus('Nao foi possivel extrair texto deste PDF.'); return; }
+      setStatus(rows.length + ' linha(s) extraida(s). Processando...');
+      _instrSupProcessRows(rows, setStatus, setPreview);
+    }).catch(function (e) {
+      setStatus('Erro: ' + e.message);
+    });
+  }
+
+  drop.onclick = function () { input.click(); };
+  drop.ondragover = function (e) { e.preventDefault(); drop.style.borderColor = '#0077b6'; };
+  drop.ondragleave = function () { drop.style.borderColor = '#b0ddf0'; };
+  drop.ondrop = function (e) {
+    e.preventDefault();
+    drop.style.borderColor = '#b0ddf0';
+    handle(e.dataTransfer.files[0]);
+  };
+  input.onchange = function () { handle(input.files[0]); };
+
+  box.appendChild(close);
+  box.appendChild(title);
+  box.appendChild(hint);
+  box.appendChild(drop);
+  box.appendChild(input);
+  box.appendChild(status);
+  box.appendChild(preview);
+  box.appendChild(footer);
+  ov.appendChild(box);
+  document.body.appendChild(ov);
+}
+
+/* Extrai linhas tabulares de um PDF usando pdf.js (agrupa por Y, separa por X) */
+async function _instrPdfRows(file, setStatus) {
+  if (typeof pdfjsLib === 'undefined') throw new Error('biblioteca pdf.js indisponivel');
+  if (pdfjsLib.GlobalWorkerOptions && !pdfjsLib.GlobalWorkerOptions.workerSrc) {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  }
+  var buf = await file.arrayBuffer();
+  var doc = await pdfjsLib.getDocument({ data: buf }).promise;
+  var out = [];
+  for (var p = 1; p <= doc.numPages; p++) {
+    if (setStatus) setStatus('Processando pagina ' + p + ' de ' + doc.numPages + '...');
+    var page = await doc.getPage(p);
+    var tc = await page.getTextContent();
+    var items = tc.items.filter(function (it) { return it.str && it.str.trim().length; });
+    if (!items.length) continue;
+
+    var lines = [];
+    items.slice().sort(function (a, b) { return b.transform[5] - a.transform[5]; }).forEach(function (it) {
+      var y = it.transform[5];
+      var line = null;
+      for (var i = 0; i < lines.length; i++) {
+        if (Math.abs(lines[i].y - y) <= 4) { line = lines[i]; break; }
+      }
+      if (!line) { line = { y: y, items: [] }; lines.push(line); }
+      line.items.push(it);
+    });
+
+    lines.forEach(function (line) {
+      line.items.sort(function (a, b) { return a.transform[4] - b.transform[4]; });
+      var cells = [], buf2 = '', lastX = null;
+      line.items.forEach(function (it) {
+        var x = it.transform[4];
+        if (lastX !== null && (x - lastX) > 9 && buf2.trim()) { cells.push(buf2.trim()); buf2 = ''; }
+        buf2 += (buf2 && !buf2.endsWith(' ') ? ' ' : '') + it.str;
+        lastX = x + (it.width || 0);
+      });
+      if (buf2.trim()) cells.push(buf2.trim());
+      if (cells.length) out.push(cells);
+    });
+  }
+  return out;
+}
 
 /* ════════════ PLANEJAMENTO DE FABRICAÇÃO ════════════ */
 const PROD_INDEX = {"AC|SCH 40|1/2\"": 0.85, "AC|SCH 40|3/4\"": 0.93, "AC|SCH 40|1\"": 1.0, "AC|SCH 40|1 1/4\"": 1.09, "AC|SCH 40|1 1/2\"": 1.1, "AC|SCH 40|2\"": 1.2, "AC|SCH 40|2 1/2\"": 1.43, "AC|SCH 40|3\"": 1.5, "AC|SCH 40|4\"": 1.85, "AC|SCH 40|5\"": 2.12, "AC|SCH 40|6\"": 2.47, "AC|SCH 40|8\"": 3.05, "AC|SCH 40|10\"": 6.5, "AC|SCH 40|12\"": 4.65, "AC|SCH 40|14\"": 5.5, "AC|SCH 40|16\"": 6.6, "AC|SCH 40|18\"": 7.5, "AC|SCH 40|20\"": 8.4, "AC|SCH 40|22\"": 9.14, "AC|SCH 40|24\"": 10.1, "AC|SCH 40|26\"": 12.1, "AC|SCH 40|28\"": 13.8, "AC|SCH 40|30\"": 15.0, "AC GALV.|DIN 2440|1/2\"": 0.85, "AC GALV.|DIN 2440|3/4\"": 0.93, "AC GALV.|DIN 2440|1\"": 1.0, "AC GALV.|DIN 2440|1 1/4\"": 1.09, "AC GALV.|DIN 2440|1 1/2\"": 1.1, "AC GALV.|DIN 2440|2\"": 1.2, "AC GALV.|DIN 2440|2 1/2\"": 1.43, "AC GALV.|DIN 2440|3\"": 1.5, "AC GALV.|DIN 2440|4\"": 1.85, "AC GALV.|DIN 2440|5\"": 2.12, "AC GALV.|DIN 2440|6\"": 2.4, "AC GALV.|DIN 2440|8\"": 3.05, "INOX|10S|1/2\"": 1.3, "INOX|10S|3/4\"": 1.42, "INOX|10S|1\"": 1.53, "INOX|10S|1 1/4\"": 1.67, "INOX|10S|1 1/2\"": 1.68, "INOX|10S|2\"": 1.83, "INOX|10S|2 1/2\"": 2.19, "INOX|10S|3\"": 2.29, "INOX|10S|4\"": 2.84, "INOX|10S|5\"": 3.24, "INOX|10S|6\"": 3.67, "INOX|10S|8\"": 4.66, "INOX|10S|10\"": 5.9, "INOX|10S|12\"": 7.12, "INOX|10S|14\"": 8.42, "INOX|10S|16\"": 10.09, "INOX|10S|18\"": 11.52, "INOX|10S|20\"": 12.85, "INOX|10S|22\"": 13.95, "INOX|10S|24\"": 15.45, "INOX|10S|26\"": 18.51, "INOX|10S|28\"": 21.11, "INOX|10S|30\"": 22.95, "AC|SCH 80|1/2\"": 1.15, "AC|SCH 80|3/4\"": 1.29, "AC|SCH 80|1\"": 1.36, "AC|SCH 80|1 1/4\"": 1.52, "AC|SCH 80|1 1/2\"": 1.54, "AC|SCH 80|2\"": 1.74, "AC|SCH 80|2 1/2\"": 1.99, "AC|SCH 80|3\"": 2.15, "AC|SCH 80|4\"": 2.7, "AC|SCH 80|5\"": 3.3, "AC|SCH 80|6\"": 3.8, "AC|SCH 80|8\"": 4.89, "AC|SCH 80|10\"": 6.45, "AC|SCH 80|12\"": 8.09, "AC|SCH 80|14\"": 9.79, "AC|SCH 80|16\"": 11.49, "AC|SCH 80|18\"": 12.89, "AC|SCH 80|20\"": 15.02, "AC|SCH 80|22\"": 16.74, "AC|SCH 80|24\"": 18.46, "AC|SCH 80|26\"": 22.1, "AC|SCH 80|28\"": 25.2, "AC|SCH 80|30\"": 27.4, "INOX|40S|1/2\"": 1.45, "INOX|40S|3/4\"": 1.58, "INOX|40S|1\"": 1.7, "INOX|40S|1 1/4\"": 1.85, "INOX|40S|1 1/2\"": 1.87, "INOX|40S|2\"": 2.03, "INOX|40S|2 1/2\"": 2.43, "INOX|40S|3\"": 2.55, "INOX|40S|4\"": 3.15, "INOX|40S|5\"": 3.6, "INOX|40S|6\"": 4.08, "INOX|40S|8\"": 5.18, "INOX|40S|10\"": 6.55, "INOX|40S|12\"": 7.91, "INOX|40S|14\"": 9.35, "INOX|40S|16\"": 11.22, "INOX|40S|18\"": 12.8, "INOX|40S|20\"": 14.28, "INOX|40S|22\"": 15.54, "INOX|40S|24\"": 17.17, "INOX|40S|26\"": 20.57, "INOX|40S|28\"": 23.46, "INOX|40S|30\"": 25.5, "ALU|10S|6\"": 10.0, "ALU|10S|10\"": 14.0, "ALU|10S|12\"": 15.54, "ALU|10S|20\"": 18.0};
