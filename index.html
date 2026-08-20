@@ -3432,6 +3432,7 @@ function renderInstrTags(discTabs,bc){
       +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrTagSet','disc',DISC,r.disc||'Instrumentação',100)+'</td>'
       +'<td style="padding:4px 7px;font-size:10px">'+_instrInp(r.id,'instrTagSet','doc',r.doc,110)+'</td>'
       +'<td style="padding:4px 7px;font-weight:700;font-size:11px;font-family:monospace">'+_instrInp(r.id,'instrTagSet','tag',r.tag,100)+'</td>'
+      +'<td style="padding:4px 7px;font-size:10px">'+_instrInp(r.id,'instrTagSet','linhaEquip',r.linhaEquip,110)+'</td>'
       +'<td style="padding:4px 7px;font-size:10px">'+_instrInp(r.id,'instrTagSet','codSup',r.codSup,90)+'</td>'
       +'<td style="padding:4px 5px;text-align:center"><input type="number" min="0" value="'+(r.qtd||1)+'" onclick="event.stopPropagation()" onchange="instrTagSet(\''+r.id+'\',\'qtd\',this.value)" style="width:50px;padding:2px;border:0.5px solid var(--hbr);border-radius:4px;font-size:10px;text-align:center;background:var(--hg);color:var(--ht)"></td>'
       +_instrSupCells(r.id,'instrTagSet',r.stSup,r.dtChegada)
@@ -3448,12 +3449,12 @@ function renderInstrTags(discTabs,bc){
       +'</tr>';
   }).join(''):null;
   _instrHeader(discTabs,bc,'Tags de Instrumentos / Equipamentos',kpis,
-    _instrFilterBar(_itSearch,'_itSearch','<button onclick="instrTagImportXLSX()" style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid #a5d6a7;background:rgba(46,125,50,.1);color:#2e7d32;cursor:pointer">📥 Importar XLSX</button><button onclick="instrExportPDF(\'tags\')" style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid var(--hbr);background:var(--hg);color:var(--ht);cursor:pointer">📄 Exportar PDF</button>','instrTagAdd','instrTagDelAll'),
-    _instrTable(['DISCIPLINA','DOC. RASTREABILIDADE','TAG','CÓD. SUPRIMENTOS','QTDE','ST. SUPRIMENTOS','DATA CHEGADA','CALIBRAÇÃO','CLASSIFICAÇÃO','ST. MONTAGEM','DT ELÉT.','DT PNEU.','DT PROC.','INTERLIGAÇÃO','ATERRAMENTO','LOOP TESTE','AÇÕES'],rows,'🏷️','Nenhuma tag cadastrada'));
+    _instrFilterBar(_itSearch,'_itSearch','<button onclick="instrTagImportPDF()" style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid #b0ddf0;background:rgba(0,119,182,.1);color:#0077b6;cursor:pointer">📎 Importar PDF</button><button onclick="instrTagImportXLSX()" style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid #a5d6a7;background:rgba(46,125,50,.1);color:#2e7d32;cursor:pointer">📥 Importar XLSX</button><button onclick="instrExportPDF(\'tags\')" style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid var(--hbr);background:var(--hg);color:var(--ht);cursor:pointer">📄 Exportar PDF</button>','instrTagAdd','instrTagDelAll'),
+    _instrTable(['DISCIPLINA','DOC. RASTREABILIDADE','TAG','LINHA / EQUIPAMENTO','CÓD. SUPRIMENTOS','QTDE','ST. SUPRIMENTOS','DATA CHEGADA','CALIBRAÇÃO','CLASSIFICAÇÃO','ST. MONTAGEM','DT ELÉT.','DT PNEU.','DT PROC.','INTERLIGAÇÃO','ATERRAMENTO','LOOP TESTE','AÇÕES'],rows,'🏷️','Nenhuma tag cadastrada'));
 }
 async function instrTagSet(id,f,v){var r=instrTags.find(function(x){return x.id===id;});if(r){r[f]=v;await saveAll();}}
 async function instrTagAdd(){var t=prompt('Tag do instrumento/equipamento:');if(!t||!t.trim())return;
-  instrTags.push({id:_instrId('tag'),projId:currentProjId||null,disc:'Instrumentação',doc:'',tag:t.trim(),codSup:'',qtd:1,stCal:'Pendente',classif:'Novo',stMon:'Pendente',stDtEl:'Pendente',stDtPn:'Pendente',stDtPr:'Pendente',stInterl:'Pendente',stAter:'Pendente',stLoop:'Pendente',stSup:'Pendente',dtChegada:''});
+  instrTags.push({id:_instrId('tag'),projId:currentProjId||null,disc:'Instrumentação',doc:'',tag:t.trim(),linhaEquip:'',codSup:'',qtd:1,stCal:'Pendente',classif:'Novo',stMon:'Pendente',stDtEl:'Pendente',stDtPn:'Pendente',stDtPr:'Pendente',stInterl:'Pendente',stAter:'Pendente',stLoop:'Pendente',stSup:'Pendente',dtChegada:''});
   await _instrSave();}
 async function instrTagDel(id){if(!confirm('Excluir tag?'))return;instrTags=instrTags.filter(function(r){return r.id!==id;});await _instrSave();}
 async function instrTagDelAll(){var n=_instrProjFilter(instrTags).length;if(!n)return;if(!confirm('Excluir TODAS as '+n+' tags?'))return;if(currentProjId)instrTags=instrTags.filter(function(r){return r.projId!==currentProjId;});else instrTags=[];await _instrSave();}
@@ -3706,9 +3707,9 @@ function instrExportPDF(tipo) {
 
   if (tipo === 'tags') {
     titulo = 'Tags de Instrumentos / Equipamentos';
-    headers = ['Disciplina','Doc. Rastreabilidade','Tag','Cód. Suprimentos','Qtde','Calibração','Classificação','St. Montagem','DT Elét.','DT Pneu.','DT Proc.','Interligação','Aterramento','Loop Teste','St. Suprimentos','Data Chegada'];
+    headers = ['Disciplina','Doc. Rastreabilidade','Tag','Linha / Equipamento','Cód. Suprimentos','Qtde','Calibração','Classificação','St. Montagem','DT Elét.','DT Pneu.','DT Proc.','Interligação','Aterramento','Loop Teste','St. Suprimentos','Data Chegada'];
     var list = _instrProjFilter(instrTags);
-    rows = list.map(function(r){return [r.disc||'',r.doc||'',r.tag||'',r.codSup||'',r.qtd||'',r.stCal||'',r.classif||'',r.stMon||'',r.stDtEl||'',r.stDtPn||'',r.stDtPr||'',r.stInterl||'',r.stAter||'',r.stLoop||'',r.stSup||'',r.dtChegada||''];});
+    rows = list.map(function(r){return [r.disc||'',r.doc||'',r.tag||'',r.linhaEquip||'',r.codSup||'',r.qtd||'',r.stCal||'',r.classif||'',r.stMon||'',r.stDtEl||'',r.stDtPn||'',r.stDtPr||'',r.stInterl||'',r.stAter||'',r.stLoop||'',r.stSup||'',r.dtChegada||''];});
   } else if (tipo === 'cabos') {
     titulo = 'Lista de Cabos';
     headers = ['Rastreabilidade','Rev.','Disciplina','Tipo de Cabo','Qtde','Origem (De)','Destino (Para)','St. Lançamento','Localização','St. Suprimentos','Data Chegada'];
@@ -4284,6 +4285,280 @@ async function _instrPdfRows(file, setStatus) {
     });
   }
   return out;
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════
+   IMPORTACAO PDF - LISTA DE INSTRUMENTOS (DETALHAMENTO)
+   Le o PDF da lista de instrumentos e extrai, por instrumento:
+     TAG  |  LINHA / EQUIPAMENTO  |  DETALHE TIPICO PROCESSO
+     DETALHE TIPICO ELETRICA      |  DETALHE TIPICO PNEUMATICO
+   Celula preenchida -> "Sim"    Celula vazia ou "-" -> "N/A"
+   As paginas sao giradas 90 graus: coluna = transform[5], linha = transform[4].
+   Cada instrumento ocupa duas linhas (superior e inferior).
+══════════════════════════════════════════════════════════════════════ */
+
+function _liNorm(s) {
+  return String(s || '').toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function _liIsEmpty(v) {
+  var t = String(v || '').replace(/\s+/g, ' ').trim();
+  if (!t) return true;
+  return /^[-\u2010-\u2015.\u00b7]+$/.test(t);
+}
+
+function _liToSimNA(v) { return _liIsEmpty(v) ? 'N/A' : 'Sim'; }
+
+function _liItems(textItems, rotate) {
+  return textItems.filter(function (i) { return i.str && i.str.trim(); }).map(function (i) {
+    var t = i.transform, rot = (rotate === 90 || rotate === 270 || Math.abs(t[0]) < 0.01);
+    return rot ? { s: i.str, row: t[4], col: t[5] } : { s: i.str, row: -t[5], col: t[4] };
+  });
+}
+
+function _liParsePage(items) {
+  var anchor = items.filter(function (i) { return _liNorm(i.s) === 'servico'; })
+                    .sort(function (a, b) { return a.row - b.row; })[0];
+  if (!anchor) return [];
+  var HBAND = 22;
+
+  function findCol(re) {
+    var hits = items.filter(function (i) {
+      return re.test(_liNorm(i.s)) && Math.abs(i.row - anchor.row) <= HBAND;
+    });
+    if (!hits.length) return null;
+    hits.sort(function (a, b) { return a.row - b.row; });
+    return hits[0].col;
+  }
+
+  var HROW  = anchor.row + HBAND;
+  var cRev  = findCol(/^rev$/);
+  var cTag  = findCol(/^numero$/);
+  var cStat = findCol(/^status$/);
+  var cFlux = findCol(/^fluxograma de$/);
+  var cServ = findCol(/^servico$/);
+  var cIso  = findCol(/^isometrico$/);
+  var cCont = findCol(/^de processo$/);
+  var cProc = findCol(/^instrum$/);
+  var cElet = findCol(/^eletrica$/);
+  var cSup  = findCol(/^suporte$/);
+
+  if (cTag === null || cProc === null || cElet === null || cServ === null) return [];
+
+  function win(center, left, right) {
+    var lo = (left !== null && left !== undefined) ? (center + left) / 2 : center - 30;
+    var hi = (right !== null && right !== undefined) ? (center + right) / 2 : center + 30;
+    return [lo, hi];
+  }
+  var wTag  = win(cTag, cRev, cStat);
+  var wStat = win(cStat, cTag, cFlux);
+  var wServ = win(cServ, cFlux, cIso);
+  var wProc = win(cProc, cCont, cElet);
+  var wElet = win(cElet, cProc, cSup);
+  function inWin(i, w) { return i.col >= w[0] && i.col <= w[1]; }
+
+  var TAGRE = /^[A-Z]{2,6}-\d{3,7}([.\-][A-Za-z0-9]{1,4})*$/;
+  var tags = items.filter(function (i) {
+    return i.row > HROW && inWin(i, wTag) && TAGRE.test(i.s.trim());
+  }).sort(function (a, b) { return a.row - b.row; });
+  if (!tags.length) return [];
+
+  var LOCRE = /^(campo|plc|sub estacao|painel|sala de controle)$/;
+  var recs = [];
+
+  tags.forEach(function (tg, idx) {
+    var nextRow = idx + 1 < tags.length ? tags[idx + 1].row : Infinity;
+    var blockLo = tg.row - 14;
+    var blockHi = Math.min(nextRow - 14, tg.row + 26);
+
+    var locItem = items.filter(function (i) {
+      return inWin(i, wStat) && i.row > tg.row + 2 && i.row < tg.row + 18 && LOCRE.test(_liNorm(i.s));
+    }).sort(function (a, b) { return a.row - b.row; })[0];
+    var topY = tg.row;
+    var botY = locItem ? locItem.row : tg.row + 8.7;
+
+    var block = items.filter(function (i) { return i.row >= blockLo && i.row < blockHi; });
+
+    function grab(w, which) {
+      return block.filter(function (i) {
+        if (!inWin(i, w)) return false;
+        var dTop = Math.abs(i.row - topY), dBot = Math.abs(i.row - botY);
+        return which === 'top' ? dTop <= dBot : dBot < dTop;
+      }).sort(function (a, b) { return a.row - b.row; })
+        .map(function (i) { return i.s.trim(); }).join(' ').replace(/\s+/g, ' ').trim();
+    }
+
+    recs.push({
+      tag: tg.s.trim(),
+      status: grab(wStat, 'top'),
+      tipo: grab(wStat, 'bot'),
+      linhaEquip: grab(wServ, 'bot'),
+      dtProcessoRaw: grab(wProc, 'bot'),
+      dtEletricaRaw: grab(wElet, 'top'),
+      dtPneumaticoRaw: grab(wElet, 'bot')
+    });
+  });
+  return recs;
+}
+
+/* Numero do documento (ex.: BK-BA01-08200-LI-80-00005) para a rastreabilidade */
+function _liDocNumber(items) {
+  var re = /^[A-Z]{2}-[A-Z0-9]+-\d+-[A-Z]{2}-\d+-\d+$/;
+  for (var i = 0; i < items.length; i++) {
+    var s = items[i].s.trim();
+    if (re.test(s)) return s;
+  }
+  return '';
+}
+
+/* ── Modal de importacao (montado via DOM, sem HTML inline) ── */
+function instrTagImportPDF() {
+  var old = document.getElementById('instr-tag-pdf-modal');
+  if (old) old.remove();
+
+  var ov = document.createElement('div');
+  ov.id = 'instr-tag-pdf-modal';
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(10,20,50,.55);z-index:3000;display:flex;align-items:center;justify-content:center;padding:16px';
+
+  var box = document.createElement('div');
+  box.style.cssText = 'background:#fff;border-radius:12px;padding:24px 28px;width:560px;max-width:97vw;box-shadow:0 8px 40px rgba(0,0,0,.28);position:relative';
+
+  var close = document.createElement('button');
+  close.textContent = '\u2715';
+  close.style.cssText = 'position:absolute;top:14px;right:14px;background:none;border:none;font-size:18px;color:#999;cursor:pointer';
+  close.onclick = function () { ov.remove(); };
+
+  var title = document.createElement('div');
+  title.style.cssText = 'font-size:14px;font-weight:700;color:#0077b6;margin-bottom:4px';
+  title.textContent = '\uD83D\uDCCE Importar Lista de Instrumentos (PDF)';
+
+  var hint = document.createElement('div');
+  hint.style.cssText = 'font-size:10px;color:#5a6a85;margin-bottom:14px;line-height:1.5';
+  hint.textContent = 'Extrai TAG, Linha/Equipamento e os Detalhes Tipicos (Processo, Eletrico e Pneumatico). '
+    + 'Celula preenchida vira "Sim"; celula vazia ou com traco vira "N/A". O PDF precisa ter texto selecionavel.';
+
+  var drop = document.createElement('div');
+  drop.style.cssText = 'border:2px dashed #b0ddf0;border-radius:8px;padding:26px;text-align:center;cursor:pointer;background:#f4f9ff;margin-bottom:12px';
+  drop.innerHTML = '<div style="font-size:26px;margin-bottom:6px">\uD83D\uDCC4</div>'
+    + '<div style="font-size:11px;font-weight:600;color:#0077b6">Clique ou arraste o PDF aqui</div>';
+
+  var input = document.createElement('input');
+  input.type = 'file'; input.accept = '.pdf'; input.style.display = 'none';
+
+  var status = document.createElement('div');
+  status.style.cssText = 'font-size:11px;color:#5a6a85;min-height:18px;text-align:center;font-weight:600';
+
+  var preview = document.createElement('div');
+  preview.style.cssText = 'margin-top:10px;font-size:10px;color:#444;max-height:190px;overflow:auto';
+
+  var footer = document.createElement('div');
+  footer.style.cssText = 'display:flex;justify-content:flex-end;gap:8px;margin-top:12px';
+  var btnCancel = document.createElement('button');
+  btnCancel.textContent = 'Fechar';
+  btnCancel.style.cssText = 'padding:7px 16px;border:1px solid #ddd;border-radius:7px;background:#f5f5f5;cursor:pointer;font-size:12px';
+  btnCancel.onclick = function () { ov.remove(); };
+  var btnOk = document.createElement('button');
+  btnOk.textContent = 'Importar';
+  btnOk.style.cssText = 'padding:7px 18px;border:none;border-radius:7px;background:#0B3D91;color:#fff;cursor:pointer;font-size:12px;font-weight:700;display:none';
+  footer.appendChild(btnCancel); footer.appendChild(btnOk);
+
+  var pending = null;
+
+  function handle(file) {
+    if (!file || !/\.pdf$/i.test(file.name)) { status.textContent = 'Selecione um arquivo .pdf'; return; }
+    status.textContent = 'Lendo ' + file.name + '...';
+    preview.innerHTML = ''; btnOk.style.display = 'none';
+    _liReadPdf(file, function (t) { status.textContent = t; })
+      .then(function (res) {
+        if (!res.recs.length) {
+          status.textContent = 'Nenhum instrumento reconhecido neste PDF.';
+          preview.innerHTML = '<div style="color:#c62828">Verifique se o arquivo e a Lista de Instrumentos - Detalhamento e se o texto e selecionavel.</div>';
+          return;
+        }
+        pending = res;
+        status.textContent = res.recs.length + ' instrumento(s) encontrado(s) em ' + res.pages + ' pagina(s).';
+        var head = '<tr style="background:#0B3D91;color:#fff">'
+          + ['TAG', 'LINHA / EQUIP.', 'DT PROC.', 'DT ELET.', 'DT PNEU.']
+              .map(function (h) { return '<th style="padding:4px 6px;text-align:left;font-size:9px">' + h + '</th>'; }).join('')
+          + '</tr>';
+        var body = res.recs.slice(0, 12).map(function (r) {
+          function cell(v) {
+            var bg = v === 'Sim' ? '#c8f5d0' : '#f5f5f5';
+            return '<td style="padding:3px 6px;background:' + bg + '">' + v + '</td>';
+          }
+          return '<tr><td style="padding:3px 6px;font-family:monospace;font-weight:700">' + r.tag + '</td>'
+            + '<td style="padding:3px 6px">' + (r.linhaEquip || '-') + '</td>'
+            + cell(_liToSimNA(r.dtProcessoRaw)) + cell(_liToSimNA(r.dtEletricaRaw)) + cell(_liToSimNA(r.dtPneumaticoRaw))
+            + '</tr>';
+        }).join('');
+        preview.innerHTML = '<table style="width:100%;border-collapse:collapse">' + head + body + '</table>'
+          + (res.recs.length > 12 ? '<div style="margin-top:5px;color:#5a6a85">... e mais ' + (res.recs.length - 12) + ' instrumento(s)</div>' : '');
+        btnOk.style.display = 'inline-block';
+      })
+      .catch(function (e) { status.textContent = 'Erro: ' + e.message; });
+  }
+
+  btnOk.onclick = function () {
+    if (!pending) return;
+    var added = 0;
+    pending.recs.forEach(function (r) {
+      instrTags.push({
+        id: _instrId('tag'), projId: currentProjId || null,
+        disc: 'Instrumentação',
+        doc: pending.doc || '',
+        tag: r.tag,
+        linhaEquip: r.linhaEquip || '',
+        codSup: '', qtd: 1,
+        stSup: 'Pendente', dtChegada: '',
+        stCal: 'Pendente',
+        classif: /^novo/i.test(_liNorm(r.status)) ? 'Novo' : 'Existente',
+        stMon: 'Pendente',
+        stDtEl: _liToSimNA(r.dtEletricaRaw),
+        stDtPn: _liToSimNA(r.dtPneumaticoRaw),
+        stDtPr: _liToSimNA(r.dtProcessoRaw),
+        stInterl: 'Pendente', stAter: 'Pendente', stLoop: 'Pendente'
+      });
+      added++;
+    });
+    saveAll().then(function () {
+      status.textContent = added + ' instrumento(s) importado(s).';
+      setTimeout(function () { ov.remove(); renderIsoView(); }, 1200);
+    });
+  };
+
+  drop.onclick = function () { input.click(); };
+  drop.ondragover = function (e) { e.preventDefault(); drop.style.borderColor = '#0077b6'; };
+  drop.ondragleave = function () { drop.style.borderColor = '#b0ddf0'; };
+  drop.ondrop = function (e) { e.preventDefault(); drop.style.borderColor = '#b0ddf0'; handle(e.dataTransfer.files[0]); };
+  input.onchange = function () { handle(input.files[0]); };
+
+  box.appendChild(close); box.appendChild(title); box.appendChild(hint);
+  box.appendChild(drop); box.appendChild(input); box.appendChild(status);
+  box.appendChild(preview); box.appendChild(footer);
+  ov.appendChild(box); document.body.appendChild(ov);
+}
+
+async function _liReadPdf(file, setStatus) {
+  if (typeof pdfjsLib === 'undefined') throw new Error('biblioteca pdf.js indisponivel');
+  if (pdfjsLib.GlobalWorkerOptions && !pdfjsLib.GlobalWorkerOptions.workerSrc) {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  }
+  var buf = await file.arrayBuffer();
+  var doc = await pdfjsLib.getDocument({ data: buf }).promise;
+  var recs = [], docNum = '', pages = 0;
+  for (var p = 1; p <= doc.numPages; p++) {
+    if (setStatus) setStatus('Processando pagina ' + p + ' de ' + doc.numPages + '...');
+    var page = await doc.getPage(p);
+    var tc = await page.getTextContent();
+    var items = _liItems(tc.items, page.rotate);
+    if (!docNum) docNum = _liDocNumber(items);
+    var r = _liParsePage(items);
+    if (r.length) { pages++; recs = recs.concat(r); }
+  }
+  return { recs: recs, doc: docNum, pages: pages };
 }
 
 /* ════════════ PLANEJAMENTO DE FABRICAÇÃO ════════════ */
