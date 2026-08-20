@@ -3573,7 +3573,7 @@ function renderInstrCabos(discTabs,bc){
       +'</tr>';
   }).join(''):null;
   _instrHeader(discTabs,bc,'Lista de Cabos',kpis,
-    _instrFilterBar(_icSearch,'_icSearch',_instrAreaSel('_icArea',list,_icArea)+'<button onclick="instrCaboImportXLSX()" style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid #a5d6a7;background:rgba(46,125,50,.1);color:#2e7d32;cursor:pointer">📥 Importar XLSX</button><button onclick="instrExportPDF(\'cabos\')" style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid var(--hbr);background:var(--hg);color:var(--ht);cursor:pointer">📄 Exportar PDF</button>','instrCaboAdd','instrCaboDelAll','_icArea'),
+    _instrFilterBar(_icSearch,'_icSearch',_instrAreaSel('_icArea',list,_icArea)+'<button onclick="instrCaboImportPDF()" style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid #b0ddf0;background:rgba(0,119,182,.1);color:#0077b6;cursor:pointer">📎 Importar PDF</button><button onclick="instrCaboImportXLSX()" style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid #a5d6a7;background:rgba(46,125,50,.1);color:#2e7d32;cursor:pointer">📥 Importar XLSX</button><button onclick="instrExportPDF(\'cabos\')" style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid var(--hbr);background:var(--hg);color:var(--ht);cursor:pointer">📄 Exportar PDF</button>','instrCaboAdd','instrCaboDelAll','_icArea'),
     _instrTable(['RASTREABILIDADE','REV.','DISCIPLINA','SEÇÃO DO CABO','QTDE PROJETADA','QTDE REAL LANÇADO','ST. SUPRIMENTOS','DATA CHEGADA','CÓD. SUPRIMENTOS','ORIGEM (DE)','DESTINO (PARA)','STATUS LANÇAMENTO','DATA LANÇAMENTO','LOCALIZAÇÃO','AÇÕES'],rows,'🔌','Nenhum cabo cadastrado'));
 }
 async function instrCaboSet(id,f,v){var r=instrCabos.find(function(x){return x.id===id;});if(r){r[f]=v;await saveAll();}}
@@ -4687,6 +4687,271 @@ async function _liReadPdf(file, setStatus) {
     if (r.length) { pages++; recs = recs.concat(r); }
   }
   return { recs: recs, doc: docNum, pages: pages };
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════
+   IMPORTACAO PDF - LISTA DE CABOS (BRASKEM)
+   Cada cabo ocupa 3 linhas visuais; as colunas mescladas (CABO, TIPO,
+   PERCURSO, REV) ficam centralizadas na linha do meio:
+     linha de cima : DE      | COMPR.(m)   | SEGURANCA INTRINSECA | COMPR. TOTAL (M)
+     linha do meio : CABO | TIPO | BOBINA | PERCURSO DE/PARA | DOCS | OBS | REV
+     linha de baixo: PARA    | CAPA EXT.   | CODIGO DE SUPRIMENTO | COMPR. PARCIAL
+   Extrai: Disciplina (do titulo) - Rev. - Tipo - Compr. Total -
+           Codigo de Suprimento - De / Para
+   A rotacao de 90 graus e resolvida pelo viewport.transform do pdf.js.
+══════════════════════════════════════════════════════════════════════ */
+
+var _LC_BANDS = {
+  cabo:     [0.0840, 0.1218],
+  depara:   [0.1721, 0.2099],
+  tipo:     [0.2380, 0.2960],
+  compr:    [0.2990, 0.3342],
+  segcod:   [0.3904, 0.4408],
+  total:    [0.4853, 0.5248],
+  percurso: [0.5541, 0.6549],
+  rev:      [0.9404, 0.9740]
+};
+var _LC_CABO = /^[0-9A-Z][\w.\-]{3,}$/;
+
+function _lcBand(cx, W) {
+  for (var k in _LC_BANDS) {
+    var b = _LC_BANDS[k];
+    if (cx >= b[0] * W && cx <= b[1] * W) return k;
+  }
+  return null;
+}
+
+async function _lcExtract(file, setStatus) {
+  if (typeof pdfjsLib === 'undefined') throw new Error('biblioteca pdf.js indisponivel');
+  if (pdfjsLib.GlobalWorkerOptions && !pdfjsLib.GlobalWorkerOptions.workerSrc) {
+    pdfjsLib.GlobalWorkerOptions.workerSrc =
+      'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  }
+  var buf = await file.arrayBuffer();
+  var pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+  var docNum = '', disc = '', docRev = '';
+  var recs = [];
+
+  for (var p = 1; p <= pdf.numPages; p++) {
+    if (setStatus) setStatus('Lendo pagina ' + p + ' de ' + pdf.numPages + '...');
+    var page = await pdf.getPage(p);
+    var vp = page.getViewport({ scale: 1 });
+    var W = vp.width;
+    var tc = await page.getTextContent();
+    var all = tc.items.map(function (i) { return i.str; }).join(' ');
+
+    if (!docNum) {
+      var m1 = all.match(/BK-[A-Z0-9]+-\d+-LC-\d+-\d+/);
+      if (m1) docNum = m1[0];
+    }
+    if (!disc) {
+      var u = _liUp(all);
+      if (u.indexOf('INSTRUMENTACAO') >= 0) disc = 'Instrumentação';
+      else if (u.indexOf('ELETRICA') >= 0) disc = 'Elétrica';
+    }
+    if (!docRev) {
+      var m2 = all.match(/Rev\.?\s*:?\s*(\d{1,2})/i);
+      if (m2) docRev = m2[1];
+    }
+
+    var pts = [];
+    tc.items.forEach(function (it) {
+      if (!it.str || !it.str.trim()) return;
+      var t = pdfjsLib.Util.transform(vp.transform, it.transform);
+      var size = Math.hypot(t[1], t[3]) || it.height || 0;
+      if (size > 11) return;                       /* marca d'agua */
+      pts.push({ t: it.str, cx: t[4] + (it.width || 0) / 2, top: t[5] });
+    });
+    if (!pts.length) continue;
+
+    var map = {};
+    pts.forEach(function (w) {
+      var k = Math.round(w.top / 3);
+      (map[k] = map[k] || []).push(w);
+    });
+    var lines = Object.keys(map).map(function (k) {
+      var arr = map[k].sort(function (a, b) { return a.cx - b.cx; });
+      var mn = arr[0].top;
+      arr.forEach(function (w) { if (w.top < mn) mn = w.top; });
+      return { top: mn, items: arr };
+    }).sort(function (a, b) { return a.top - b.top; });
+    /* fim do cabecalho calculado a partir dos proprios rotulos */
+    var hdrBottom = 0;
+    var HDR = /^(\(M\)|\(COR\)|SUPRIMENTO|PARCIAL|MODELO|CAPA EXT\.|DE \/ PARA|CODIGO DE|SEGURANCA|INTRINSECA|FABRICANTE|BOBINA|PERCURSO)$/;
+    lines.forEach(function (l) {
+      l.items.forEach(function (w) {
+        if (HDR.test(_liUp(w.t)) && l.top > hdrBottom) hdrBottom = l.top;
+      });
+    });
+    hdrBottom = hdrBottom ? hdrBottom + 4 : 158;
+    lines = lines.filter(function (l) { return l.top > hdrBottom; });
+
+    function grab(rows, key) {
+      var out = [];
+      rows.forEach(function (l) {
+        l.items.forEach(function (w) {
+          if (_lcBand(w.cx, W) === key) out.push(w.t);
+        });
+      });
+      return out.join(' ').replace(/\s+/g, ' ').trim();
+    }
+
+    /* ancora = linha que traz o nome do CABO */
+    var anc = [];
+    lines.forEach(function (l, i) {
+      for (var j = 0; j < l.items.length; j++) {
+        var w = l.items[j];
+        if (_lcBand(w.cx, W) === 'cabo' && _LC_CABO.test(_liUp(w.t))) { anc.push(i); return; }
+      }
+    });
+
+    for (var n = 0; n < anc.length; n++) {
+      var ai = anc[n];
+      var mid = lines[ai].top;
+      var lo = n > 0 ? (lines[anc[n - 1]].top + mid) / 2 : hdrBottom;
+      var hi = n + 1 < anc.length ? (mid + lines[anc[n + 1]].top) / 2 : Infinity;
+      var blk = lines.filter(function (l) { return l.top >= lo && l.top < hi; });
+      var rowA = blk.filter(function (l) { return l.top < mid - 1; });
+      var rowB = blk.filter(function (l) { return l.top > mid + 1; });
+
+      var perc = grab([lines[ai]], 'percurso');
+      var pos = perc.indexOf('/');
+      var de = pos >= 0 ? perc.slice(0, pos).trim() : perc.trim();
+      var para = pos >= 0 ? perc.slice(pos + 1).trim() : '';
+
+      var cabo = grab([lines[ai]], 'cabo');
+      var tipo = grab(blk, 'tipo');
+      var tot  = grab(rowA, 'total');
+      if (!cabo && !tipo) continue;
+
+      recs.push({
+        cabo: cabo,
+        tipo: tipo,
+        total: parseFloat(String(tot).replace(',', '.')) || null,
+        codSup: grab(rowB, 'segcod'),
+        de: de,
+        para: para,
+        rev: grab([lines[ai]], 'rev') || docRev || '0'
+      });
+    }
+  }
+  return { docNum: docNum, disc: disc || 'Instrumentação', docRev: docRev, recs: recs };
+}
+
+function instrCaboImportPDF() {
+  var old = document.getElementById('instr-cabo-pdf-modal');
+  if (old) old.remove();
+
+  var ov = document.createElement('div');
+  ov.id = 'instr-cabo-pdf-modal';
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(10,20,50,.55);z-index:3000;display:flex;align-items:center;justify-content:center;padding:16px';
+
+  var box = document.createElement('div');
+  box.style.cssText = 'background:#fff;border-radius:12px;padding:24px 28px;width:580px;max-width:97vw;box-shadow:0 8px 40px rgba(0,0,0,.28);position:relative';
+
+  var xb = document.createElement('button');
+  xb.textContent = '\u2715';
+  xb.style.cssText = 'position:absolute;top:14px;right:14px;background:none;border:none;font-size:18px;color:#999;cursor:pointer';
+  xb.onclick = function () { ov.remove(); };
+
+  var h = document.createElement('div');
+  h.style.cssText = 'font-size:14px;font-weight:700;color:#0077b6;margin-bottom:4px';
+  h.textContent = '\uD83D\uDCCE Importar Lista de Cabos (PDF)';
+
+  var sub = document.createElement('div');
+  sub.style.cssText = 'font-size:10px;color:#5a6a85;margin-bottom:14px;line-height:1.55';
+  sub.textContent = 'Extrai Disciplina (do titulo), Rev., Tipo (secao do cabo), Compr. Total (m), Codigo de Suprimento e o percurso De / Para.';
+
+  var drop = document.createElement('div');
+  drop.style.cssText = 'border:2px dashed #b0ddf0;border-radius:8px;padding:26px;text-align:center;cursor:pointer;background:#f4f9ff;margin-bottom:12px';
+  drop.innerHTML = '<div style="font-size:26px;margin-bottom:6px">\uD83D\uDCC4</div>'
+    + '<div style="font-size:11px;font-weight:600;color:#0077b6">Clique ou arraste o PDF aqui</div>';
+
+  var inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = '.pdf'; inp.style.display = 'none';
+
+  var st = document.createElement('div');
+  st.style.cssText = 'font-size:11px;color:#5a6a85;min-height:18px;text-align:center';
+
+  var pv = document.createElement('div');
+  pv.style.cssText = 'margin-top:10px;font-size:10px;color:#444;max-height:170px;overflow-y:auto';
+
+  var ft = document.createElement('div');
+  ft.style.cssText = 'display:flex;justify-content:flex-end;margin-top:12px';
+  var bc = document.createElement('button');
+  bc.textContent = 'Fechar';
+  bc.style.cssText = 'padding:7px 16px;border:1px solid #ddd;border-radius:7px;background:#f5f5f5;cursor:pointer;font-size:12px';
+  bc.onclick = function () { ov.remove(); };
+  ft.appendChild(bc);
+
+  function setStatus(t) { st.textContent = t; }
+
+  function handle(file) {
+    if (!file || !/\.pdf$/i.test(file.name)) { setStatus('Selecione um arquivo .pdf'); return; }
+    setStatus('Lendo ' + file.name + '...');
+    _lcExtract(file, setStatus).then(function (res) {
+      var recs = res.recs;
+      if (!recs.length) {
+        setStatus('Nenhum cabo encontrado neste PDF.');
+        pv.innerHTML = '<div style="color:#c62828">Confira se o PDF tem texto selecionavel e se e uma Lista de Cabos.</div>';
+        return;
+      }
+      recs.forEach(function (r) {
+        instrCabos.push({
+          id: _instrId('cab'),
+          projId: currentProjId || null,
+          doc: res.docNum || '',
+          rev: r.rev,
+          disc: res.disc,
+          secao: r.tipo,
+          qtd: r.total,
+          qtdReal: null,
+          stSup: 'Pendente',
+          dtChegada: '',
+          codSup: r.codSup,
+          origem: r.de,
+          destino: r.para,
+          stLanc2: 'Pendente',
+          dtLanc: '',
+          loc: 'Campo'
+        });
+      });
+
+      var body = recs.slice(0, 10).map(function (r) {
+        return '<tr><td style="padding:2px 6px;font-family:monospace">' + (r.cabo || '-') + '</td>'
+          + '<td style="padding:2px 6px">' + (r.tipo || '-') + '</td>'
+          + '<td style="padding:2px 6px;text-align:right">' + (r.total == null ? '-' : r.total) + '</td>'
+          + '<td style="padding:2px 6px">' + (r.codSup || '-') + '</td>'
+          + '<td style="padding:2px 6px">' + (r.de || '-') + ' / ' + (r.para || '-') + '</td></tr>';
+      }).join('');
+      pv.innerHTML = '<div style="font-weight:600;margin-bottom:4px">Documento: ' + (res.docNum || 'nao identificado')
+        + ' &nbsp;|&nbsp; Disciplina: ' + res.disc + ' &nbsp;|&nbsp; Rev.: ' + (res.docRev || '-') + '</div>'
+        + '<table style="width:100%;border-collapse:collapse"><thead><tr style="background:#eef3fb">'
+        + '<th style="padding:2px 6px;text-align:left">Cabo</th><th style="padding:2px 6px;text-align:left">Tipo</th>'
+        + '<th style="padding:2px 6px">Total</th><th style="padding:2px 6px;text-align:left">Cod. Sup.</th>'
+        + '<th style="padding:2px 6px;text-align:left">De / Para</th></tr></thead><tbody>' + body + '</tbody></table>'
+        + (recs.length > 10 ? '<div style="margin-top:4px;color:#5a6a85">... e mais ' + (recs.length - 10) + ' registro(s)</div>' : '');
+
+      saveAll().then(function () {
+        setStatus(recs.length + ' cabo(s) importado(s).');
+        setTimeout(function () { ov.remove(); renderIsoView(); }, 2400);
+      });
+    }).catch(function (e) {
+      setStatus('Erro: ' + e.message);
+    });
+  }
+
+  drop.onclick = function () { inp.click(); };
+  drop.ondragover = function (e) { e.preventDefault(); drop.style.borderColor = '#0077b6'; };
+  drop.ondragleave = function () { drop.style.borderColor = '#b0ddf0'; };
+  drop.ondrop = function (e) { e.preventDefault(); drop.style.borderColor = '#b0ddf0'; handle(e.dataTransfer.files[0]); };
+  inp.onchange = function () { handle(inp.files[0]); };
+
+  box.appendChild(xb); box.appendChild(h); box.appendChild(sub);
+  box.appendChild(drop); box.appendChild(inp); box.appendChild(st); box.appendChild(pv); box.appendChild(ft);
+  ov.appendChild(box);
+  document.body.appendChild(ov);
 }
 
 /* ════════════ PLANEJAMENTO DE FABRICAÇÃO ════════════ */
