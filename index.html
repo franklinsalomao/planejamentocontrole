@@ -3458,21 +3458,20 @@ function _instrDtCells(id, setFn, presField, presRaw, exField, exRaw) {
     + INSTR_DT_PRES.map(function (o) { return '<option value="' + o + '" ' + (pres === o ? 'selected' : '') + '>' + o + '</option>'; }).join('')
     + '</select>';
 
-  var exCell;
-  if (pres === 'N/A') {
-    exCell = '<span style="font-size:10px;font-weight:700;color:#8a94a6;background:#f5f5f5;padding:3px 10px;border-radius:5px">N/A</span>';
-  } else {
-    var ex = (exRaw === 'Executado') ? 'Executado' : 'Pendente';
-    var bgE = ex === 'Executado' ? '#c8f5d0' : '#fff8e1';
-    exCell = '<select onchange="' + setFn + '(\'' + id + '\',\'' + exField + '\',this.value)" '
-      + 'style="font-size:10px;font-weight:700;padding:3px 5px;border-radius:5px;border:0.5px solid var(--hbr);background:' + bgE + ';color:#1a3a5c;max-width:95px">'
-      + INSTR_DT_EXEC.map(function (o) { return '<option value="' + o + '" ' + (ex === o ? 'selected' : '') + '>' + o + '</option>'; }).join('')
-      + '</select>';
-  }
+  // ST. sempre editavel, inclusive quando o DT esta como N/A
+  var ex = (exRaw === 'Executado') ? 'Executado' : (exRaw === 'N/A' ? 'N/A' : 'Pendente');
+  var bgE = ex === 'Executado' ? '#c8f5d0' : (ex === 'N/A' ? '#f5f5f5' : '#fff8e1');
+  var opts = INSTR_DT_EXEC.slice();
+  if (opts.indexOf('N/A') < 0) opts = opts.concat(['N/A']);
+  var exCell = '<select onchange="' + setFn + '(\'' + id + '\',\'' + exField + '\',this.value)" '
+    + 'style="font-size:10px;font-weight:700;padding:3px 5px;border-radius:5px;border:0.5px solid var(--hbr);background:' + bgE + ';color:' + (ex === 'N/A' ? '#8a94a6' : '#1a3a5c') + ';max-width:95px">'
+    + opts.map(function (o) { return '<option value="' + o + '" ' + (ex === o ? 'selected' : '') + '>' + o + '</option>'; }).join('')
+    + '</select>';
 
   return '<td style="padding:4px 6px;text-align:center">' + selP + '</td>'
        + '<td style="padding:4px 6px;text-align:center">' + exCell + '</td>';
 }
+
 
 /* Ao mudar a existencia do DT, ajusta o status correspondente */
 async function instrTagSetDt(id, field, value) {
