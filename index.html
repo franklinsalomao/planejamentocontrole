@@ -4340,128 +4340,186 @@ async function _instrPdfRows(file, setStatus) {
 
 /* ══════════════════════════════════════════════════════════════════════
    IMPORTACAO PDF - LISTA DE INSTRUMENTOS (DETALHAMENTO)
-   Le o PDF da lista de instrumentos e extrai, por instrumento:
-     TAG  |  LINHA / EQUIPAMENTO  |  DETALHE TIPICO PROCESSO
-     DETALHE TIPICO ELETRICA      |  DETALHE TIPICO PNEUMATICO
-   Celula preenchida -> "Sim"    Celula vazia ou "-" -> "N/A"
-   As paginas sao giradas 90 graus: coluna = transform[5], linha = transform[4].
-   Cada instrumento ocupa duas linhas (superior e inferior).
+   Cabecalho em 2 niveis: cada instrumento ocupa 2 linhas fisicas.
+     Linha A: REV | TAG | STATUS | ... | PLANTA INSTRUM | DT ELETRICA | DT SUPORTE
+     Linha B: TIPO | LOCALIZACAO | LINHA/EQUIPAMENTO | ... | DT PROCESSO | DT PNEUMATICO | MEMORIAL
+   As 3 ultimas colunas fisicas mudam de significado entre a linha A e a B.
+   Celula preenchida -> "Sim"   |   vazia ou "-" -> "N/A"
+   Importa somente instrumentos com LOCALIZACAO = CAMPO.
+   A rotacao da pagina (90 graus) e resolvida pelo viewport.transform do pdf.js.
 ══════════════════════════════════════════════════════════════════════ */
 
-function _liNorm(s) {
-  return String(s || '').toLowerCase()
+/* bandas de coluna, em fracao da largura do viewport (referencia 1191pt) */
+var _LI_BANDS = {
+  tag:    [0.1008, 0.1528],
+  status: [0.1553, 0.2519],
+  loc:    [0.2544, 0.3208],
+  linha:  [0.3258, 0.4576],
+  dtProc: [0.6616, 0.7070],
+  dtMid:  [0.7086, 0.7573],
+  dtSup:  [0.7590, 0.8128]
+};
+var _LI_STATUS = /^(NOVO|EXISTENTE|SUBSTITUIDO)$/;
+var _LI_LOC    = /^(CAMPO|PLC|SUB-ESTACAO|SUBESTACAO)$/;
+var _LI_TAGRE  = /^[A-Z]{1,6}-?\d[\w.\-]*$/;
+var _LI_HDRRE  = /^(LOCALIZACAO|PNEUMATICO|MONTAGEM|EQUIPAMENTO|ESPECIF\.?|INTERLIG\.?)$/;
+
+function _liUp(s) {
+  return String(s == null ? '' : s)
     .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9]/g, ' ').replace(/\s+/g, ' ').trim();
+    .toUpperCase().trim();
 }
-
-function _liIsEmpty(v) {
-  var t = String(v || '').replace(/\s+/g, ' ').trim();
-  if (!t) return true;
-  return /^[-\u2010-\u2015.\u00b7]+$/.test(t);
-}
-
-function _liToSimNA(v) { return _liIsEmpty(v) ? 'N/A' : 'Sim'; }
-
-function _liItems(textItems, rotate) {
-  return textItems.filter(function (i) { return i.str && i.str.trim(); }).map(function (i) {
-    var t = i.transform, rot = (rotate === 90 || rotate === 270 || Math.abs(t[0]) < 0.01);
-    return rot ? { s: i.str, row: t[4], col: t[5] } : { s: i.str, row: -t[5], col: t[4] };
-  });
-}
-
-function _liParsePage(items) {
-  var anchor = items.filter(function (i) { return _liNorm(i.s) === 'servico'; })
-                    .sort(function (a, b) { return a.row - b.row; })[0];
-  if (!anchor) return [];
-  var HBAND = 22;
-
-  function findCol(re) {
-    var hits = items.filter(function (i) {
-      return re.test(_liNorm(i.s)) && Math.abs(i.row - anchor.row) <= HBAND;
-    });
-    if (!hits.length) return null;
-    hits.sort(function (a, b) { return a.row - b.row; });
-    return hits[0].col;
+function _liBand(cx, pageW) {
+  for (var k in _LI_BANDS) {
+    var b = _LI_BANDS[k];
+    if (cx >= b[0] * pageW && cx <= b[1] * pageW) return k;
   }
+  return null;
+}
+/* preenchida se sobrarem ao menos 3 alfanumericos (descarta "-" e ruido) */
+function _liFilled(t) {
+  return String(t || '').replace(/[^A-Za-z0-9]/g, '').length >= 3;
+}
 
-  var HROW  = anchor.row + HBAND;
-  var cRev  = findCol(/^rev$/);
-  var cTag  = findCol(/^numero$/);
-  var cStat = findCol(/^status$/);
-  var cFlux = findCol(/^fluxograma de$/);
-  var cServ = findCol(/^servico$/);
-  var cIso  = findCol(/^isometrico$/);
-  var cCont = findCol(/^de processo$/);
-  var cProc = findCol(/^instrum$/);
-  var cElet = findCol(/^eletrica$/);
-  var cSup  = findCol(/^suporte$/);
-
-  if (cTag === null || cProc === null || cElet === null || cServ === null) return [];
-
-  function win(center, left, right) {
-    var lo = (left !== null && left !== undefined) ? (center + left) / 2 : center - 30;
-    var hi = (right !== null && right !== undefined) ? (center + right) / 2 : center + 30;
-    return [lo, hi];
+async function _liExtract(file, setStatus) {
+  if (typeof pdfjsLib === 'undefined') throw new Error('biblioteca pdf.js indisponivel');
+  if (pdfjsLib.GlobalWorkerOptions && !pdfjsLib.GlobalWorkerOptions.workerSrc) {
+    pdfjsLib.GlobalWorkerOptions.workerSrc =
+      'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
   }
-  var wTag  = win(cTag, cRev, cStat);
-  var wStat = win(cStat, cTag, cFlux);
-  var wServ = win(cServ, cFlux, cIso);
-  var wProc = win(cProc, cCont, cElet);
-  var wElet = win(cElet, cProc, cSup);
-  function inWin(i, w) { return i.col >= w[0] && i.col <= w[1]; }
-
-  var TAGRE = /^[A-Z]{2,6}-\d{3,7}([.\-][A-Za-z0-9]{1,4})*$/;
-  var tags = items.filter(function (i) {
-    return i.row > HROW && inWin(i, wTag) && TAGRE.test(i.s.trim());
-  }).sort(function (a, b) { return a.row - b.row; });
-  if (!tags.length) return [];
-
-  var LOCRE = /^(campo|plc|sub estacao|painel|sala de controle)$/;
+  var buf = await file.arrayBuffer();
+  var pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+  var docNum = '';
   var recs = [];
 
-  tags.forEach(function (tg, idx) {
-    var nextRow = idx + 1 < tags.length ? tags[idx + 1].row : Infinity;
-    var blockLo = tg.row - 14;
-    var blockHi = Math.min(nextRow - 14, tg.row + 26);
+  for (var p = 1; p <= pdf.numPages; p++) {
+    if (setStatus) setStatus('Lendo pagina ' + p + ' de ' + pdf.numPages + '...');
+    var page = await pdf.getPage(p);
+    var vp = page.getViewport({ scale: 1 });
+    var pageW = vp.width;
+    var tc = await page.getTextContent();
 
-    var locItem = items.filter(function (i) {
-      return inWin(i, wStat) && i.row > tg.row + 2 && i.row < tg.row + 18 && LOCRE.test(_liNorm(i.s));
-    }).sort(function (a, b) { return a.row - b.row; })[0];
-    var topY = tg.row;
-    var botY = locItem ? locItem.row : tg.row + 8.7;
-
-    var block = items.filter(function (i) { return i.row >= blockLo && i.row < blockHi; });
-
-    function grab(w, which) {
-      return block.filter(function (i) {
-        if (!inWin(i, w)) return false;
-        var dTop = Math.abs(i.row - topY), dBot = Math.abs(i.row - botY);
-        return which === 'top' ? dTop <= dBot : dBot < dTop;
-      }).sort(function (a, b) { return a.row - b.row; })
-        .map(function (i) { return i.s.trim(); }).join(' ').replace(/\s+/g, ' ').trim();
+    if (!docNum) {
+      var mm = tc.items.map(function (i) { return i.str; }).join(' ')
+        .match(/BK-[A-Z0-9]+-\d+-LI-\d+-\d+/);
+      if (mm) docNum = mm[0];
     }
 
-    recs.push({
-      tag: tg.s.trim(),
-      status: grab(wStat, 'top'),
-      tipo: grab(wStat, 'bot'),
-      linhaEquip: grab(wServ, 'bot'),
-      dtProcessoRaw: grab(wProc, 'bot'),
-      dtEletricaRaw: grab(wElet, 'top'),
-      dtPneumaticoRaw: grab(wElet, 'bot')
+    /* coordenadas do viewport (resolve a rotacao) + descarte da marca d'agua */
+    var pts = [];
+    tc.items.forEach(function (it) {
+      if (!it.str || !it.str.trim()) return;
+      var t = pdfjsLib.Util.transform(vp.transform, it.transform);
+      var size = Math.hypot(t[1], t[3]) || it.height || 0;
+      if (size > 15) return;                       /* "COPIA PARA CONSULTA" */
+      var w = it.width || 0;
+      pts.push({ t: it.str, cx: t[4] + w / 2, top: t[5] });
     });
-  });
-  return recs;
-}
+    if (!pts.length) continue;
 
-/* Numero do documento (ex.: BK-BA01-08200-LI-80-00005) para a rastreabilidade */
-function _liDocNumber(items) {
-  var re = /^[A-Z]{2}-[A-Z0-9]+-\d+-[A-Z]{2}-\d+-\d+$/;
-  for (var i = 0; i < items.length; i++) {
-    var s = items[i].s.trim();
-    if (re.test(s)) return s;
+    /* agrupa em linhas visuais */
+    var map = {};
+    pts.forEach(function (w) {
+      var k = Math.round(w.top / 3);
+      (map[k] = map[k] || []).push(w);
+    });
+    var lines = Object.keys(map).map(function (k) {
+      var arr = map[k].sort(function (a, b) { return a.cx - b.cx; });
+      var mn = arr[0].top;
+      arr.forEach(function (w) { if (w.top < mn) mn = w.top; });
+      return { top: mn, items: arr };
+    }).sort(function (a, b) { return a.top - b.top; });
+
+    function hasIn(line, key, rx) {
+      for (var i = 0; i < line.items.length; i++) {
+        var w = line.items[i];
+        if (_liBand(w.cx, pageW) === key && rx.test(_liUp(w.t))) return true;
+      }
+      return false;
+    }
+    function grab(rows, key) {
+      var out = [];
+      rows.forEach(function (l) {
+        l.items.forEach(function (w) {
+          if (_liBand(w.cx, pageW) === key) out.push(w.t);
+        });
+      });
+      return out.join(' ').trim();
+    }
+
+    /* despreza tudo acima do cabecalho */
+    var hdrBottom = 0;
+    lines.forEach(function (l) {
+      l.items.forEach(function (w) {
+        if (_LI_HDRRE.test(_liUp(w.t)) && l.top > hdrBottom) hdrBottom = l.top;
+      });
+    });
+    hdrBottom += 8;
+    lines = lines.filter(function (l) { return l.top > hdrBottom; });
+
+    /* instrumento = linha de STATUS seguida da linha de LOCALIZACAO */
+    var blocks = [], cur = null;
+    lines.forEach(function (l) {
+      if (hasIn(l, 'status', _LI_STATUS)) {
+        cur = { st: l.top, loc: null };
+        blocks.push(cur);
+      } else if (cur && cur.loc === null && hasIn(l, 'loc', _LI_LOC)) {
+        cur.loc = l.top;
+      }
+    });
+    blocks = blocks.filter(function (b) { return b.loc !== null; });
+
+    for (var i = 0; i < blocks.length; i++) {
+      var b = blocks[i];
+      var split = (b.st + b.loc) / 2;
+      var lo = i > 0 ? (blocks[i - 1].loc + b.st) / 2 : hdrBottom;
+      var hi = i + 1 < blocks.length ? (b.loc + blocks[i + 1].st) / 2 : Infinity;
+
+      var blk  = lines.filter(function (l) { return l.top >= lo && l.top < hi; });
+      var rowA = blk.filter(function (l) { return l.top < split; });
+      var rowB = blk.filter(function (l) { return l.top >= split; });
+
+      if (_liUp(grab(rowB, 'loc')).indexOf('CAMPO') < 0) continue;
+
+      /* TAG = a mais proxima do centro vertical do bloco */
+      var tag = '', bestD = Infinity;
+      blk.forEach(function (l) {
+        l.items.forEach(function (w) {
+          if (_liBand(w.cx, pageW) === 'tag' && _LI_TAGRE.test(_liUp(w.t))) {
+            var d = Math.abs(l.top - split);
+            if (d < bestD) { bestD = d; tag = w.t.trim(); }
+          }
+        });
+      });
+      if (!tag) continue;
+
+      var status = '';
+      rowA.forEach(function (l) {
+        l.items.forEach(function (w) {
+          if (!status && _liBand(w.cx, pageW) === 'status' && _LI_STATUS.test(_liUp(w.t))) {
+            status = _liUp(w.t);
+          }
+        });
+      });
+
+      var locLine = null;
+      for (var j = 0; j < rowB.length; j++) {
+        if (hasIn(rowB[j], 'loc', _LI_LOC)) { locLine = rowB[j]; break; }
+      }
+      var linhaEq = locLine ? grab([locLine], 'linha') : '';
+      if (!linhaEq) linhaEq = grab(rowB, 'linha');
+
+      recs.push({
+        tag: tag,
+        classif: status === 'NOVO' ? 'Novo' : 'Existente',
+        linhaEquip: linhaEq,
+        stDtEl: _liFilled(grab(rowA, 'dtMid'))  ? 'Sim' : 'N/A',
+        stDtPn: _liFilled(grab(rowB, 'dtMid'))  ? 'Sim' : 'N/A',
+        stDtPr: _liFilled(grab(rowB, 'dtProc')) ? 'Sim' : 'N/A'
+      });
+    }
   }
-  return '';
+  return { docNum: docNum, recs: recs };
 }
 
 /* ── Modal de importacao (montado via DOM, sem HTML inline) ── */
@@ -4476,123 +4534,109 @@ function instrTagImportPDF() {
   var box = document.createElement('div');
   box.style.cssText = 'background:#fff;border-radius:12px;padding:24px 28px;width:560px;max-width:97vw;box-shadow:0 8px 40px rgba(0,0,0,.28);position:relative';
 
-  var close = document.createElement('button');
-  close.textContent = '\u2715';
-  close.style.cssText = 'position:absolute;top:14px;right:14px;background:none;border:none;font-size:18px;color:#999;cursor:pointer';
-  close.onclick = function () { ov.remove(); };
+  var xb = document.createElement('button');
+  xb.textContent = '\u2715';
+  xb.style.cssText = 'position:absolute;top:14px;right:14px;background:none;border:none;font-size:18px;color:#999;cursor:pointer';
+  xb.onclick = function () { ov.remove(); };
 
-  var title = document.createElement('div');
-  title.style.cssText = 'font-size:14px;font-weight:700;color:#0077b6;margin-bottom:4px';
-  title.textContent = '\uD83D\uDCCE Importar Lista de Instrumentos (PDF)';
+  var h = document.createElement('div');
+  h.style.cssText = 'font-size:14px;font-weight:700;color:#0077b6;margin-bottom:4px';
+  h.textContent = '\uD83D\uDCCE Importar Lista de Instrumentos (PDF)';
 
-  var hint = document.createElement('div');
-  hint.style.cssText = 'font-size:10px;color:#5a6a85;margin-bottom:14px;line-height:1.5';
-  hint.textContent = 'Extrai TAG, Linha/Equipamento e os Detalhes Tipicos (Processo, Eletrico e Pneumatico). '
-    + 'Celula preenchida vira "Sim"; celula vazia ou com traco vira "N/A". O PDF precisa ter texto selecionavel.';
+  var sub = document.createElement('div');
+  sub.style.cssText = 'font-size:10px;color:#5a6a85;margin-bottom:14px;line-height:1.55';
+  sub.textContent = 'Extrai TAG, Linha/Equipamento, Classificacao e os Detalhes Tipicos (Eletrico, Pneumatico e Processo). Celula preenchida vira "Sim"; vazia ou com traco vira "N/A". Importa somente instrumentos de LOCALIZACAO = CAMPO.';
 
   var drop = document.createElement('div');
   drop.style.cssText = 'border:2px dashed #b0ddf0;border-radius:8px;padding:26px;text-align:center;cursor:pointer;background:#f4f9ff;margin-bottom:12px';
   drop.innerHTML = '<div style="font-size:26px;margin-bottom:6px">\uD83D\uDCC4</div>'
     + '<div style="font-size:11px;font-weight:600;color:#0077b6">Clique ou arraste o PDF aqui</div>';
 
-  var input = document.createElement('input');
-  input.type = 'file'; input.accept = '.pdf'; input.style.display = 'none';
+  var inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = '.pdf'; inp.style.display = 'none';
 
-  var status = document.createElement('div');
-  status.style.cssText = 'font-size:11px;color:#5a6a85;min-height:18px;text-align:center;font-weight:600';
+  var st = document.createElement('div');
+  st.style.cssText = 'font-size:11px;color:#5a6a85;min-height:18px;text-align:center';
 
-  var preview = document.createElement('div');
-  preview.style.cssText = 'margin-top:10px;font-size:10px;color:#444;max-height:190px;overflow:auto';
+  var pv = document.createElement('div');
+  pv.style.cssText = 'margin-top:10px;font-size:10px;color:#444;max-height:170px;overflow-y:auto';
 
-  var footer = document.createElement('div');
-  footer.style.cssText = 'display:flex;justify-content:flex-end;gap:8px;margin-top:12px';
-  var btnCancel = document.createElement('button');
-  btnCancel.textContent = 'Fechar';
-  btnCancel.style.cssText = 'padding:7px 16px;border:1px solid #ddd;border-radius:7px;background:#f5f5f5;cursor:pointer;font-size:12px';
-  btnCancel.onclick = function () { ov.remove(); };
-  var btnOk = document.createElement('button');
-  btnOk.textContent = 'Importar';
-  btnOk.style.cssText = 'padding:7px 18px;border:none;border-radius:7px;background:#0B3D91;color:#fff;cursor:pointer;font-size:12px;font-weight:700;display:none';
-  footer.appendChild(btnCancel); footer.appendChild(btnOk);
+  var ft = document.createElement('div');
+  ft.style.cssText = 'display:flex;justify-content:flex-end;margin-top:12px';
+  var bc = document.createElement('button');
+  bc.textContent = 'Fechar';
+  bc.style.cssText = 'padding:7px 16px;border:1px solid #ddd;border-radius:7px;background:#f5f5f5;cursor:pointer;font-size:12px';
+  bc.onclick = function () { ov.remove(); };
+  ft.appendChild(bc);
 
-  var pending = null;
+  function setStatus(t) { st.textContent = t; }
 
   function handle(file) {
-    if (!file || !/\.pdf$/i.test(file.name)) { status.textContent = 'Selecione um arquivo .pdf'; return; }
-    status.textContent = 'Lendo ' + file.name + '...';
-    preview.innerHTML = ''; btnOk.style.display = 'none';
-    _liReadPdf(file, function (t) { status.textContent = t; })
-      .then(function (res) {
-        if (!res.recs.length) {
-          status.textContent = 'Nenhum instrumento reconhecido neste PDF.';
-          preview.innerHTML = '<div style="color:#c62828">Verifique se o arquivo e a Lista de Instrumentos - Detalhamento e se o texto e selecionavel.</div>';
-          return;
-        }
-        pending = res;
-        status.textContent = res.recs.length + ' instrumento(s) encontrado(s) em ' + res.pages + ' pagina(s).';
-        var head = '<tr style="background:#0B3D91;color:#fff">'
-          + ['TAG', 'LINHA / EQUIP.', 'DT PROC.', 'DT ELET.', 'DT PNEU.']
-              .map(function (h) { return '<th style="padding:4px 6px;text-align:left;font-size:9px">' + h + '</th>'; }).join('')
-          + '</tr>';
-        var body = res.recs.slice(0, 12).map(function (r) {
-          function cell(v) {
-            var bg = v === 'Sim' ? '#c8f5d0' : '#f5f5f5';
-            return '<td style="padding:3px 6px;background:' + bg + '">' + v + '</td>';
-          }
-          return '<tr><td style="padding:3px 6px;font-family:monospace;font-weight:700">' + r.tag + '</td>'
-            + '<td style="padding:3px 6px">' + (r.linhaEquip || '-') + '</td>'
-            + cell(_liToSimNA(r.dtProcessoRaw)) + cell(_liToSimNA(r.dtEletricaRaw)) + cell(_liToSimNA(r.dtPneumaticoRaw))
-            + '</tr>';
-        }).join('');
-        preview.innerHTML = '<table style="width:100%;border-collapse:collapse">' + head + body + '</table>'
-          + (res.recs.length > 12 ? '<div style="margin-top:5px;color:#5a6a85">... e mais ' + (res.recs.length - 12) + ' instrumento(s)</div>' : '');
-        btnOk.style.display = 'inline-block';
-      })
-      .catch(function (e) { status.textContent = 'Erro: ' + e.message; });
+    if (!file || !/\.pdf$/i.test(file.name)) { setStatus('Selecione um arquivo .pdf'); return; }
+    setStatus('Lendo ' + file.name + '...');
+    _liExtract(file, setStatus).then(function (res) {
+      var recs = res.recs;
+      if (!recs.length) {
+        setStatus('Nenhum instrumento de CAMPO encontrado neste PDF.');
+        pv.innerHTML = '<div style="color:#c62828">Confira se o PDF tem texto selecionavel e se a coluna LOCALIZACAO traz "CAMPO".</div>';
+        return;
+      }
+      recs.forEach(function (r) {
+        instrTags.push({
+          id: _instrId('tag'),
+          projId: currentProjId || null,
+          disc: 'Instrumentação',
+          doc: res.docNum || '',
+          tag: r.tag,
+          linhaEquip: r.linhaEquip,
+          codSup: '', qtd: 1,
+          stCal: 'Pendente',
+          classif: r.classif,
+          stMon: 'Pendente',
+          stDtEl: r.stDtEl, stDtElEx: 'Pendente',
+          stDtPn: r.stDtPn, stDtPnEx: 'Pendente',
+          stDtPr: r.stDtPr, stDtPrEx: 'Pendente',
+          stInterl: 'Pendente', stAter: 'Pendente', stLoop: 'Pendente',
+          stSup: 'Pendente', dtChegada: ''
+        });
+      });
+
+      var body = recs.slice(0, 10).map(function (r) {
+        return '<tr><td style="padding:2px 6px;font-family:monospace">' + r.tag + '</td>'
+          + '<td style="padding:2px 6px">' + (r.linhaEquip || '-') + '</td>'
+          + '<td style="padding:2px 6px;text-align:center">' + r.stDtEl + '</td>'
+          + '<td style="padding:2px 6px;text-align:center">' + r.stDtPn + '</td>'
+          + '<td style="padding:2px 6px;text-align:center">' + r.stDtPr + '</td></tr>';
+      }).join('');
+      pv.innerHTML = '<div style="font-weight:600;margin-bottom:4px">Documento: ' + (res.docNum || 'nao identificado') + '</div>'
+        + '<table style="width:100%;border-collapse:collapse"><thead><tr style="background:#eef3fb">'
+        + '<th style="padding:2px 6px;text-align:left">TAG</th>'
+        + '<th style="padding:2px 6px;text-align:left">Linha/Equip.</th>'
+        + '<th style="padding:2px 6px">Elet.</th><th style="padding:2px 6px">Pneu.</th><th style="padding:2px 6px">Proc.</th>'
+        + '</tr></thead><tbody>' + body + '</tbody></table>'
+        + (recs.length > 10 ? '<div style="margin-top:4px;color:#5a6a85">... e mais ' + (recs.length - 10) + ' registro(s)</div>' : '');
+
+      saveAll().then(function () {
+        setStatus(recs.length + ' instrumento(s) de CAMPO importado(s).');
+        setTimeout(function () { ov.remove(); renderIsoView(); }, 2400);
+      });
+    }).catch(function (e) {
+      setStatus('Erro: ' + e.message);
+    });
   }
 
-  btnOk.onclick = function () {
-    if (!pending) return;
-    var added = 0;
-    pending.recs.forEach(function (r) {
-      instrTags.push({
-        id: _instrId('tag'), projId: currentProjId || null,
-        disc: 'Instrumentação',
-        doc: pending.doc || '',
-        tag: r.tag,
-        linhaEquip: r.linhaEquip || '',
-        codSup: '', qtd: 1,
-        stSup: 'Pendente', dtChegada: '',
-        stCal: 'Pendente',
-        classif: /^novo/i.test(_liNorm(r.status)) ? 'Novo' : 'Existente',
-        stMon: 'Pendente',
-        stDtEl: _liToSimNA(r.dtEletricaRaw),
-        stDtElEx: _liToSimNA(r.dtEletricaRaw)==='Sim'?'Pendente':'N/A',
-        stDtPn: _liToSimNA(r.dtPneumaticoRaw),
-        stDtPnEx: _liToSimNA(r.dtPneumaticoRaw)==='Sim'?'Pendente':'N/A',
-        stDtPr: _liToSimNA(r.dtProcessoRaw),
-        stDtPrEx: _liToSimNA(r.dtProcessoRaw)==='Sim'?'Pendente':'N/A',
-        stInterl: 'Pendente', stAter: 'Pendente', stLoop: 'Pendente'
-      });
-      added++;
-    });
-    saveAll().then(function () {
-      status.textContent = added + ' instrumento(s) importado(s).';
-      setTimeout(function () { ov.remove(); renderIsoView(); }, 1200);
-    });
-  };
-
-  drop.onclick = function () { input.click(); };
+  drop.onclick = function () { inp.click(); };
   drop.ondragover = function (e) { e.preventDefault(); drop.style.borderColor = '#0077b6'; };
   drop.ondragleave = function () { drop.style.borderColor = '#b0ddf0'; };
   drop.ondrop = function (e) { e.preventDefault(); drop.style.borderColor = '#b0ddf0'; handle(e.dataTransfer.files[0]); };
-  input.onchange = function () { handle(input.files[0]); };
+  inp.onchange = function () { handle(inp.files[0]); };
 
-  box.appendChild(close); box.appendChild(title); box.appendChild(hint);
-  box.appendChild(drop); box.appendChild(input); box.appendChild(status);
-  box.appendChild(preview); box.appendChild(footer);
-  ov.appendChild(box); document.body.appendChild(ov);
+  box.appendChild(xb); box.appendChild(h); box.appendChild(sub);
+  box.appendChild(drop); box.appendChild(inp); box.appendChild(st); box.appendChild(pv); box.appendChild(ft);
+  ov.appendChild(box);
+  document.body.appendChild(ov);
 }
+
 
 async function _liReadPdf(file, setStatus) {
   if (typeof pdfjsLib === 'undefined') throw new Error('biblioteca pdf.js indisponivel');
