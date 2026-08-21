@@ -1203,7 +1203,7 @@ function goView(v, pid) {
   else if (v === 'isos') renderIsoView();
   renderHeader();
 }
-const HY_BUILD = '21/08/2026 11:38';
+const HY_BUILD = '21/08/2026 16:14';
 function renderHeader() {
   const el = document.getElementById('hdr-acts');
   if (currentView === 'projects' && !currentProjId) {
@@ -3429,6 +3429,162 @@ function _instrSupCells(id, setFn, stSup, dtChegada) {
        + '<td style="padding:4px 6px;text-align:center">'+dtCell+'</td>';
 }
 
+
+/* ═══════════════ SELECAO EM LOTE (abas de Instrumentacao) ═══════════════
+   Marca linhas com caixa de selecao e permite excluir varias de uma vez.
+════════════════════════════════════════════════════════════════════════ */
+var _instrChecked = { tags: {}, cabos: {}, sups: {}, encam: {} };
+var _instrVisibleIds = { tags: [], cabos: [], sups: [], encam: [] };
+
+function _instrArrGet(kind) {
+  return kind === 'tags' ? instrTags : kind === 'cabos' ? instrCabos
+       : kind === 'sups' ? instrSups : instrEncam;
+}
+function _instrArrSet(kind, v) {
+  if (kind === 'tags') instrTags = v;
+  else if (kind === 'cabos') instrCabos = v;
+  else if (kind === 'sups') instrSups = v;
+  else instrEncam = v;
+}
+function _instrSelCount(kind) {
+  var m = _instrChecked[kind] || {}, n = 0;
+  for (var k in m) if (m[k]) n++;
+  return n;
+}
+function _instrSelToggle(kind, id, on) {
+  _instrChecked[kind][id] = !!on;
+  renderIsoView();
+}
+function _instrSelAllToggle(kind, on) {
+  (_instrVisibleIds[kind] || []).forEach(function (id) { _instrChecked[kind][id] = !!on; });
+  renderIsoView();
+}
+/* caixa de selecao da linha */
+function _instrSelBox(kind, id) {
+  var on = !!(_instrChecked[kind] && _instrChecked[kind][id]);
+  return '<td style="padding:4px 6px;text-align:center">'
+    + '<input type="checkbox" ' + (on ? 'checked' : '') + ' onclick="event.stopPropagation();_instrSelToggle(\'' + kind + '\',\'' + id + '\',this.checked)" '
+    + 'style="width:14px;height:14px;cursor:pointer;accent-color:#0B3D91"></td>';
+}
+/* caixa do cabecalho (marca/desmarca os visiveis) */
+function _instrSelAllBox(kind) {
+  var vis = _instrVisibleIds[kind] || [];
+  var all = vis.length > 0 && vis.every(function (id) { return _instrChecked[kind][id]; });
+  return '<input type="checkbox" ' + (all ? 'checked' : '') + ' title="Marcar/desmarcar todos os visiveis" '
+    + 'onclick="_instrSelAllToggle(\'' + kind + '\',this.checked)" '
+    + 'style="width:14px;height:14px;cursor:pointer;accent-color:#fff">';
+}
+/* botao que so aparece quando ha itens marcados */
+function _instrSelBtn(kind) {
+  var n = _instrSelCount(kind);
+  if (!n) return '';
+  return '<button onclick="_instrDelSelected(\'' + kind + '\')" '
+    + 'style="height:27px;font-size:11px;font-weight:700;padding:3px 10px;border-radius:6px;'
+    + 'border:1px solid #e57373;background:#fdecea;color:#c62828;cursor:pointer">'
+    + '\uD83D\uDDD1\uFE0F Excluir selecionados (' + n + ')</button>';
+}
+async function _instrDelSelected(kind) {
+  var n = _instrSelCount(kind);
+  if (!n) return;
+  if (!confirm('Excluir ' + n + ' registro(s) selecionado(s)? Esta acao nao pode ser desfeita.')) return;
+  var marc = _instrChecked[kind];
+  _instrArrSet(kind, _instrArrGet(kind).filter(function (r) { return !marc[r.id]; }));
+  _instrChecked[kind] = {};
+  await saveAll();
+  renderIsoView();
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   SELECAO MULTIPLA + EXCLUSAO EM LOTE (abas de Instrumentacao)
+   Marcar as caixas nao redesenha a tabela: apenas o contador do botao e
+   atualizado, para nao perder a rolagem em listas grandes.
+══════════════════════════════════════════════════════════════════════ */
+var _instrSelSet = { tags: {}, cabos: {}, sups: {}, encam: {} };
+var _instrVisible = { tags: [], cabos: [], sups: [], encam: [] };
+
+function _instrArrOf(tab) {
+  if (tab === 'tags') return instrTags;
+  if (tab === 'cabos') return instrCabos;
+  if (tab === 'sups') return instrSups;
+  return instrEncam;
+}
+function _instrArrSet(tab, arr) {
+  if (tab === 'tags') instrTags = arr;
+  else if (tab === 'cabos') instrCabos = arr;
+  else if (tab === 'sups') instrSups = arr;
+  else instrEncam = arr;
+}
+function _instrSelCount(tab) {
+  return Object.keys(_instrSelSet[tab] || {}).length;
+}
+function _instrSelRefresh(tab) {
+  var n = _instrSelCount(tab);
+  var b = document.getElementById('selbtn-' + tab);
+  if (b) {
+    b.textContent = '\uD83D\uDDD1\uFE0F Excluir selecionados (' + n + ')';
+    b.style.opacity = n ? '1' : '.45';
+    b.style.cursor = n ? 'pointer' : 'default';
+  }
+  var h = document.getElementById('selall-' + tab);
+  if (h) {
+    var vis = _instrVisible[tab] || [];
+    var marc = vis.filter(function (id) { return _instrSelSet[tab][id]; }).length;
+    h.checked = vis.length > 0 && marc === vis.length;
+    h.indeterminate = marc > 0 && marc < vis.length;
+  }
+}
+function _instrToggleSel(tab, id, on) {
+  if (on) _instrSelSet[tab][id] = 1; else delete _instrSelSet[tab][id];
+  _instrSelRefresh(tab);
+}
+function _instrSelAll(tab, on) {
+  (_instrVisible[tab] || []).forEach(function (id) {
+    if (on) _instrSelSet[tab][id] = 1; else delete _instrSelSet[tab][id];
+  });
+  var boxes = document.querySelectorAll('input[data-selbox="' + tab + '"]');
+  for (var i = 0; i < boxes.length; i++) boxes[i].checked = !!on;
+  _instrSelRefresh(tab);
+}
+/* caixa da linha */
+function _instrChk(tab, id) {
+  var m = _instrSelSet[tab][id] ? ' checked' : '';
+  return '<td style="padding:4px 4px;text-align:center">'
+    + '<input type="checkbox" data-selbox="' + tab + '"' + m
+    + ' onclick="event.stopPropagation();_instrToggleSel(\'' + tab + '\',\'' + id + '\',this.checked)"'
+    + ' style="width:14px;height:14px;cursor:pointer"></td>';
+}
+/* caixa do cabecalho (marca/desmarca tudo que esta visivel) */
+function _instrChkHead(tab) {
+  return '<input type="checkbox" id="selall-' + tab + '" title="Selecionar tudo que esta visivel"'
+    + ' onclick="_instrSelAll(\'' + tab + '\',this.checked)" style="width:14px;height:14px;cursor:pointer">';
+}
+/* botao da barra de filtros; tambem registra o que esta visivel */
+function _instrSelBtn(tab, filtered) {
+  _instrVisible[tab] = (filtered || []).map(function (r) { return r.id; });
+  var vis = {};
+  _instrVisible[tab].forEach(function (id) { vis[id] = 1; });
+  Object.keys(_instrSelSet[tab]).forEach(function (id) {
+    if (!_instrArrOf(tab).some(function (r) { return r.id === id; })) delete _instrSelSet[tab][id];
+  });
+  var n = _instrSelCount(tab);
+  setTimeout(function () { _instrSelRefresh(tab); }, 0);
+  return '<button id="selbtn-' + tab + '" onclick="_instrDelSel(\'' + tab + '\')" '
+    + 'style="height:27px;font-size:11px;font-weight:700;padding:3px 10px;border-radius:6px;'
+    + 'border:1px solid #e0c8c8;background:#fdecea;color:var(--hd);opacity:' + (n ? '1' : '.45') + ';'
+    + 'cursor:' + (n ? 'pointer' : 'default') + '">\uD83D\uDDD1\uFE0F Excluir selecionados (' + n + ')</button>';
+}
+async function _instrDelSel(tab) {
+  var ids = Object.keys(_instrSelSet[tab] || {});
+  if (!ids.length) { alert('Marque ao menos um item para excluir.'); return; }
+  if (!confirm('Excluir ' + ids.length + ' item(ns) selecionado(s)? Esta acao nao pode ser desfeita.')) return;
+  var mark = {};
+  ids.forEach(function (id) { mark[id] = 1; });
+  _instrArrSet(tab, _instrArrOf(tab).filter(function (r) { return !mark[r.id]; }));
+  _instrSelSet[tab] = {};
+  await saveAll();
+  renderIsoView();
+}
+
 /* ══════════════ 1. TAGS DE INSTRUMENTOS ════════════════════════════════
    Tag · Tipo · Localização · Área · Cód. Suprimentos · Condição
    Status: Calibração · Retirada · Montagem · Aterramento
@@ -3508,7 +3664,7 @@ function renderInstrTags(discTabs,bc){
   var CLS=['Novo','Existente'];
   var DISC=['Instrumentação','Elétrica'];
   var rows=filtered.length?filtered.map(function(r){
-    return '<tr style="border-bottom:1px solid #f0f4fb">'
+    return '<tr style="border-bottom:1px solid #f0f4fb">'+_instrChk('tags',r.id)
       +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrTagSet','disc',DISC,r.disc||'Instrumentação',100)+'</td>'
       +'<td style="padding:4px 7px;font-size:10px">'+_instrInp(r.id,'instrTagSet','doc',r.doc,110)+'</td>'
       +'<td style="padding:4px 7px;font-weight:700;font-size:11px;font-family:monospace">'+_instrInp(r.id,'instrTagSet','tag',r.tag,100)+'</td>'
@@ -3529,8 +3685,8 @@ function renderInstrTags(discTabs,bc){
       +'</tr>';
   }).join(''):null;
   _instrHeader(discTabs,bc,'Tags de Instrumentos / Equipamentos',kpis,
-    _instrFilterBar(_itSearch,'_itSearch',_instrAreaSel('_itArea',list,_itArea)+'<button onclick="instrTagImportPDF()" style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid #b0ddf0;background:rgba(0,119,182,.1);color:#0077b6;cursor:pointer">📎 Importar PDF</button><button onclick="instrTagImportXLSX()" style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid #a5d6a7;background:rgba(46,125,50,.1);color:#2e7d32;cursor:pointer">📥 Importar XLSX</button><button onclick="instrExportPDF(\'tags\')" style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid var(--hbr);background:var(--hg);color:var(--ht);cursor:pointer">📄 Exportar PDF</button>','instrTagAdd','instrTagDelAll','_itArea'),
-    _instrTable(['DISCIPLINA','DOC. RASTREABILIDADE','TAG','LINHA / EQUIPAMENTO','CÓD. SUPRIMENTOS','QTDE','ST. SUPRIMENTOS','DATA CHEGADA','CALIBRAÇÃO','CLASSIFICAÇÃO','ST. MONTAGEM','DT ELÉT.','ST. DT ELÉT.','DT PNEU.','ST. DT PNEU.','DT PROC.','ST. DT PROC.','INTERLIGAÇÃO','ATERRAMENTO','LOOP TESTE','AÇÕES'],rows,'🏷️','Nenhuma tag cadastrada'));
+    _instrFilterBar(_itSearch,'_itSearch',_instrSelBtn('tags',filtered)+_instrAreaSel('_itArea',list,_itArea)+'<button onclick="instrTagImportPDF()" style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid #b0ddf0;background:rgba(0,119,182,.1);color:#0077b6;cursor:pointer">📎 Importar PDF</button><button onclick="instrTagImportXLSX()" style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid #a5d6a7;background:rgba(46,125,50,.1);color:#2e7d32;cursor:pointer">📥 Importar XLSX</button><button onclick="instrExportPDF(\'tags\')" style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid var(--hbr);background:var(--hg);color:var(--ht);cursor:pointer">📄 Exportar PDF</button>','instrTagAdd','instrTagDelAll','_itArea'),
+    _instrTable([_instrChkHead('tags'),'DISCIPLINA','DOC. RASTREABILIDADE','TAG','LINHA / EQUIPAMENTO','CÓD. SUPRIMENTOS','QTDE','ST. SUPRIMENTOS','DATA CHEGADA','CALIBRAÇÃO','CLASSIFICAÇÃO','ST. MONTAGEM','DT ELÉT.','ST. DT ELÉT.','DT PNEU.','ST. DT PNEU.','DT PROC.','ST. DT PROC.','INTERLIGAÇÃO','ATERRAMENTO','LOOP TESTE','AÇÕES'],rows,'🏷️','Nenhuma tag cadastrada'));
 }
 async function instrTagSet(id,f,v){var r=instrTags.find(function(x){return x.id===id;});if(r){r[f]=v;await saveAll();}}
 async function instrTagAdd(){var t=prompt('Tag do instrumento/equipamento:');if(!t||!t.trim())return;
@@ -3557,7 +3713,7 @@ function renderInstrCabos(discTabs,bc){
   var LANC_ST=['Pendente','Em andamento','Concluído'];
   var rows=filtered.length?filtered.map(function(r){
     var bgLanc=r.stLanc2==='Concluído'?'background:#c8f5d0;':r.stLanc2==='Em andamento'?'background:#fff8e1;':'';
-    return '<tr style="border-bottom:1px solid #f0f4fb">'
+    return '<tr style="border-bottom:1px solid #f0f4fb">'+_instrChk('cabos',r.id)
       +'<td style="padding:4px 7px;font-size:11px;font-family:monospace">'+_instrInp(r.id,'instrCaboSet','doc',r.doc,120)+'</td>'
       +'<td style="padding:4px 7px;font-size:10px">'+_instrInp(r.id,'instrCaboSet','rev',r.rev,40)+'</td>'
       +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrCaboSet','disc',DISC,r.disc||'Instrumentação',100)+'</td>'
@@ -3575,8 +3731,8 @@ function renderInstrCabos(discTabs,bc){
       +'</tr>';
   }).join(''):null;
   _instrHeader(discTabs,bc,'Lista de Cabos',kpis,
-    _instrFilterBar(_icSearch,'_icSearch',_instrAreaSel('_icArea',list,_icArea)+'<button onclick="instrCaboImportPDF()" style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid #b0ddf0;background:rgba(0,119,182,.1);color:#0077b6;cursor:pointer">📎 Importar PDF</button><button onclick="instrCaboImportXLSX()" style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid #a5d6a7;background:rgba(46,125,50,.1);color:#2e7d32;cursor:pointer">📥 Importar XLSX</button><button onclick="instrExportPDF(\'cabos\')" style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid var(--hbr);background:var(--hg);color:var(--ht);cursor:pointer">📄 Exportar PDF</button>','instrCaboAdd','instrCaboDelAll','_icArea'),
-    _instrTable(['RASTREABILIDADE','REV.','DISCIPLINA','SEÇÃO DO CABO','QTDE PROJETADA','QTDE REAL LANÇADO','ST. SUPRIMENTOS','DATA CHEGADA','CÓD. SUPRIMENTOS','ORIGEM (DE)','DESTINO (PARA)','STATUS LANÇAMENTO','DATA LANÇAMENTO','LOCALIZAÇÃO','AÇÕES'],rows,'🔌','Nenhum cabo cadastrado'));
+    _instrFilterBar(_icSearch,'_icSearch',_instrSelBtn('cabos',filtered)+_instrAreaSel('_icArea',list,_icArea)+'<button onclick="instrCaboImportPDF()" style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid #b0ddf0;background:rgba(0,119,182,.1);color:#0077b6;cursor:pointer">📎 Importar PDF</button><button onclick="instrCaboImportXLSX()" style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid #a5d6a7;background:rgba(46,125,50,.1);color:#2e7d32;cursor:pointer">📥 Importar XLSX</button><button onclick="instrExportPDF(\'cabos\')" style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid var(--hbr);background:var(--hg);color:var(--ht);cursor:pointer">📄 Exportar PDF</button>','instrCaboAdd','instrCaboDelAll','_icArea'),
+    _instrTable([_instrChkHead('cabos'),'RASTREABILIDADE','REV.','DISCIPLINA','SEÇÃO DO CABO','QTDE PROJETADA','QTDE REAL LANÇADO','ST. SUPRIMENTOS','DATA CHEGADA','CÓD. SUPRIMENTOS','ORIGEM (DE)','DESTINO (PARA)','STATUS LANÇAMENTO','DATA LANÇAMENTO','LOCALIZAÇÃO','AÇÕES'],rows,'🔌','Nenhum cabo cadastrado'));
 }
 async function instrCaboSet(id,f,v){var r=instrCabos.find(function(x){return x.id===id;});if(r){r[f]=v;await saveAll();}}
 async function instrCaboAdd(){var d=prompt('Número de rastreabilidade:');if(!d||!d.trim())return;instrCabos.push({id:_instrId('cab'),projId:currentProjId||null,doc:d.trim(),rev:'0',disc:'Instrumentação',secao:'',qtd:null,stSup:'Pendente',dtChegada:'',codSup:'',origem:'',destino:'',stLanc2:'Pendente',dtLanc:'',qtdReal:null,loc:'Campo'});await _instrSave();}
@@ -3603,7 +3759,7 @@ function renderInstrSups(discTabs,bc){
   var PINT=['Pendente','Pintado','N/A'];
   var MON=['Pendente','Em Montagem','Montado'];
   var rows=filtered.length?filtered.map(function(r){
-    return '<tr style="border-bottom:1px solid #f0f4fb">'
+    return '<tr style="border-bottom:1px solid #f0f4fb">'+_instrChk('sups',r.id)
       +'<td style="padding:4px 7px;font-size:11px;font-family:monospace">'+_instrInp(r.id,'instrSupSet','doc',r.doc,150)+'</td>'
       +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrSupSet','disc',DISC,r.disc||'Instrumentação',100)+'</td>'
       +'<td style="padding:4px 7px;font-size:10px">'+_instrInp(r.id,'instrSupSet','instrumento',r.instrumento,100)+'</td>'
@@ -3618,8 +3774,8 @@ function renderInstrSups(discTabs,bc){
       +'</tr>';
   }).join(''):null;
   _instrHeader(discTabs,bc,'Suportes',kpis,
-    _instrFilterBar(_isSearch,'_isSearch',_instrAreaSel('_isArea',list,_isArea)+'<button onclick="instrSupImportXLSX()" style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid #a5d6a7;background:rgba(46,125,50,.1);color:#2e7d32;cursor:pointer">📥 Importar XLSX</button><button onclick="instrSupImportPDF()" style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid #b0ddf0;background:rgba(0,119,182,.1);color:#0077b6;cursor:pointer">📎 Importar PDF</button><button onclick="instrExportPDF(\'suportes\')" style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid var(--hbr);background:var(--hg);color:var(--ht);cursor:pointer;display:flex;align-items:center;gap:4px">📄 Exportar PDF</button>','instrSupAdd','instrSupDelAll','_isArea'),
-    _instrTable(['RASTREABILIDADE','DISCIPLINA','INSTRUMENTO','TIPO DE SUPORTE','ST. FABRICAÇÃO','DT. FABRICAÇÃO','ST. PINTURA','DT. PINTURA','ST. MONTAGEM','DT. MONTAGEM','AÇÕES'],rows,'🔧','Nenhum suporte cadastrado'));
+    _instrFilterBar(_isSearch,'_isSearch',_instrSelBtn('sups',filtered)+_instrAreaSel('_isArea',list,_isArea)+'<button onclick="instrSupImportXLSX()" style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid #a5d6a7;background:rgba(46,125,50,.1);color:#2e7d32;cursor:pointer">📥 Importar XLSX</button><button onclick="instrSupImportPDF()" style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid #b0ddf0;background:rgba(0,119,182,.1);color:#0077b6;cursor:pointer">📎 Importar PDF</button><button onclick="instrExportPDF(\'suportes\')" style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid var(--hbr);background:var(--hg);color:var(--ht);cursor:pointer;display:flex;align-items:center;gap:4px">📄 Exportar PDF</button>','instrSupAdd','instrSupDelAll','_isArea'),
+    _instrTable([_instrChkHead('sups'),'RASTREABILIDADE','DISCIPLINA','INSTRUMENTO','TIPO DE SUPORTE','ST. FABRICAÇÃO','DT. FABRICAÇÃO','ST. PINTURA','DT. PINTURA','ST. MONTAGEM','DT. MONTAGEM','AÇÕES'],rows,'🔧','Nenhum suporte cadastrado'));
 }
 async function instrSupSet(id,f,v){var r=instrSups.find(function(x){return x.id===id;});if(r){r[f]=v;await saveAll();}}
 async function instrSupAdd(){var d=prompt('Número de rastreabilidade:');if(!d||!d.trim())return;instrSups.push({id:_instrId('sup'),projId:currentProjId||null,doc:d.trim(),disc:'Instrumentação',instrumento:'',tipoSup:'',stFab:'Pendente',stPint:'Pendente',stMon:'Pendente',dtFab:'',dtPint:'',dtMon:'',stSup:'Pendente',dtChegada:''});await _instrSave();}
@@ -3718,7 +3874,7 @@ function renderInstrEncam(discTabs,bc){
   var TIPO=['Eletroduto','Eletrocalha','Leito','Outro'];
   var MON=['Pendente','Em Montagem','Montado'];
   var rows=filtered.length?filtered.map(function(r){
-    return '<tr style="border-bottom:1px solid #f0f4fb">'
+    return '<tr style="border-bottom:1px solid #f0f4fb">'+_instrChk('encam',r.id)
       +'<td style="padding:4px 7px;font-size:11px;font-family:monospace">'+_instrInp(r.id,'instrEncamSet','doc',r.doc,150)+'</td>'
       +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrEncamSet','disc',DISC,r.disc||'Instrumentação',100)+'</td>'
       +'<td style="padding:4px 6px">'+_instrSel(r.id,'instrEncamSet','tipo',TIPO,r.tipo||'Eletroduto',110)+'</td>'
@@ -3730,8 +3886,8 @@ function renderInstrEncam(discTabs,bc){
       +'</tr>';
   }).join(''):null;
   _instrHeader(discTabs,bc,'Encaminhamento',kpis,
-    _instrFilterBar(_ieSearch,'_ieSearch',_instrAreaSel('_ieArea',list,_ieArea)+'<button onclick="instrExportPDF(\'encam\')" style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid var(--hbr);background:var(--hg);color:var(--ht);cursor:pointer;display:flex;align-items:center;gap:4px">📄 Exportar PDF</button>','instrEncamAdd','instrEncamDelAll','_ieArea'),
-    _instrTable(['RASTREABILIDADE','DISCIPLINA','TIPO DE ENCAMINHAMENTO','DIÂMETRO','QTDE','ST. SUPRIMENTOS','DATA CHEGADA','ST. MONTAGEM','AÇÕES'],rows,'🛤️','Nenhum encaminhamento cadastrado'));
+    _instrFilterBar(_ieSearch,'_ieSearch',_instrSelBtn('encam',filtered)+_instrAreaSel('_ieArea',list,_ieArea)+'<button onclick="instrExportPDF(\'encam\')" style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid var(--hbr);background:var(--hg);color:var(--ht);cursor:pointer;display:flex;align-items:center;gap:4px">📄 Exportar PDF</button>','instrEncamAdd','instrEncamDelAll','_ieArea'),
+    _instrTable([_instrChkHead('encam'),'RASTREABILIDADE','DISCIPLINA','TIPO DE ENCAMINHAMENTO','DIÂMETRO','QTDE','ST. SUPRIMENTOS','DATA CHEGADA','ST. MONTAGEM','AÇÕES'],rows,'🛤️','Nenhum encaminhamento cadastrado'));
 }
 async function instrEncamSet(id,f,v){var r=instrEncam.find(function(x){return x.id===id;});if(r){r[f]=v;await saveAll();}}
 async function instrEncamAdd(){var d=prompt('Número de rastreabilidade:');if(!d||!d.trim())return;
