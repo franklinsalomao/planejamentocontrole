@@ -4839,6 +4839,230 @@ async function _lcExtract(file, setStatus) {
   return { docNum: docNum, disc: disc || 'Instrumentação', docRev: docRev, recs: recs };
 }
 
+
+/* ══════════════════════════════════════════════════════════════════════
+   IMPORTACAO DE PDF SEM CAMADA DE TEXTO (desenho CAD vetorizado)
+   Quando o PDF nao tem texto extraivel, a tabela e reconstruida a partir
+   dos pixels: as linhas da grade sao detectadas por projecao de pixels
+   escuros e cada celula e lida por OCR (tesseract.js).
+   Colunas lidas: N. DO CABO | SECAO NOMINAL | TIPO | COMPRIM. DO CIRC. | DE | PARA
+══════════════════════════════════════════════════════════════════════ */
+
+var _LC_SECOES = ['1,5','2,5','4,0','6,0','10','16','25','35','50','70','95','120','150',
+                  '185','240','300','400','500','630','750MCM','1/0AWG','2/0AWG','4/0AWG'];
+var _LC_TIPOS  = ['EPR','PVC','XLPE'];
+/* indices das colunas na tabela (17 divisorias = 16 colunas) */
+var _LC_COLIDX = { num: 0, secao: 5, tipo: 6, compr: 7, de: 12, para: 13 };
+
+function _lcNorm(s) {
+  s = String(s == null ? '' : s).replace(/[\u2014\u2013\u2012\u2212\u2015]/g, '-').trim();
+  s = s.replace(/\s+/g, ' ').replace(/^[|\[\]_\s-]+|[|\[\]_\s-]+$/g, '');
+  s = s.replace(/-{2,}/g, '-');
+  return /^[-\s|_oO\u00b0ce~,.']*$/.test(s) ? '' : s;
+}
+function _lcKey(s) { return String(s || '').replace(/[^0-9A-Za-z,\/]/g, '').toUpperCase(); }
+/* ancora o valor lido na tabela normalizada (corrige trocas do OCR, ex.: 2,9 -> 2,5) */
+function _lcSnap(v, opts) {
+  if (!v) return '';
+  var k = _lcKey(v), i;
+  for (i = 0; i < opts.length; i++) if (k === _lcKey(opts[i])) return opts[i];
+  var best = null, bd = 99;
+  for (i = 0; i < opts.length; i++) {
+    var t = _lcKey(opts[i]);
+    if (t.length !== k.length) continue;
+    var d = 0;
+    for (var j = 0; j < k.length; j++) if (k[j] !== t[j]) d++;
+    if (d < bd) { bd = d; best = opts[i]; }
+  }
+  return bd <= 1 ? best : v;
+}
+
+/* grade a partir dos pixels: projecao de escuros em colunas e linhas */
+function _lcGridFromPixels(data, W, H, S) {
+  var colDark = new Int32Array(W), rowDark = new Int32Array(H);
+  for (var y = 0; y < H; y++) {
+    var off = y * W * 4;
+    for (var x = 0; x < W; x++) {
+      var i = off + x * 4;
+      if (data[i] < 128 && data[i + 1] < 128 && data[i + 2] < 128) { colDark[x]++; rowDark[y]++; }
+    }
+  }
+  function runs(arr, n, frac) {
+    var lim = frac * n, out = [], st = -1, i;
+    for (i = 0; i < arr.length; i++) {
+      if (arr[i] >= lim) { if (st < 0) st = i; }
+      else if (st >= 0) { out.push((st + i - 1) / 2); st = -1; }
+    }
+    if (st >= 0) out.push((st + arr.length - 1) / 2);
+    var m = [];
+    out.forEach(function (v) {
+      if (m.length && v - m[m.length - 1] < 4) m[m.length - 1] = (m[m.length - 1] + v) / 2;
+      else m.push(v);
+    });
+    return m;
+  }
+  return { xs: runs(colDark, H, 0.45).map(function (v) { return v / S; }),
+           ys: runs(rowDark, W, 0.45).map(function (v) { return v / S; }) };
+}
+
+async function _lcEnsureOCR(setStatus) {
+  if (window.Tesseract) return;
+  setStatus('Carregando motor de OCR (so na primeira vez)...');
+  await new Promise(function (res, rej) {
+    var s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/4.1.4/tesseract.min.js';
+    s.onload = res;
+    s.onerror = function () { rej(new Error('nao foi possivel carregar o motor de OCR')); };
+    document.head.appendChild(s);
+  });
+}
+
+async function _lcOcrExtract(file, opts, setStatus) {
+  await _lcEnsureOCR(setStatus);
+  setStatus('Preparando OCR...');
+  var worker = await Tesseract.createWorker('eng');
+  try { await worker.setParameters({ tessedit_pageseg_mode: '7' }); } catch (e) {}
+
+  var S = 4, INS = 1.2;
+  var buf = await file.arrayBuffer();
+  var pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+  var recs = [], scanned = 0;
+
+  var cell = document.createElement('canvas');
+  var cctx = cell.getContext('2d');
+
+  try {
+    for (var p = 1; p <= pdf.numPages; p++) {
+      setStatus('Analisando pagina ' + p + ' de ' + pdf.numPages + '...');
+      var page = await pdf.getPage(p);
+      var vp = page.getViewport({ scale: S });
+      var cnv = document.createElement('canvas');
+      cnv.width = Math.ceil(vp.width); cnv.height = Math.ceil(vp.height);
+      var ctx = cnv.getContext('2d', { willReadFrequently: true });
+      ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, cnv.width, cnv.height);
+      await page.render({ canvasContext: ctx, viewport: vp }).promise;
+
+      var img = ctx.getImageData(0, 0, cnv.width, cnv.height);
+      var grid = _lcGridFromPixels(img.data, cnv.width, cnv.height, S);
+      img = null;
+
+      var pw = vp.width / S;
+      var xs = grid.xs.filter(function (x) { return x >= 0.055 * pw && x <= 0.985 * pw; });
+      if (xs.length !== 17) continue;                 /* nao e a tabela de cabos */
+
+      var bands = [];
+      for (var i = 0; i + 1 < grid.ys.length; i++) {
+        var h = grid.ys[i + 1] - grid.ys[i];
+        if (h >= 12 && h <= 22 && grid.ys[i] >= 90) bands.push([grid.ys[i], grid.ys[i + 1]]);
+      }
+
+      async function ocrCell(ci, y0, y1) {
+        var a = xs[ci] + INS, b = xs[ci + 1] - INS;
+        var sx = Math.round(a * S), sy = Math.round((y0 + INS) * S);
+        var sw = Math.round((b - a) * S), sh = Math.round((y1 - y0 - 2 * INS) * S);
+        if (sw < 6 || sh < 6) return '';
+        var pad = 16, k = 2;
+        cell.width = sw * k + pad * 2; cell.height = sh * k + pad * 2;
+        cctx.fillStyle = '#fff'; cctx.fillRect(0, 0, cell.width, cell.height);
+        cctx.imageSmoothingEnabled = true;
+        cctx.drawImage(cnv, sx, sy, sw, sh, pad, pad, sw * k, sh * k);
+        var r = await worker.recognize(cell);
+        return _lcNorm((r && r.data && r.data.text ? r.data.text : '').replace(/\n/g, ' '));
+      }
+
+      for (var bi = 0; bi < bands.length; bi++) {
+        var y0 = bands[bi][0], y1 = bands[bi][1];
+        var num = await ocrCell(_LC_COLIDX.num, y0, y1);
+        if (!num || num.length < 3 || !/\d/.test(num)) continue;
+        scanned++;
+        setStatus('Pagina ' + p + ' - lendo cabo ' + scanned + '...');
+        var secao = _lcSnap(await ocrCell(_LC_COLIDX.secao, y0, y1), _LC_SECOES);
+        var tipo  = _lcSnap(await ocrCell(_LC_COLIDX.tipo,  y0, y1), _LC_TIPOS);
+        var comp  = await ocrCell(_LC_COLIDX.compr, y0, y1);
+        var de    = await ocrCell(_LC_COLIDX.de,    y0, y1);
+        var para  = await ocrCell(_LC_COLIDX.para,  y0, y1);
+        num = num.replace(/O(\d)/g, '0$1').replace(/(\d)O/g, '$10');
+        recs.push({
+          cabo: num,
+          secao: (secao ? secao + ' mm\u00b2' : '') + (tipo ? ' ' + tipo : ''),
+          qtd: parseFloat(String(comp).replace(',', '.')) || null,
+          codSup: '',
+          origem: de,
+          destino: para
+        });
+      }
+      cnv.width = cnv.height = 0;                     /* libera memoria */
+    }
+  } finally {
+    try { await worker.terminate(); } catch (e) {}
+  }
+
+  var md = String(file.name || '').match(/BK-[A-Z0-9]+-\d+-[A-Z]{2}-\d+-\d+/i);
+  return {
+    docNum: md ? md[0].toUpperCase() : String(file.name || '').replace(/\.pdf$/i, ''),
+    rev: opts.rev || '0',
+    disc: opts.disc || 'Elétrica',
+    recs: recs,
+    ocr: true
+  };
+}
+
+/* Oferece a extracao por OCR quando o PDF nao tem texto */
+function _lcOfferOCR(file, setStatus, pv, finish) {
+  setStatus('Este PDF nao possui texto extraivel (desenho digitalizado/vetorizado).');
+  pv.innerHTML = '';
+  var wrap = document.createElement('div');
+  wrap.style.cssText = 'border:1px solid #ffe0a3;background:#fff8e6;border-radius:8px;padding:10px 12px';
+
+  var msg = document.createElement('div');
+  msg.style.cssText = 'font-size:10.5px;color:#7a5b00;margin-bottom:8px;line-height:1.5';
+  msg.textContent = 'Posso reconstruir a tabela por leitura optica (OCR). Confirme a disciplina e a revisao do documento. A leitura leva alguns minutos e os textos livres devem ser conferidos depois.';
+
+  var row = document.createElement('div');
+  row.style.cssText = 'display:flex;gap:8px;align-items:center;flex-wrap:wrap';
+
+  var lblD = document.createElement('span');
+  lblD.style.cssText = 'font-size:10px;font-weight:700;color:#5a6a85';
+  lblD.textContent = 'Disciplina:';
+  var sel = document.createElement('select');
+  sel.style.cssText = 'font-size:11px;padding:3px 6px;border:0.5px solid var(--hbr);border-radius:5px';
+  ['Elétrica', 'Instrumentação'].forEach(function (o) {
+    var op = document.createElement('option'); op.value = o; op.textContent = o; sel.appendChild(op);
+  });
+
+  var lblR = document.createElement('span');
+  lblR.style.cssText = 'font-size:10px;font-weight:700;color:#5a6a85';
+  lblR.textContent = 'Rev.:';
+  var inp = document.createElement('input');
+  inp.type = 'text'; inp.value = '0';
+  inp.style.cssText = 'width:46px;font-size:11px;padding:3px 6px;border:0.5px solid var(--hbr);border-radius:5px';
+
+  var btn = document.createElement('button');
+  btn.textContent = '\uD83D\uDD0D Extrair com OCR';
+  btn.style.cssText = 'font-size:11px;font-weight:700;padding:5px 12px;border-radius:6px;border:1px solid #a5d6a7;background:#e8f5e9;color:#2e7d32;cursor:pointer';
+  btn.onclick = function () {
+    btn.disabled = true;
+    btn.textContent = 'Lendo...';
+    _lcOcrExtract(file, { disc: sel.value, rev: inp.value }, setStatus).then(function (res) {
+      if (!res.recs.length) {
+        setStatus('O OCR nao localizou a tabela de cabos neste PDF.');
+        btn.disabled = false; btn.textContent = 'Tentar novamente';
+        return;
+      }
+      finish(res);
+    }).catch(function (e) {
+      setStatus('Erro no OCR: ' + e.message);
+      btn.disabled = false; btn.textContent = 'Tentar novamente';
+    });
+  };
+
+  row.appendChild(lblD); row.appendChild(sel);
+  row.appendChild(lblR); row.appendChild(inp);
+  row.appendChild(btn);
+  wrap.appendChild(msg); wrap.appendChild(row);
+  pv.appendChild(wrap);
+}
+
 function instrCaboImportPDF() {
   var old = document.getElementById('instr-cabo-pdf-modal');
   if (old) old.remove();
@@ -4887,16 +5111,45 @@ function instrCaboImportPDF() {
 
   function setStatus(t) { st.textContent = t; }
 
+  function finish(res) {
+    var recs = res.recs;
+    recs.forEach(function (r) {
+      instrCabos.push({
+        id: _instrId('cab'), projId: currentProjId || null,
+        doc: res.docNum || '', rev: r.rev || res.rev || '', disc: res.disc,
+        secao: r.secao || r.tipo || '', qtd: (r.qtd != null ? r.qtd : r.total),
+        qtdReal: null, stSup: 'Pendente', dtChegada: '',
+        codSup: r.codSup || '', origem: r.origem || r.de || '', destino: r.destino || r.para || '',
+        stLanc2: 'Pendente', dtLanc: '', loc: 'Campo'
+      });
+    });
+    var body = recs.slice(0, 10).map(function (r) {
+      return '<tr><td style="padding:2px 6px;font-family:monospace">' + (r.cabo || '-') + '</td>'
+        + '<td style="padding:2px 6px">' + (r.secao || r.tipo || '-') + '</td>'
+        + '<td style="padding:2px 6px;text-align:right">' + (r.qtd != null ? r.qtd : (r.total != null ? r.total : '-')) + '</td>'
+        + '<td style="padding:2px 6px">' + (r.origem || r.de || '-') + '</td>'
+        + '<td style="padding:2px 6px">' + (r.destino || r.para || '-') + '</td></tr>';
+    }).join('');
+    pv.innerHTML = '<div style="font-weight:600;margin-bottom:4px">Documento: ' + (res.docNum || 'nao identificado')
+      + ' | Rev. ' + (res.rev || '-') + ' | ' + res.disc
+      + (res.ocr ? ' | <span style="color:#c07000">lido por OCR - revisar</span>' : '') + '</div>'
+      + '<table style="width:100%;border-collapse:collapse"><thead><tr style="background:#eef3fb">'
+      + '<th style="padding:2px 6px;text-align:left">Cabo</th><th style="padding:2px 6px;text-align:left">Secao</th>'
+      + '<th style="padding:2px 6px">Compr.</th><th style="padding:2px 6px;text-align:left">De</th>'
+      + '<th style="padding:2px 6px;text-align:left">Para</th></tr></thead><tbody>' + body + '</tbody></table>'
+      + (recs.length > 10 ? '<div style="margin-top:4px;color:#5a6a85">... e mais ' + (recs.length - 10) + ' registro(s)</div>' : '');
+    saveAll().then(function () {
+      setStatus(recs.length + ' cabo(s) importado(s).');
+      setTimeout(function () { ov.remove(); renderIsoView(); }, 2600);
+    });
+  }
+
   function handle(file) {
     if (!file || !/\.pdf$/i.test(file.name)) { setStatus('Selecione um arquivo .pdf'); return; }
     setStatus('Lendo ' + file.name + '...');
     _lcExtract(file, setStatus).then(function (res) {
       var recs = res.recs;
-      if (!recs.length) {
-        setStatus('Nenhum cabo encontrado neste PDF.');
-        pv.innerHTML = '<div style="color:#c62828">Confira se o PDF tem texto selecionavel e se e uma Lista de Cabos.</div>';
-        return;
-      }
+      if (!recs.length) { _lcOfferOCR(file, setStatus, pv, finish); return; }
       recs.forEach(function (r) {
         instrCabos.push({
           id: _instrId('cab'),
