@@ -1203,7 +1203,7 @@ function goView(v, pid) {
   else if (v === 'isos') renderIsoView();
   renderHeader();
 }
-const HY_BUILD = '21/08/2026 11:33';
+const HY_BUILD = '21/08/2026 11:38';
 function renderHeader() {
   const el = document.getElementById('hdr-acts');
   if (currentView === 'projects' && !currentProjId) {
@@ -4919,11 +4919,37 @@ async function _lcEnsureOCR(setStatus) {
   });
 }
 
+
+/* Cria o worker do tesseract.js cobrindo as duas assinaturas da biblioteca:
+   builds novas aceitam createWorker('eng'); builds 4.x usam objeto de opcoes
+   seguido de loadLanguage/initialize. Caminhos explicitos evitam falha de CDN. */
+async function _lcMakeWorker(setStatus) {
+  var opts = {
+    workerPath: 'https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/4.1.4/worker.min.js',
+    corePath:   'https://cdn.jsdelivr.net/npm/tesseract.js-core@4.0.4/tesseract-core.wasm.js',
+    langPath:   'https://tessdata.projectnaptha.com/4.0.0',
+    errorHandler: function (e) { console.error('[OCR]', e); }
+  };
+  var w = null, erro = null;
+  try { w = await Tesseract.createWorker(opts); }
+  catch (e1) {
+    erro = e1;
+    try { w = await Tesseract.createWorker('eng', 1, opts); } catch (e2) { erro = e2; w = null; }
+  }
+  if (!w) throw new Error('nao foi possivel iniciar o motor de OCR' + (erro && erro.message ? ' (' + erro.message + ')' : ''));
+  if (typeof w.loadLanguage === 'function') {
+    setStatus('Carregando idioma do OCR...');
+    await w.loadLanguage('eng');
+    await w.initialize('eng');
+  }
+  try { await w.setParameters({ tessedit_pageseg_mode: '7' }); } catch (e) {}
+  return w;
+}
+
 async function _lcOcrExtract(file, opts, setStatus) {
   await _lcEnsureOCR(setStatus);
   setStatus('Preparando OCR...');
-  var worker = await Tesseract.createWorker('eng');
-  try { await worker.setParameters({ tessedit_pageseg_mode: '7' }); } catch (e) {}
+  var worker = await _lcMakeWorker(setStatus);
 
   var S = 4, INS = 1.2;
   var buf = await file.arrayBuffer();
@@ -5053,7 +5079,9 @@ function _lcOfferOCR(file, setStatus, pv, finish) {
       }
       finish(res);
     }).catch(function (e) {
-      setStatus('Erro no OCR: ' + e.message);
+      var m = (e && e.message) ? e.message : (typeof e === 'string' ? e : 'falha ao carregar o motor de OCR - verifique a conexao');
+      setStatus('Erro no OCR: ' + m);
+      console.error('[OCR]', e);
       btn.disabled = false; btn.textContent = 'Tentar novamente';
     });
   };
