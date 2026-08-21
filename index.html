@@ -377,6 +377,7 @@ tbody td{padding:5px 7px;vertical-align:middle}
 })();
 </script>
 <style>
+.hy-build{display:inline-flex;align-items:center;padding:2px 7px;margin-right:6px;border-radius:10px;font-size:9px;font-weight:700;letter-spacing:.3px;color:rgba(255,255,255,.75);background:rgba(255,255,255,.10);white-space:nowrap}
 .sync-badge{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:12px;font-size:10px;font-weight:500;color:#fff;background:rgba(255,255,255,.12);cursor:pointer;transition:.2s;white-space:nowrap}
 .sync-badge:hover{background:rgba(255,255,255,.2)}
 .sb-setup-step{background:#f8fafd;border:1px solid #e0e8f4;border-radius:8px;padding:12px 14px;margin-bottom:10px}
@@ -1202,18 +1203,19 @@ function goView(v, pid) {
   else if (v === 'isos') renderIsoView();
   renderHeader();
 }
+const HY_BUILD = '21/08/2026 11:33';
 function renderHeader() {
   const el = document.getElementById('hdr-acts');
   if (currentView === 'projects' && !currentProjId) {
-    el.innerHTML = `<span class="sync-badge" id="sync-badge" onclick="openSbModal()" title="Sincronização em equipe">⚫ Modo local</span><button class="btn btn-out" onclick="openApiKeyModal()" title="Configurar API Key Anthropic">🔑 API</button><button class="btn btn-out" style="background:rgba(255,255,255,.13);" onclick="openSbModal()" title="Configurar sincronização em equipe">☁️ Equipe</button><button class="btn btn-amber" onclick="reqAuth('add-proj')">📁+ Novo Projeto</button>`;
+    el.innerHTML = `<span class="hy-build" title="Versao publicada — confira se bate com a mais recente">v${HY_BUILD}</span><span class="sync-badge" id="sync-badge" onclick="openSbModal()" title="Sincronização em equipe">⚫ Modo local</span><button class="btn btn-out" onclick="openApiKeyModal()" title="Configurar API Key Anthropic">🔑 API</button><button class="btn btn-out" style="background:rgba(255,255,255,.13);" onclick="openSbModal()" title="Configurar sincronização em equipe">☁️ Equipe</button><button class="btn btn-amber" onclick="reqAuth('add-proj')">📁+ Novo Projeto</button>`;
   } else if (currentSubTab === 'materiais') {
     el.innerHTML = `
-    <span class="sync-badge" id="sync-badge" onclick="openSbModal()">⚫ Modo local</span>
+    <span class="hy-build" title="Versao publicada — confira se bate com a mais recente">v${HY_BUILD}</span><span class="sync-badge" id="sync-badge" onclick="openSbModal()">⚫ Modo local</span>
     <button class="btn btn-out" onclick="openApiKeyModal()" title="Configurar API Key Anthropic">🔑 API</button>
     <button class="btn btn-out" style="background:rgba(255,255,255,.13)" onclick="openSbModal()" title="Equipe">☁️ Equipe</button>`;
   } else if (currentSubTab === 'suportes') {
     el.innerHTML = `
-    <span class="sync-badge" id="sync-badge" onclick="openSbModal()">⚫ Modo local</span>
+    <span class="hy-build" title="Versao publicada — confira se bate com a mais recente">v${HY_BUILD}</span><span class="sync-badge" id="sync-badge" onclick="openSbModal()">⚫ Modo local</span>
     <button class="btn btn-out" onclick="openApiKeyModal()" title="Configurar API Key Anthropic">🔑 API</button>
     <button class="btn btn-out" style="background:rgba(255,255,255,.13)" onclick="openSbModal()" title="Equipe">☁️ Equipe</button>
     <button class="btn btn-out" style="background:rgba(46,125,50,.12);color:#2e7d32;border-color:#a5d6a7" onclick="alert('Importação de suportes disponível em breve.')">📥 Importar</button>
@@ -1221,12 +1223,12 @@ function renderHeader() {
     <button class="btn btn-out" onclick="sincronizarPlanilha()" style="background:rgba(46,125,50,.15);color:#2e7d32;border-color:#a5d6a7" title="Sincronizar com planilha">🔄 Planilha</button>`;
   } else if (currentSubTab === 'isometricos') {
     el.innerHTML = `
-    <span class="sync-badge" id="sync-badge" onclick="openSbModal()">⚫ Modo local</span>
+    <span class="hy-build" title="Versao publicada — confira se bate com a mais recente">v${HY_BUILD}</span><span class="sync-badge" id="sync-badge" onclick="openSbModal()">⚫ Modo local</span>
     <button class="btn btn-out" onclick="openApiKeyModal()" title="Configurar API Key Anthropic">🔑 API</button>
     <button class="btn btn-out" style="background:rgba(255,255,255,.13)" onclick="openSbModal()" title="Equipe">☁️ Equipe</button>
     <button class="btn btn-out" style="background:rgba(46,125,50,.12);color:#2e7d32;border-color:#a5d6a7" onclick="openImportIsosModal()" title="Importar isométricos via planilha Excel">📥 Importar XLSX</button>`;  } else {
     el.innerHTML = `
-    <span class="sync-badge" id="sync-badge" onclick="openSbModal()">⚫ Modo local</span>
+    <span class="hy-build" title="Versao publicada — confira se bate com a mais recente">v${HY_BUILD}</span><span class="sync-badge" id="sync-badge" onclick="openSbModal()">⚫ Modo local</span>
     <button class="btn btn-out" onclick="openApiKeyModal()" title="Configurar API Key Anthropic">🔑 API</button>
     <button class="btn btn-out" style="background:rgba(255,255,255,.13)" onclick="openSbModal()" title="Equipe">☁️ Equipe</button>`;
   }
