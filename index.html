@@ -667,6 +667,7 @@ let dtIns       = []; const SK_DT_INS  = 'hy_dt_ins';
 // Instrumentação platform data (per project)
 let instrTags    = []; const SK_INSTR_TAGS    = 'hy_instr_tags';
 let instrCabos   = []; const SK_INSTR_CABOS   = 'hy_instr_cabos';
+let eletCabos    = []; const SK_ELET_CABOS    = 'hy_elet_cabos';   /* cabos da disciplina Eletrica */
 let instrSups    = []; const SK_INSTR_SUPS    = 'hy_instr_sups';
 let instrDTs     = []; const SK_INSTR_DTS     = 'hy_instr_dts';
 let instrInterl  = []; const SK_INSTR_INTERL  = 'hy_instr_interl';
@@ -933,6 +934,7 @@ async function loadAll() {
   try { const v=await storageGet(SK_DT_INS);  if(v){const d=JSON.parse(v);if(d&&d.length)dtIns=d;}        } catch(e) {}
   try { const v=await storageGet(SK_INSTR_TAGS);    if(v){const d=JSON.parse(v);if(d&&d.length)instrTags=d;}    } catch(e) {}
   try { const v=await storageGet(SK_INSTR_CABOS);   if(v){const d=JSON.parse(v);if(d&&d.length)instrCabos=d;}   } catch(e) {}
+  try { const v=await storageGet(SK_ELET_CABOS);    if(v){const d=JSON.parse(v);if(d&&d.length)eletCabos=d;}    } catch(e) {}
   try { const v=await storageGet(SK_INSTR_SUPS);    if(v){const d=JSON.parse(v);if(d&&d.length)instrSups=d;}    } catch(e) {}
   try { const v=await storageGet(SK_INSTR_DTS);     if(v){const d=JSON.parse(v);if(d&&d.length)instrDTs=d;}     } catch(e) {}
   try { const v=await storageGet(SK_INSTR_INTERL);  if(v){const d=JSON.parse(v);if(d&&d.length)instrInterl=d;}  } catch(e) {}
@@ -1116,6 +1118,7 @@ async function saveAll() {
   try { await storageSet(SK_DT_INS,  JSON.stringify(dtIns));        } catch(e) {}
   try { await storageSet(SK_INSTR_TAGS,    JSON.stringify(instrTags));    } catch(e) {}
   try { await storageSet(SK_INSTR_CABOS,   JSON.stringify(instrCabos));   } catch(e) {}
+  try { await storageSet(SK_ELET_CABOS,    JSON.stringify(eletCabos));    } catch(e) {}
   try { await storageSet(SK_INSTR_SUPS,    JSON.stringify(instrSups));    } catch(e) {}
   try { await storageSet(SK_INSTR_DTS,     JSON.stringify(instrDTs));     } catch(e) {}
   try { await storageSet(SK_INSTR_INTERL,  JSON.stringify(instrInterl));  } catch(e) {}
@@ -1203,7 +1206,7 @@ function goView(v, pid) {
   else if (v === 'isos') renderIsoView();
   renderHeader();
 }
-const HY_BUILD = '24/08/2026 11:49';
+const HY_BUILD = '24/08/2026 11:57';
 function renderHeader() {
   const el = document.getElementById('hdr-acts');
   if (currentView === 'projects' && !currentProjId) {
@@ -1361,6 +1364,8 @@ function sincronizarPlanilha() {
 const DISC_TABS = {
   caldeiraria: { label:'🔧 Caldeiraria', subs:['dashboard','isometricos','suportes','materiais','estrutura'],
     labels:['Dashboard','Controle de Isométricos','Controle de Suportes','Controle de Materiais','Estrutura Metálica'] },
+  eletrica: { label:'⚡ Elétrica', subs:['elet-cabos'],
+    labels:['Controle de Cabos'] },
   instr: { label:'🔬 Instrumentação', subs:['instr-tags','instr-cabos','instr-suportes','instr-encam'],
     labels:['Tags de Instrumentos','Lista de Cabos','Suportes','Encaminhamento'] }
 };
@@ -3456,13 +3461,18 @@ function _instrSupCells(id, setFn, stSup, dtChegada) {
 var _instrChecked = { tags: {}, cabos: {}, sups: {}, encam: {} };
 var _instrVisibleIds = { tags: [], cabos: [], sups: [], encam: [] };
 
+/* Cabos: a mesma tela serve Instrumentacao e Eletrica; o array segue a disciplina ativa */
+function _cabArr() { return currentDisc === 'eletrica' ? eletCabos : instrCabos; }
+function _cabSet(a) { if (currentDisc === 'eletrica') eletCabos = a; else instrCabos = a; }
+function _cabDisc() { return currentDisc === 'eletrica' ? 'Elétrica' : 'Instrumentação'; }
+
 function _instrArrGet(kind) {
-  return kind === 'tags' ? instrTags : kind === 'cabos' ? instrCabos
+  return kind === 'tags' ? instrTags : kind === 'cabos' ? _cabArr()
        : kind === 'sups' ? instrSups : instrEncam;
 }
 function _instrArrSet(kind, v) {
   if (kind === 'tags') instrTags = v;
-  else if (kind === 'cabos') instrCabos = v;
+  else if (kind === 'cabos') _cabSet(v);
   else if (kind === 'sups') instrSups = v;
   else instrEncam = v;
 }
@@ -3524,13 +3534,13 @@ var _instrVisible = { tags: [], cabos: [], sups: [], encam: [] };
 
 function _instrArrOf(tab) {
   if (tab === 'tags') return instrTags;
-  if (tab === 'cabos') return instrCabos;
+  if (tab === 'cabos') return _cabArr();
   if (tab === 'sups') return instrSups;
   return instrEncam;
 }
 function _instrArrSet(tab, arr) {
   if (tab === 'tags') instrTags = arr;
-  else if (tab === 'cabos') instrCabos = arr;
+  else if (tab === 'cabos') _cabSet(arr);
   else if (tab === 'sups') instrSups = arr;
   else instrEncam = arr;
 }
@@ -3720,7 +3730,7 @@ async function instrTagDelAll(){var n=_instrProjFilter(instrTags).length;if(!n)r
 ══════════════════════════════════════════════════════════════════════ */
 let _icSearch='';
 function renderInstrCabos(discTabs,bc){
-  var list=_instrProjFilter(instrCabos);
+  var list=_instrProjFilter(_cabArr());
   var filtered=list.filter(function(r){return (!_icArea||_instrArea(r.doc)===_icArea) && (!_icSearch||JSON.stringify(r).toLowerCase().includes(_icSearch.toLowerCase()));});
   var total=list.length;
   var lancOk=list.filter(function(r){return r.stLanc==='Concluído';}).length;
@@ -3754,10 +3764,10 @@ function renderInstrCabos(discTabs,bc){
     _instrFilterBar(_icSearch,'_icSearch',_instrSelBtn('cabos',filtered)+_instrAreaSel('_icArea',list,_icArea)+'<button onclick="instrCaboImportPDF()" style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid #b0ddf0;background:rgba(0,119,182,.1);color:#0077b6;cursor:pointer">📎 Importar PDF</button><button onclick="instrCaboImportXLSX()" style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid #a5d6a7;background:rgba(46,125,50,.1);color:#2e7d32;cursor:pointer">📥 Importar XLSX</button><button onclick="instrExportPDF(\'cabos\')" style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid var(--hbr);background:var(--hg);color:var(--ht);cursor:pointer">📄 Exportar PDF</button>','instrCaboAdd','instrCaboDelAll','_icArea'),
     _instrTable([_instrChkHead('cabos'),'RASTREABILIDADE','REV.','DISCIPLINA','SEÇÃO DO CABO','QTDE PROJETADA','QTDE REAL LANÇADO','ST. SUPRIMENTOS','DATA CHEGADA','CÓD. SUPRIMENTOS','ORIGEM (DE)','DESTINO (PARA)','STATUS LANÇAMENTO','DATA LANÇAMENTO','LOCALIZAÇÃO','AÇÕES'],rows,'🔌','Nenhum cabo cadastrado'));
 }
-async function instrCaboSet(id,f,v){var r=instrCabos.find(function(x){return x.id===id;});if(r){r[f]=v;await saveAll();}}
-async function instrCaboAdd(){var d=prompt('Número de rastreabilidade:');if(!d||!d.trim())return;instrCabos.push({id:_instrId('cab'),projId:currentProjId||null,doc:d.trim(),rev:'0',disc:'Instrumentação',secao:'',qtd:null,stSup:'Pendente',dtChegada:'',codSup:'',origem:'',destino:'',stLanc2:'Pendente',dtLanc:'',qtdReal:null,loc:'Campo'});await _instrSave();}
-async function instrCaboDel(id){if(!confirm('Excluir cabo?'))return;instrCabos=instrCabos.filter(function(r){return r.id!==id;});await _instrSave();}
-async function instrCaboDelAll(){var n=_instrProjFilter(instrCabos).length;if(!n)return;if(!confirm('Excluir TODOS os '+n+' cabos?'))return;if(currentProjId)instrCabos=instrCabos.filter(function(r){return r.projId!==currentProjId;});else instrCabos=[];await _instrSave();}
+async function instrCaboSet(id,f,v){var r=_cabArr().find(function(x){return x.id===id;});if(r){r[f]=v;await saveAll();}}
+async function instrCaboAdd(){var d=prompt('Número de rastreabilidade:');if(!d||!d.trim())return;_cabArr().push({id:_instrId('cab'),projId:currentProjId||null,doc:d.trim(),rev:'0',disc:_cabDisc(),secao:'',qtd:null,stSup:'Pendente',dtChegada:'',codSup:'',origem:'',destino:'',stLanc2:'Pendente',dtLanc:'',qtdReal:null,loc:'Campo'});await _instrSave();}
+async function instrCaboDel(id){if(!confirm('Excluir cabo?'))return;_cabSet(_cabArr().filter(function(r){return r.id!==id;}));await _instrSave();}
+async function instrCaboDelAll(){var n=_instrProjFilter(_cabArr()).length;if(!n)return;if(!confirm('Excluir TODOS os '+n+' cabos?'))return;if(currentProjId)_cabSet(_cabArr().filter(function(r){return r.projId!==currentProjId;}));else _cabSet([]);await _instrSave();}
 
 /* ══════════════ 3. SUPORTES ═════════════════════════════════════════════
    Rastreabilidade · Disciplina · St. Fabricação · St. Pintura · St. Montagem
@@ -3969,7 +3979,7 @@ function instrExportPDF(tipo) {
   } else if (tipo === 'cabos') {
     titulo = 'Lista de Cabos';
     headers = ['Rastreabilidade','Rev.','Disciplina','Tipo de Cabo','Qtde','Origem (De)','Destino (Para)','St. Lançamento','Localização','St. Suprimentos','Data Chegada'];
-    var list = _instrProjFilter(instrCabos);
+    var list = _instrProjFilter(_cabArr());
     rows = list.map(function(r){return [r.doc||'',r.rev||'',r.disc||'',r.tipo||'',r.qtd||'',r.origem||'',r.destino||'',r.stLanc2||'',r.loc||'',r.stSup||'',r.dtChegada||''];});
   } else if (tipo === 'suportes') {
     titulo = 'Suportes';
@@ -4165,7 +4175,7 @@ function _instrCaboProcessRows(rows, setStatus, setPreview) {
     var row = rows[i];
     var docVal = COL.doc>=0 ? String(row[COL.doc]||'').trim() : '';
     if (!docVal) { skipped++; continue; }
-    instrCabos.push({
+    _cabArr().push({
       id: _instrId('cab'),
       projId: currentProjId||null,
       doc:     docVal,
@@ -5320,9 +5330,9 @@ function instrCaboImportPDF() {
   function finish(res) {
     var recs = res.recs;
     recs.forEach(function (r) {
-      instrCabos.push({
+      _cabArr().push({
         id: _instrId('cab'), projId: currentProjId || null,
-        doc: res.docNum || '', rev: r.rev || res.rev || '', disc: res.disc,
+        doc: res.docNum || '', rev: r.rev || res.rev || '', disc: res.disc || _cabDisc(),
         secao: r.secao || r.tipo || '', qtd: (r.qtd != null ? r.qtd : r.total),
         qtdReal: null, stSup: 'Pendente', dtChegada: '',
         codSup: r.codSup || '', origem: r.origem || r.de || '', destino: r.destino || r.para || '',
@@ -5357,12 +5367,12 @@ function instrCaboImportPDF() {
       var recs = res.recs;
       if (!recs.length) { _lcOfferOCR(file, setStatus, pv, finish); return; }
       recs.forEach(function (r) {
-        instrCabos.push({
+        _cabArr().push({
           id: _instrId('cab'),
           projId: currentProjId || null,
           doc: res.docNum || '',
           rev: r.rev,
-          disc: res.disc,
+          disc: res.disc || _cabDisc(),
           secao: r.tipo,
           qtd: r.total,
           qtdReal: null,
@@ -6117,6 +6127,10 @@ function renderIsoView(force) {
     renderDashboard(discTabs, bc); return;
   }
 
+  if (currentDisc === 'eletrica') {
+    renderInstrCabos(discTabs, bc); return;
+  }
+
   if (currentDisc === 'instr') {
     renderInstrView(currentSubTab, discTabs, bc); return;
   }
@@ -6648,6 +6662,7 @@ async function delProject(id) {
   estrutura = estrutura.filter(e => e.projId !== id);
   instrTags    = instrTags.filter(r => r.projId !== id);
   instrCabos   = instrCabos.filter(r => r.projId !== id);
+  eletCabos    = eletCabos.filter(r => r.projId !== id);
   instrSups    = instrSups.filter(r => r.projId !== id);
   instrDTs     = instrDTs.filter(r => r.projId !== id);
   instrInterl  = instrInterl.filter(r => r.projId !== id);
