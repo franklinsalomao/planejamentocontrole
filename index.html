@@ -1206,7 +1206,7 @@ function goView(v, pid) {
   else if (v === 'isos') renderIsoView();
   renderHeader();
 }
-const HY_BUILD = '24/08/2026 11:57';
+const HY_BUILD = '24/08/2026 12:00';
 function renderHeader() {
   const el = document.getElementById('hdr-acts');
   if (currentView === 'projects' && !currentProjId) {
@@ -3350,7 +3350,7 @@ function _instrDelBtn(id,fn){
 }
 function _instrHeader(discTabs,bc,title,kpis,filterBar,tbl){
   document.getElementById('view-isos').innerHTML = bc+discTabs
-    +'<div style="padding:10px 16px 4px;font-size:15px;font-weight:700;color:var(--hb)">🔬 Instrumentação — '+title+'</div>'
+    +'<div style="padding:10px 16px 4px;font-size:15px;font-weight:700;color:var(--hb)">'+(currentDisc==='eletrica'?'⚡ Elétrica':'🔬 Instrumentação')+' — '+title+'</div>'
     +kpis+filterBar+tbl+'</div>';
 }
 /* ─── Filtro por AREA, derivada do numero de rastreabilidade ───────────
