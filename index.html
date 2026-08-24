@@ -1209,7 +1209,7 @@ function goView(v, pid) {
   else if (v === 'isos') renderIsoView();
   renderHeader();
 }
-const HY_BUILD = '24/08/2026 17:59';
+const HY_BUILD = '24/08/2026 18:11';
 function renderHeader() {
   const el = document.getElementById('hdr-acts');
   if (currentView === 'projects' && !currentProjId) {
@@ -1369,8 +1369,8 @@ const DISC_TABS = {
     labels:['Dashboard','Controle de Isométricos','Controle de Suportes','Controle de Materiais','Estrutura Metálica'] },
   eletrica: { label:'⚡ Elétrica', subs:['elet-cabos'],
     labels:['Controle de Cabos'] },
-  instr: { label:'🔬 Instrumentação', subs:['instr-tags','instr-cabos','instr-suportes','instr-encam'],
-    labels:['Tags de Instrumentos','Lista de Cabos','Suportes','Encaminhamento'] }
+  instr: { label:'🔬 Instrumentação', subs:['instr-dash','instr-tags','instr-cabos','instr-suportes','instr-encam'],
+    labels:['Dashboard','Tags de Instrumentos','Lista de Cabos','Suportes','Encaminhamento'] }
 };
 function setDisc(d) {
   currentDisc = d;
@@ -3312,6 +3312,7 @@ const INSTR_SUP_ST = ['Pendente','Em Fabricação','Fabricado','Montado'];
 /* ─── ROUTER ─────────────────────────────────────────────────────────── */
 function renderInstrView(sub, discTabs, bc){
   var map = {
+    'instr-dash':    function(){renderInstrDash(discTabs,bc);},
     'instr-tags':    function(){renderInstrTags(discTabs,bc);},
     'instr-cabos':   function(){renderInstrCabos(discTabs,bc);},
     'instr-suportes':function(){renderInstrSups(discTabs,bc);},
@@ -3642,6 +3643,131 @@ async function _instrDelSel(tab) {
   _instrSelSet[tab] = {};
   await saveAll();
   renderIsoView();
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   DASHBOARD DA INSTRUMENTACAO (por projeto)
+   Instrumentos por tipo · Cabos por tipo/secao · Detalhes tipicos
+   (eletrico, pneumatico, processo) · Calibracao · Loop teste
+══════════════════════════════════════════════════════════════════════ */
+
+/* o tipo do instrumento vem do prefixo da TAG: PT-82001 -> PT */
+var _INSTR_TIPO_NOMES = {
+  PT: 'Transmissor de pressao',  PIT: 'Indicador/transm. de pressao',
+  PSL: 'Chave de pressao',       PAL: 'Alarme de pressao',
+  TT: 'Transmissor de temp.',    TIT: 'Indicador/transm. de temp.',
+  TE: 'Termoelemento',           TSL: 'Chave de temperatura',
+  TSLL: 'Chave de temp. (trip)', TALL: 'Alarme de temp. (trip)',
+  FT: 'Transmissor de vazao',    FIT: 'Indicador/transm. de vazao',
+  LT: 'Transmissor de nivel',    LSH: 'Chave de nivel alto',
+  LSL: 'Chave de nivel baixo',   ZSH: 'Chave de posicao (aberta)',
+  ZSL: 'Chave de posicao (fechada)', XEV: 'Valvula solenoide',
+  TEV: 'Valvula (temp.)',        PEV: 'Valvula (pressao)',
+  HS: 'Botoeira',                XI: 'Sinalizacao',
+  XS: 'Comando',                 AT: 'Analisador'
+};
+function _instrTipoTag(tag) {
+  var m = String(tag == null ? '' : tag).trim().match(/^[A-Za-z]+/);
+  return m ? m[0].toUpperCase() : '(sem tag)';
+}
+/* agrupa e ordena por quantidade */
+function _dashCount(arr, fn) {
+  var m = {};
+  (arr || []).forEach(function (r) {
+    var k = fn(r);
+    k = (k == null || k === '') ? '(nao informado)' : String(k).trim();
+    m[k] = (m[k] || 0) + 1;
+  });
+  return Object.keys(m).map(function (k) { return { k: k, n: m[k] }; })
+    .sort(function (a, b) { return b.n - a.n || a.k.localeCompare(b.k); });
+}
+function _dashCor(v) {
+  if (v === 'Sim' || v === 'Concluído' || v === 'Montado') return '#1a8c4e';
+  if (v === 'Pendente' || v === 'Em Execução') return '#c07000';
+  if (v === 'N/A' || v === '(nao informado)') return '#8a94a6';
+  return '#0B3D91';
+}
+/* cartao com barras horizontais */
+function _dashCard(titulo, itens, total, corFixa, legenda) {
+  var max = 0;
+  itens.forEach(function (i) { if (i.n > max) max = i.n; });
+  var linhas = itens.length ? itens.map(function (i) {
+    var pct = max ? Math.round(i.n / max * 100) : 0;
+    var pctTot = total ? Math.round(i.n / total * 100) : 0;
+    var cor = corFixa || _dashCor(i.k);
+    var desc = legenda && _INSTR_TIPO_NOMES[i.k] ? ' <span style="color:var(--hmu);font-weight:400">- ' + _INSTR_TIPO_NOMES[i.k] + '</span>' : '';
+    return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">'
+      + '<div style="width:120px;flex:none;font-size:10.5px;font-weight:700;color:var(--ht);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="' + i.k + '">' + i.k + '</div>'
+      + '<div style="flex:1;height:14px;background:#eef2f8;border-radius:7px;overflow:hidden">'
+      + '<div style="height:100%;width:' + pct + '%;background:' + cor + ';border-radius:7px"></div></div>'
+      + '<div style="width:74px;flex:none;text-align:right;font-size:10.5px;font-weight:700;color:' + cor + '">'
+      + i.n + ' <span style="color:var(--hmu);font-weight:400">(' + pctTot + '%)</span></div>'
+      + '</div>' + (desc ? '<div style="margin:-3px 0 6px 128px;font-size:9px">' + desc + '</div>' : '');
+  }).join('') : '<div style="font-size:10.5px;color:var(--hmu);padding:6px 0">Sem registros.</div>';
+
+  return '<div style="background:var(--hc);border:0.5px solid var(--hbr);border-radius:10px;padding:12px 14px;margin:0 0 12px">'
+    + '<div style="font-size:11.5px;font-weight:800;letter-spacing:.3px;color:var(--hb);margin-bottom:9px">'
+    + titulo + ' <span style="color:var(--hmu);font-weight:600">(' + (total || 0) + ')</span></div>'
+    + linhas + '</div>';
+}
+
+function renderInstrDash(discTabs, bc) {
+  var tags  = _instrProjFilter(instrTags);
+  var cabos = _instrProjFilter(_cabArr());
+  var sups  = _instrProjFilter(instrSups);
+  var encam = _instrProjFilter(instrEncam);
+
+  var compr = cabos.reduce(function (s, r) { return s + (parseFloat(r.qtd) || 0); }, 0);
+  var montOk = tags.filter(function (r) { return r.stMon === 'Sim'; }).length;
+  var calOk  = tags.filter(function (r) { return r.stCal === 'Concluído'; }).length;
+
+  var kpis = '<div class="sum-bar" style="margin:10px 16px 0;gap:8px">'
+    + _instrKpi(tags.length, 'Instrumentos', 'var(--hb)')
+    + _instrKpi(cabos.length, 'Cabos', 'var(--hb)')
+    + _instrKpi(compr.toLocaleString('pt-BR', { maximumFractionDigits: 0 }) + ' m', 'Compr. de cabo', 'var(--hb)')
+    + _instrKpi(sups.length, 'Suportes', 'var(--hb)')
+    + _instrKpi(encam.length, 'Encaminhamento', 'var(--hb)')
+    + _instrKpiPct(montOk, tags.length, 'Montagem', '#0077b6')
+    + _instrKpiPct(calOk, tags.length, 'Calibracao', '#0B3D91')
+    + '</div>';
+
+  /* detalhes tipicos: um bloco com as tres naturezas lado a lado */
+  function dtLinha(rot, campo) {
+    var c = _dashCount(tags, function (r) { return r[campo] || 'Pendente'; });
+    var sim = (c.find(function (x) { return x.k === 'Sim'; }) || { n: 0 }).n;
+    var pend = (c.find(function (x) { return x.k === 'Pendente'; }) || { n: 0 }).n;
+    var na = (c.find(function (x) { return x.k === 'N/A'; }) || { n: 0 }).n;
+    var t = tags.length || 1;
+    var seg = function (v, cor) { return v ? '<div style="height:100%;width:' + (v / t * 100) + '%;background:' + cor + '" title="' + v + '"></div>' : ''; };
+    return '<div style="margin-bottom:9px">'
+      + '<div style="display:flex;justify-content:space-between;font-size:10.5px;font-weight:700;margin-bottom:3px">'
+      + '<span>' + rot + '</span>'
+      + '<span><span style="color:#1a8c4e">' + sim + ' sim</span> · '
+      + '<span style="color:#c07000">' + pend + ' pend.</span> · '
+      + '<span style="color:#8a94a6">' + na + ' N/A</span></span></div>'
+      + '<div style="display:flex;height:14px;background:#eef2f8;border-radius:7px;overflow:hidden">'
+      + seg(sim, '#1a8c4e') + seg(pend, '#c07000') + seg(na, '#8a94a6') + '</div></div>';
+  }
+  var dtCard = '<div style="background:var(--hc);border:0.5px solid var(--hbr);border-radius:10px;padding:12px 14px;margin:0 0 12px">'
+    + '<div style="font-size:11.5px;font-weight:800;letter-spacing:.3px;color:var(--hb);margin-bottom:9px">DETALHES TIPICOS POR NATUREZA'
+    + ' <span style="color:var(--hmu);font-weight:600">(' + tags.length + ' instrumentos)</span></div>'
+    + dtLinha('Eletrico', 'stDtEl') + dtLinha('Pneumatico', 'stDtPn') + dtLinha('Processo', 'stDtPr')
+    + '</div>';
+
+  var corpo = '<div style="padding:12px 16px 18px;display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:0 14px">'
+    + _dashCard('INSTRUMENTOS POR TIPO (prefixo da TAG)', _dashCount(tags, function (r) { return _instrTipoTag(r.tag); }), tags.length, null, true)
+    + _dashCard('CABOS POR TIPO / SECAO', _dashCount(cabos, function (r) { return r.secao; }), cabos.length, '#0077b6')
+    + dtCard
+    + _dashCard('CALIBRACAO POR SITUACAO', _dashCount(tags, function (r) { return r.stCal || 'Pendente'; }), tags.length)
+    + _dashCard('LOOP TESTE POR SITUACAO', _dashCount(tags, function (r) { return r.stLoop || 'Pendente'; }), tags.length)
+    + _dashCard('CLASSIFICACAO DOS INSTRUMENTOS', _dashCount(tags, function (r) { return r.classif || 'Novo'; }), tags.length, '#7b1fa2')
+    + '</div>';
+
+  var vazio = !tags.length && !cabos.length;
+  _instrHeader(discTabs, bc, 'Dashboard', kpis, '',
+    vazio ? '<div class="ph-panel"><div style="font-size:32px">\uD83D\uDCCA</div><strong>Nenhum dado neste projeto</strong>'
+          + '<span style="font-size:11px">Importe ou cadastre instrumentos e cabos para ver os indicadores.</span></div>'
+          : corpo);
 }
 
 /* ══════════════ 1. TAGS DE INSTRUMENTOS ════════════════════════════════
