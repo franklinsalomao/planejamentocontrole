@@ -1206,7 +1206,7 @@ function goView(v, pid) {
   else if (v === 'isos') renderIsoView();
   renderHeader();
 }
-const HY_BUILD = '24/08/2026 17:09';
+const HY_BUILD = '24/08/2026 17:49';
 function renderHeader() {
   const el = document.getElementById('hdr-acts');
   if (currentView === 'projects' && !currentProjId) {
@@ -3377,7 +3377,7 @@ function _instrAreas(list){
 function _instrAreaSel(varName, list, cur){
   var areas=_instrAreas(list);
   if(!areas.length) return '';
-  return '<select onchange="'+varName+'=this.value;renderIsoView()" title="Filtrar pela area contida na rastreabilidade" '
+  return '<select onchange="_instrSetArea(\''+varName+'\',this.value);renderIsoView()" title="Filtrar pela area contida na rastreabilidade" '
     +'style="font-size:11px;font-weight:700;padding:4px 7px;border:0.5px solid var(--hbr);border-radius:5px;'
     +'background:'+(cur?'#c8f5d0':'var(--hg)')+';color:var(--ht)">'
     +'<option value="">\uD83D\uDCCD Area (todas)</option>'
@@ -3388,6 +3388,32 @@ function _instrAreaSel(varName, list, cur){
 
 /* Busca: redesenhar a cada tecla destruia o campo e o foco se perdia.
    Agora o redesenho e adiado e o foco/cursor sao devolvidos ao campo. */
+
+/* Atribuir a variavel direto no atributo HTML depende de como o navegador
+   resolve o escopo do handler. Passando por esta funcao a atribuicao ocorre
+   sempre dentro do script, o que funciona em qualquer navegador. */
+function _instrSetSearch(key, val) {
+  switch (key) {
+    case '_itSearch':  _itSearch  = val; break;
+    case '_icSearch':  _icSearch  = val; break;
+    case '_isSearch':  _isSearch  = val; break;
+    case '_ieSearch':  _ieSearch  = val; break;
+    case '_idtSearch': _idtSearch = val; break;
+    case '_iiSearch':  _iiSearch  = val; break;
+    case '_ipSearch':  _ipSearch  = val; break;
+    default: try { window[key] = val; } catch (e) {}
+  }
+}
+function _instrSetArea(key, val) {
+  switch (key) {
+    case '_itArea': _itArea = val; break;
+    case '_icArea': _icArea = val; break;
+    case '_isArea': _isArea = val; break;
+    case '_ieArea': _ieArea = val; break;
+    default: try { window[key] = val; } catch (e) {}
+  }
+}
+
 var _instrSrchTimer = null;
 function _instrSearchRerender(el) {
   var id = el && el.id ? el.id : '';
@@ -3407,9 +3433,9 @@ function _instrSearchRerender(el) {
 
 function _instrFilterBar(search,searchKey,extraSelects,addFn,delAllFn,areaKey){
   return '<div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid var(--hbr)">'
-    +'<input id="srch-'+searchKey+'" placeholder="🔍 Buscar..." value="'+(search||'')+'" autocomplete="off" oninput="'+searchKey+'=this.value;_instrSearchRerender(this)" style="font-size:11px;padding:4px 8px;border:0.5px solid var(--hbr);border-radius:5px;background:var(--hg);color:var(--ht);min-width:160px">'
+    +'<input id="srch-'+searchKey+'" placeholder="🔍 Buscar..." value="'+(search||'')+'" autocomplete="off" oninput="_instrSetSearch(\''+searchKey+'\',this.value);_instrSearchRerender(this)" style="font-size:11px;padding:4px 8px;border:0.5px solid var(--hbr);border-radius:5px;background:var(--hg);color:var(--ht);min-width:160px">'
     +(extraSelects||'')
-    +'<button class="btn-clr" onclick="'+searchKey+'=\'\';'+(areaKey?areaKey+'=\'\';':'')+'renderIsoView()">✕</button>'
+    +'<button class="btn-clr" onclick="_instrSetSearch(\''+searchKey+'\',\'\');'+(areaKey?'_instrSetArea(\''+areaKey+'\',\'\');':'')+'renderIsoView()">✕</button>'
     +'<button class="btn btn-cyan" style="height:27px;font-size:11px;background:rgba(0,90,180,.85)" onclick="'+addFn+'()">+ Novo</button>'
     +'<button style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:1px solid #e0c8c8;background:#fdecea;color:var(--hd);cursor:pointer" onclick="'+delAllFn+'()">🗑️ Excluir Tudo</button>'
     +'</div>';
