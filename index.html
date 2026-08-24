@@ -1203,7 +1203,7 @@ function goView(v, pid) {
   else if (v === 'isos') renderIsoView();
   renderHeader();
 }
-const HY_BUILD = '21/08/2026 16:14';
+const HY_BUILD = '24/08/2026 11:49';
 function renderHeader() {
   const el = document.getElementById('hdr-acts');
   if (currentView === 'projects' && !currentProjId) {
@@ -1466,7 +1466,7 @@ function renderEstruturaView(discTabs, bc) {
   </div>`;
 
   const filterBar = `<div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid var(--hbr)">
-    <input id="ef-search" placeholder="🔍 Número do desenho" value="${_estSearch||''}" oninput="_estSearch=this.value;renderIsoView()" style="font-size:11px;padding:4px 8px;border:0.5px solid var(--hbr);border-radius:5px;background:var(--hg);color:var(--ht);min-width:170px">
+    <input id="ef-search" placeholder="🔍 Número do desenho" value="${_estSearch||''}" oninput="_estSearch=this.value;_instrSearchRerender(this)" style="font-size:11px;padding:4px 8px;border:0.5px solid var(--hbr);border-radius:5px;background:var(--hg);color:var(--ht);min-width:170px">
     <select id="ef-fab" onchange="_estFab=this.value;renderIsoView()" style="font-size:11px;padding:3px 7px;border:0.5px solid var(--hbr);border-radius:5px;background:var(--hg);color:var(--ht)">
       <option value="">Fabricação</option>
       ${EST_FAB_OPTS.map(o=>`<option value="${o}" ${fFab===o?'selected':''}>${o}</option>`).join('')}
@@ -1690,7 +1690,7 @@ function renderSuportesView(discTabs, bc) {
   </div>`;
 
   const filters = `<div class="filter-bar" style="flex-wrap:wrap;gap:6px;padding:8px 16px">
-    <input id="sf-search" class="f-inp" placeholder="🔍 SEQ / Tipo / Linha / Isométrico" style="min-width:220px" value="${fSearch}" oninput="_supSearch=this.value;renderIsoView()">
+    <input id="sf-search" class="f-inp" placeholder="🔍 SEQ / Tipo / Linha / Isométrico" style="min-width:220px" value="${fSearch}" oninput="_supSearch=this.value;_instrSearchRerender(this)">
     <select id="sf-area" onchange="_supArea=this.value;renderIsoView()" style="font-size:11px;padding:3px 7px;border:0.5px solid var(--hbr);border-radius:5px;background:var(--hg);color:var(--ht)">
       <option value="">Área</option>
       ${areas.map(a => `<option value="${a}" ${fArea===a?'selected':''}>${a}</option>`).join('')}
@@ -2524,7 +2524,7 @@ function renderCabosView(discTabs,bc){
   var interls=[...new Set(list.map(function(c){return c.interligacao;}).filter(Boolean))].sort();
 
   var filterBar='<div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid var(--hbr)">'
-    +'<input placeholder="🔍 Buscar..." value="'+(_cabSearch||'')+'" oninput="_cabSearch=this.value;renderIsoView()" style="font-size:11px;padding:4px 8px;border:0.5px solid var(--hbr);border-radius:5px;background:var(--hg);color:var(--ht);min-width:160px">'
+    +'<input id="srch-_cabSearch" placeholder="🔍 Buscar..." value="'+(_cabSearch||'')+'" oninput="_cabSearch=this.value;_instrSearchRerender(this)" style="font-size:11px;padding:4px 8px;border:0.5px solid var(--hbr);border-radius:5px;background:var(--hg);color:var(--ht);min-width:160px">'
     +'<select onchange="_cabLoc=this.value;renderIsoView()" style="font-size:11px;padding:3px 7px;border:0.5px solid var(--hbr);border-radius:5px;background:var(--hg);color:var(--ht)">'
       +'<option value="">Localização</option>'+locs.map(function(l){return '<option value="'+l+'" '+(_cabLoc===l?'selected':'')+'>'+l+'</option>';}).join('')+'</select>'
     +'<select onchange="_cabInterl=this.value;renderIsoView()" style="font-size:11px;padding:3px 7px;border:0.5px solid var(--hbr);border-radius:5px;background:var(--hg);color:var(--ht)">'
@@ -2735,7 +2735,7 @@ function renderSupEletricaView(discTabs,bc){
     +'</div>';
 
   var filterBar='<div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid var(--hbr)">'
-    +'<input placeholder="🔍 Rastreabilidade..." value="'+(_supElSearch||'')+'" oninput="_supElSearch=this.value;renderIsoView()" style="font-size:11px;padding:4px 8px;border:0.5px solid var(--hbr);border-radius:5px;background:var(--hg);color:var(--ht);min-width:180px">'
+    +'<input id="srch-_supElSearch" placeholder="🔍 Rastreabilidade..." value="'+(_supElSearch||'')+'" oninput="_supElSearch=this.value;_instrSearchRerender(this)" style="font-size:11px;padding:4px 8px;border:0.5px solid var(--hbr);border-radius:5px;background:var(--hg);color:var(--ht);min-width:180px">'
     +'<select onchange="_supElFab=this.value;renderIsoView()" style="font-size:11px;padding:3px 7px;border:0.5px solid var(--hbr);border-radius:5px;background:var(--hg);color:var(--ht)">'
       +'<option value="">Fabricação</option>'+SUP_EL_FAB_OPTS.map(function(o){return '<option value="'+o+'" '+(_supElFab===o?'selected':'')+'>'+o+'</option>';}).join('')+'</select>'
     +'<select onchange="_supElMon=this.value;renderIsoView()" style="font-size:11px;padding:3px 7px;border:0.5px solid var(--hbr);border-radius:5px;background:var(--hg);color:var(--ht)">'
@@ -2832,7 +2832,7 @@ function renderDTView(discTabs,bc){
     +'</div>';
 
   var filterBar='<div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid var(--hbr)">'
-    +'<input placeholder="🔍 Tag ou Código..." value="'+(_dtSearch||'')+'" oninput="_dtSearch=this.value;renderIsoView()" style="font-size:11px;padding:4px 8px;border:0.5px solid var(--hbr);border-radius:5px;background:var(--hg);color:var(--ht);min-width:170px">'
+    +'<input id="srch-_dtSearch" placeholder="🔍 Tag ou Código..." value="'+(_dtSearch||'')+'" oninput="_dtSearch=this.value;_instrSearchRerender(this)" style="font-size:11px;padding:4px 8px;border:0.5px solid var(--hbr);border-radius:5px;background:var(--hg);color:var(--ht);min-width:170px">'
     +'<select onchange="_dtTipo=this.value;renderIsoView()" style="font-size:11px;padding:3px 7px;border:0.5px solid var(--hbr);border-radius:5px;background:var(--hg);color:var(--ht)">'
       +'<option value="">Tipo DT</option>'+DT_TIPO_OPTS.map(function(o){return '<option value="'+o+'" '+(_dtTipo===o?'selected':'')+'>'+o+'</option>';}).join('')+'</select>'
     +'<select onchange="_dtStatus=this.value;renderIsoView()" style="font-size:11px;padding:3px 7px;border:0.5px solid var(--hbr);border-radius:5px;background:var(--hg);color:var(--ht)">'
@@ -3080,7 +3080,7 @@ function renderInstView(discTabs,bc){
   var discs2=[...new Set(list.map(function(r){return r.disc;}).filter(Boolean))].sort();
 
   var filterBar='<div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid var(--hbr)">'
-    +'<input placeholder="🔍 Tag, Rastreab., Local..." value="'+(_instSearch||'')+'" oninput="_instSearch=this.value;renderIsoView()" style="font-size:11px;padding:4px 8px;border:0.5px solid var(--hbr);border-radius:5px;background:var(--hg);color:var(--ht);min-width:180px">'
+    +'<input id="srch-_instSearch" placeholder="🔍 Tag, Rastreab., Local..." value="'+(_instSearch||'')+'" oninput="_instSearch=this.value;_instrSearchRerender(this)" style="font-size:11px;padding:4px 8px;border:0.5px solid var(--hbr);border-radius:5px;background:var(--hg);color:var(--ht);min-width:180px">'
     +'<select onchange="_instLoc=this.value;renderIsoView()" style="font-size:11px;padding:3px 7px;border:0.5px solid var(--hbr);border-radius:5px;background:var(--hg);color:var(--ht)">'
       +'<option value="">Localização</option>'+locs.map(function(l){return '<option value="'+l+'" '+(_instLoc===l?'selected':'')+'>'+l+'</option>';}).join('')+'</select>'
     +'<select onchange="_instDisc2=this.value;renderIsoView()" style="font-size:11px;padding:3px 7px;border:0.5px solid var(--hbr);border-radius:5px;background:var(--hg);color:var(--ht)">'
@@ -3198,7 +3198,7 @@ function renderInfraView(discTabs,bc){
 
   var tipos=[...new Set(list.map(function(r){return r.tipo;}).filter(Boolean))].sort();
   var filterBar='<div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid var(--hbr)">'
-    +'<input placeholder="🔍 Rastreab., Tipo, Cód..." value="'+(_infraSearch||'')+'" oninput="_infraSearch=this.value;renderIsoView()" style="font-size:11px;padding:4px 8px;border:0.5px solid var(--hbr);border-radius:5px;background:var(--hg);color:var(--ht);min-width:180px">'
+    +'<input id="srch-_infraSearch" placeholder="🔍 Rastreab., Tipo, Cód..." value="'+(_infraSearch||'')+'" oninput="_infraSearch=this.value;_instrSearchRerender(this)" style="font-size:11px;padding:4px 8px;border:0.5px solid var(--hbr);border-radius:5px;background:var(--hg);color:var(--ht);min-width:180px">'
     +'<select onchange="_infraTipo=this.value;renderIsoView()" style="font-size:11px;padding:3px 7px;border:0.5px solid var(--hbr);border-radius:5px;background:var(--hg);color:var(--ht)">'
       +'<option value="">Tipo Encam.</option>'+INFRA_TIPO_OPTS.map(function(o){return '<option value="'+o+'" '+(_infraTipo===o?'selected':'')+'>'+o+'</option>';}).join('')+'</select>'
     +'<select onchange="_infraSup=this.value;renderIsoView()" style="font-size:11px;padding:3px 7px;border:0.5px solid var(--hbr);border-radius:5px;background:var(--hg);color:var(--ht)">'
@@ -3380,9 +3380,29 @@ function _instrAreaSel(varName, list, cur){
     +'</select>';
 }
 
+
+/* Busca: redesenhar a cada tecla destruia o campo e o foco se perdia.
+   Agora o redesenho e adiado e o foco/cursor sao devolvidos ao campo. */
+var _instrSrchTimer = null;
+function _instrSearchRerender(el) {
+  var id = el && el.id ? el.id : '';
+  var pos = null;
+  try { pos = el.selectionStart; } catch (e) {}
+  clearTimeout(_instrSrchTimer);
+  _instrSrchTimer = setTimeout(function () {
+    renderIsoView();
+    var n = document.getElementById(id);
+    if (n) {
+      n.focus();
+      var p = (pos == null ? n.value.length : pos);
+      try { n.setSelectionRange(p, p); } catch (e) {}
+    }
+  }, 220);
+}
+
 function _instrFilterBar(search,searchKey,extraSelects,addFn,delAllFn,areaKey){
   return '<div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid var(--hbr)">'
-    +'<input placeholder="🔍 Buscar..." value="'+(search||'')+'" oninput="'+searchKey+'=this.value;renderIsoView()" style="font-size:11px;padding:4px 8px;border:0.5px solid var(--hbr);border-radius:5px;background:var(--hg);color:var(--ht);min-width:160px">'
+    +'<input id="srch-'+searchKey+'" placeholder="🔍 Buscar..." value="'+(search||'')+'" autocomplete="off" oninput="'+searchKey+'=this.value;_instrSearchRerender(this)" style="font-size:11px;padding:4px 8px;border:0.5px solid var(--hbr);border-radius:5px;background:var(--hg);color:var(--ht);min-width:160px">'
     +(extraSelects||'')
     +'<button class="btn-clr" onclick="'+searchKey+'=\'\';'+(areaKey?areaKey+'=\'\';':'')+'renderIsoView()">✕</button>'
     +'<button class="btn btn-cyan" style="height:27px;font-size:11px;background:rgba(0,90,180,.85)" onclick="'+addFn+'()">+ Novo</button>'
