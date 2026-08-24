@@ -1206,7 +1206,7 @@ function goView(v, pid) {
   else if (v === 'isos') renderIsoView();
   renderHeader();
 }
-const HY_BUILD = '24/08/2026 12:00';
+const HY_BUILD = '24/08/2026 13:35';
 function renderHeader() {
   const el = document.getElementById('hdr-acts');
   if (currentView === 'projects' && !currentProjId) {
@@ -5132,6 +5132,27 @@ async function _lcMakeWorker(setStatus) {
   return w;
 }
 
+
+/* Le a revisao no carimbo (canto inferior direito): celula "REV." */
+async function _lcOcrRev(worker, cnv, S, pw, ph) {
+  var box = { x0: 0.9470, x1: 0.9760, y0: 0.9300, y1: 0.9680 };
+  var sx = Math.round(box.x0 * pw * S), sy = Math.round(box.y0 * ph * S);
+  var sw = Math.round((box.x1 - box.x0) * pw * S), sh = Math.round((box.y1 - box.y0) * ph * S);
+  if (sw < 6 || sh < 6) return '';
+  var t = document.createElement('canvas');
+  var k = 4, pad = 20;
+  t.width = sw * k + pad * 2; t.height = sh * k + pad * 2;
+  var tc = t.getContext('2d');
+  tc.fillStyle = '#fff'; tc.fillRect(0, 0, t.width, t.height);
+  tc.drawImage(cnv, sx, sy, sw, sh, pad, pad, sw * k, sh * k);
+  try { await worker.setParameters({ tessedit_pageseg_mode: '6' }); } catch (e) {}
+  var r = await worker.recognize(t);
+  try { await worker.setParameters({ tessedit_pageseg_mode: '7' }); } catch (e) {}
+  var txt = (r && r.data && r.data.text ? r.data.text : '').replace(/\n/g, ' ');
+  var m = txt.match(/REV\.?\s*[:\-]?\s*(\d{1,2})/i) || txt.match(/(\d{1,2})\s*$/);
+  return m ? m[1] : '';
+}
+
 async function _lcOcrExtract(file, opts, setStatus) {
   await _lcEnsureOCR(setStatus);
   setStatus('Preparando OCR...');
@@ -5140,7 +5161,7 @@ async function _lcOcrExtract(file, opts, setStatus) {
   var S = 4, INS = 1.2;
   var buf = await file.arrayBuffer();
   var pdf = await pdfjsLib.getDocument({ data: buf }).promise;
-  var recs = [], scanned = 0;
+  var recs = [], scanned = 0, revDoc = '';
 
   var cell = document.createElement('canvas');
   var cctx = cell.getContext('2d');
@@ -5161,8 +5182,13 @@ async function _lcOcrExtract(file, opts, setStatus) {
       img = null;
 
       var pw = vp.width / S;
+      var ph = vp.height / S;
       var xs = grid.xs.filter(function (x) { return x >= 0.055 * pw && x <= 0.985 * pw; });
       if (xs.length !== 17) continue;                 /* nao e a tabela de cabos */
+
+      if (!revDoc) {                                  /* revisao lida do carimbo */
+        try { revDoc = await _lcOcrRev(worker, cnv, S, pw, ph); } catch (e) { revDoc = ''; }
+      }
 
       var bands = [];
       for (var i = 0; i + 1 < grid.ys.length; i++) {
@@ -5214,7 +5240,7 @@ async function _lcOcrExtract(file, opts, setStatus) {
   var md = String(file.name || '').match(/BK-[A-Z0-9]+-\d+-[A-Z]{2}-\d+-\d+/i);
   return {
     docNum: md ? md[0].toUpperCase() : String(file.name || '').replace(/\.pdf$/i, ''),
-    rev: opts.rev || '0',
+    rev: (opts.revTouched && opts.rev) ? opts.rev : (revDoc || opts.rev || '0'),
     disc: opts.disc || 'Elétrica',
     recs: recs,
     ocr: true
@@ -5249,6 +5275,9 @@ function _lcOfferOCR(file, setStatus, pv, finish) {
   lblR.textContent = 'Rev.:';
   var inp = document.createElement('input');
   inp.type = 'text'; inp.value = '0';
+  inp.title = 'Deixe como esta para usar a revisao lida do carimbo do desenho';
+  var revTouched = false;
+  inp.oninput = function () { revTouched = true; };
   inp.style.cssText = 'width:46px;font-size:11px;padding:3px 6px;border:0.5px solid var(--hbr);border-radius:5px';
 
   var btn = document.createElement('button');
@@ -5257,7 +5286,7 @@ function _lcOfferOCR(file, setStatus, pv, finish) {
   btn.onclick = function () {
     btn.disabled = true;
     btn.textContent = 'Lendo...';
-    _lcOcrExtract(file, { disc: sel.value, rev: inp.value }, setStatus).then(function (res) {
+    _lcOcrExtract(file, { disc: sel.value, rev: inp.value, revTouched: revTouched }, setStatus).then(function (res) {
       if (!res.recs.length) {
         setStatus('O OCR nao localizou a tabela de cabos neste PDF.');
         btn.disabled = false; btn.textContent = 'Tentar novamente';
