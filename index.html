@@ -1206,7 +1206,7 @@ function goView(v, pid) {
   else if (v === 'isos') renderIsoView();
   renderHeader();
 }
-const HY_BUILD = '24/08/2026 13:35';
+const HY_BUILD = '24/08/2026 17:09';
 function renderHeader() {
   const el = document.getElementById('hdr-acts');
   if (currentView === 'projects' && !currentProjId) {
@@ -4133,75 +4133,156 @@ function instrCaboImportXLSX() {
   );
 }
 
-function _instrCaboProcessRows(rows, setStatus, setPreview) {
-  var headers = rows[0];
-  // Column mapping
-  var COL = {
-    doc:     _colIdx(headers, ['rastreabilidade','lista de cabo','nr lista','numero','doc']),
-    rev:     _colIdx(headers, ['rev','revisao','revision']),
-    disc:    _colIdx(headers, ['disciplina','disc']),
-    secao:   _colIdx(headers, ['secao','seccao','tipo de cabo','cabo','section','bitola','mm']),
-    qtd:     _colIdx(headers, ['qtde planejada','qtde plan','qtde','quantidade planejada','comprimento','metragem','qty']),
-    stSup:   _colIdx(headers, ['st sup','status sup','suprimento','supply']),
-    dtChegada: _colIdx(headers, ['data chegada','dt chegada','previsao','prazo','entrega']),
-    codSup:  _colIdx(headers, ['cod sup','codigo sup','cod. sup','material','part']),
-    origem:  _colIdx(headers, ['origem','de','from','source','procedencia']),
-    destino: _colIdx(headers, ['destino','para','to','dest']),
-    stLanc:  _colIdx(headers, ['status lanc','st lanc','lancamento status']),
-    dtLanc:  _colIdx(headers, ['data lanc','dt lanc','data de lancamento']),
-    qtdReal: _colIdx(headers, ['qtde real','qtd real','real lançado','executado','realizado']),
-    loc:     _colIdx(headers, ['localizacao','local','campo','subestacao','sala']),
-    dtChegada: _colIdx(headers, ['data chegada','dt chegada','previsao','prazo','entrega']),
+/* ══════════════════════════════════════════════════════════════════════
+   MAPEAMENTO DE COLUNAS DA LISTA DE CABOS (independente da posicao)
+   Cada campo e escolhido por pontuacao sobre o texto do cabecalho, e nao
+   pela ordem das colunas. Um cabecalho so pode alimentar um campo.
+══════════════════════════════════════════════════════════════════════ */
+function _cabTok(s) { return _normH(s).split(' ').filter(Boolean); }
+
+/* padroes por campo: [teste, peso] - peso maior vence */
+function _cabSpecs() {
+  var has = function (sub) { return function (h) { return h.indexOf(sub) >= 0; }; };
+  var eq  = function (t)   { return function (h) { return h === t; }; };
+  var tok = function (t)   { return function (h, k) { return k.indexOf(t) >= 0; }; };
+  return {
+    secao: [[has('tipo secao'), 12], [has('secao nominal'), 11], [has('secao'), 10],
+            [has('seccao'), 10], [has('bitola'), 9], [has('tipo de cabo'), 9],
+            [eq('tipo'), 7], [has('mm2'), 6], [has('mm'), 4]],
+    compr: [[has('compr total'), 12], [has('comprim total'), 12], [has('comprimento total'), 12],
+            [has('compr do circ'), 11], [has('comprim circ'), 11], [has('compr circ'), 11],
+            [has('comprimento'), 8], [has('metragem'), 7], [has('extensao'), 6],
+            [function (h) { return h.indexOf('compr') >= 0 && h.indexOf('parcial') < 0; }, 5]],
+    codSup: [[has('codigo de suprimento'), 12], [has('codigo suprimento'), 12],
+             [has('cod de suprimento'), 11], [has('cod suprimento'), 11], [has('cod sup'), 10],
+             [has('codigo de material'), 8], [has('codigo'), 6]],
+    de:    [[eq('de'), 12], [eq('origem'), 11], [has('origem'), 10], [eq('de origem'), 10],
+            [has('de ponto'), 7], [eq('from'), 6]],
+    para:  [[eq('para'), 12], [eq('destino'), 11], [has('destino'), 10], [eq('para destino'), 10],
+            [eq('to'), 6]],
+    /* coluna unica com o percurso "DE / PARA" */
+    percurso: [[has('de para'), 12], [eq('percurso'), 11], [has('percurso'), 9], [has('de e para'), 10]],
+    /* complementares */
+    doc:   [[has('rastreabilidade'), 12], [has('lista de cabo'), 9], [has('documento'), 8], [has('nr lista'), 8]],
+    rev:   [[eq('rev'), 12], [has('revisao'), 11], [has('rev'), 8]],
+    disc:  [[has('disciplina'), 12], [eq('disc'), 9]],
+    cabo:  [[has('numero do cabo'), 12], [has('nome do cabo'), 11], [eq('cabo'), 9], [has('tag do cabo'), 10]],
+    loc:   [[has('localizacao'), 12], [eq('local'), 10]],
+    stSup: [[has('status de suprimento'), 12], [has('status suprimento'), 11], [has('st sup'), 10]]
   };
+}
 
-  // Show detected columns
-  var detected = Object.keys(COL).filter(function(k){return COL[k]>=0;})
-    .map(function(k){return '<span style="background:#e8f5e9;padding:1px 5px;border-radius:3px;margin:2px;display:inline-block">'+k+'→col '+(COL[k]+1)+'</span>';}).join('');
-  setPreview('<div style="margin-bottom:6px;font-weight:600">Colunas detectadas:</div>'+detected);
+/* headers: vetor de textos. Devolve {campo: indice} (ou -1) */
+function _cabMapCols(headers) {
+  var H = (headers || []).map(function (h) { return _normH(h); });
+  var K = H.map(function (h) { return h.split(' ').filter(Boolean); });
+  var specs = _cabSpecs();
+  var cand = [];
+  Object.keys(specs).forEach(function (f) {
+    specs[f].forEach(function (p) {
+      for (var i = 0; i < H.length; i++) {
+        if (!H[i]) continue;
+        if (p[0](H[i], K[i])) cand.push({ f: f, i: i, w: p[1] });
+      }
+    });
+  });
+  cand.sort(function (a, b) { return b.w - a.w; });
+  var out = {}, usados = {};
+  Object.keys(specs).forEach(function (f) { out[f] = -1; });
+  cand.forEach(function (c) {
+    if (out[c.f] >= 0 || usados[c.i]) return;
+    out[c.f] = c.i; usados[c.i] = 1;
+  });
+  return out;
+}
 
-  var added=0, skipped=0;
-  var sup_map = {'estoque':'Em Estoque','em estoque':'Em Estoque','compra':'Em Compra','em compra':'Em Compra','comprado':'Em Compra','pendente':'Pendente'};
-  var loc_map = {'campo':'Campo','sala':'Sala de Controle','controle':'Sala de Controle','subestacao':'Subestação','subestação':'Subestação'};
-  var lanc_map = {'pendente':'Pendente','andamento':'Em andamento','concluido':'Concluído','concluído':'Concluído'};
-
-  function mapVal(raw, map, def) {
-    if (!raw) return def;
-    var r = _normH(raw);
-    for (var k in map) { if (r.indexOf(k)>=0) return map[k]; }
-    return String(raw).trim() || def;
+/* localiza a linha de cabecalho (pula titulos) e devolve {idx, cols} */
+function _cabFindHeader(rows) {
+  var melhor = -1, nota = 0, cols = null;
+  var lim = Math.min(rows.length, 30);
+  for (var i = 0; i < lim; i++) {
+    var m = _cabMapCols(rows[i] || []);
+    var n = ['secao', 'compr', 'codSup', 'de', 'para', 'percurso', 'cabo']
+      .filter(function (f) { return m[f] >= 0; }).length;
+    if (n > nota) { nota = n; melhor = i; cols = m; }
   }
+  return nota >= 2 ? { idx: melhor, cols: cols } : null;
+}
 
-  for (var i=1; i<rows.length; i++) {
-    var row = rows[i];
-    var docVal = COL.doc>=0 ? String(row[COL.doc]||'').trim() : '';
-    if (!docVal) { skipped++; continue; }
+/* separa "A / B" em origem e destino */
+function _cabSplitPercurso(v) {
+  var s = String(v == null ? '' : v).trim();
+  if (s.indexOf('/') < 0) return null;
+  var p = s.split('/');
+  return { de: p[0].trim(), para: p.slice(1).join('/').trim() };
+}
+
+function _instrCaboProcessRows(rows, setStatus, setPreview) {
+  var hd = _cabFindHeader(rows);
+  if (!hd) {
+    setStatus('Nao foi possivel identificar o cabecalho das colunas.');
+    setPreview('<div style="color:#c62828">Esperado ao menos duas destas colunas: Tipo/Secao, Compr. (m), Codigo de Suprimento, De, Para.</div>');
+    return;
+  }
+  var C = hd.cols, headers = rows[hd.idx];
+  var rotulo = { secao: 'Tipo/Secao', compr: 'Compr. (m)', codSup: 'Cod. Suprimento',
+                 de: 'De', para: 'Para', percurso: 'De / Para' };
+  var chips = Object.keys(rotulo).filter(function (k) { return C[k] >= 0; })
+    .map(function (k) {
+      return '<span style="background:#e8f5e9;padding:1px 5px;border-radius:3px;margin:2px;display:inline-block">'
+        + rotulo[k] + ' \u2190 "' + String(headers[C[k]]).trim() + '"</span>';
+    }).join('');
+  var faltando = ['secao', 'compr', 'codSup', 'de', 'para'].filter(function (k) {
+    return C[k] < 0 && !(['de', 'para'].indexOf(k) >= 0 && C.percurso >= 0);
+  }).map(function (k) { return rotulo[k]; });
+  setPreview('<div style="margin-bottom:6px;font-weight:600">Colunas reconhecidas:</div>' + chips
+    + (faltando.length ? '<div style="margin-top:6px;color:#c07000">Nao encontrado no arquivo: '
+        + faltando.join(', ') + '</div>' : ''));
+
+  var txt = function (r, i) { return (i >= 0 && r[i] != null) ? String(r[i]).trim() : ''; };
+  var num = function (v) { var n = parseFloat(String(v).replace(/\./g, '').replace(',', '.')); return isNaN(n) ? null : n; };
+  var added = 0, skipped = 0;
+
+  for (var i = hd.idx + 1; i < rows.length; i++) {
+    var r = rows[i] || [];
+    var secao = txt(r, C.secao), compr = txt(r, C.compr), cod = txt(r, C.codSup);
+    var de = txt(r, C.de), para = txt(r, C.para);
+    if ((!de || !para) && C.percurso >= 0) {
+      var sp = _cabSplitPercurso(txt(r, C.percurso));
+      if (sp) { de = de || sp.de; para = para || sp.para; }
+    }
+    /* linha so vale como cabo se identificar o circuito; descarta totais e notas */
+    var junta = r.map(function (v) { return v == null ? '' : String(v); }).join(' ');
+    if (/total de cabos|comprimento total informado|^\s*nota[:\s]/i.test(junta)) { skipped++; continue; }
+    if (!de && !para && !secao && !cod) { skipped++; continue; }
     _cabArr().push({
       id: _instrId('cab'),
-      projId: currentProjId||null,
-      doc:     docVal,
-      rev:     COL.rev>=0     ? String(row[COL.rev]||'0').trim() : '0',
-      disc:    COL.disc>=0    ? String(row[COL.disc]||'Instrumentação').trim() : 'Instrumentação',
-      secao:   COL.secao>=0   ? String(row[COL.secao]||'').trim() : '',
-      qtd:     COL.qtd>=0     ? (parseFloat(row[COL.qtd])||null) : null,
-      stSup:   COL.stSup>=0   ? mapVal(row[COL.stSup], sup_map, 'Pendente') : 'Pendente',
-      codSup:  COL.codSup>=0  ? String(row[COL.codSup]||'').trim() : '',
-      origem:  COL.origem>=0  ? String(row[COL.origem]||'').trim() : '',
-      destino: COL.destino>=0 ? String(row[COL.destino]||'').trim() : '',
-      stLanc2: COL.stLanc>=0  ? mapVal(row[COL.stLanc], lanc_map, 'Pendente') : 'Pendente',
-      dtLanc:  COL.dtLanc>=0  ? String(row[COL.dtLanc]||'').trim() : '',
-      qtdReal: COL.qtdReal>=0 ? (parseFloat(row[COL.qtdReal])||null) : null,
-      loc:     COL.loc>=0     ? mapVal(row[COL.loc], loc_map, 'Campo') : 'Campo',
-      dtChegada: COL.dtChegada>=0 ? String(row[COL.dtChegada]||'').trim() : '',
+      projId: currentProjId || null,
+      doc: txt(r, C.doc),
+      rev: txt(r, C.rev),
+      disc: txt(r, C.disc) || _cabDisc(),
+      secao: secao,
+      qtd: num(compr),
+      qtdReal: null,
+      stSup: txt(r, C.stSup) || 'Pendente',
+      dtChegada: '',
+      codSup: cod,
+      origem: de,
+      destino: para,
+      stLanc2: 'Pendente',
+      dtLanc: '',
+      loc: txt(r, C.loc) || 'Campo'
     });
     added++;
   }
 
-  saveAll().then(function(){
-    setStatus('✅ ' + added + ' cabo(s) importado(s)' + (skipped?' · '+skipped+' linha(s) ignorada(s)':'') + '. Fechando...');
-    setTimeout(function(){
-      var m=document.getElementById('instr-xlsx-modal'); if(m)m.remove();
+  if (!added) { setStatus('Nenhuma linha de cabo encontrada abaixo do cabecalho.'); return; }
+  saveAll().then(function () {
+    setStatus(added + ' cabo(s) importado(s)' + (skipped ? ' - ' + skipped + ' linha(s) ignorada(s)' : '') + '.');
+    setTimeout(function () {
+      var m = document.getElementById('instr-xlsx-modal'); if (m) m.remove();
       renderIsoView();
-    }, 1800);
+    }, 1900);
   });
 }
 
@@ -5186,9 +5267,9 @@ async function _lcOcrExtract(file, opts, setStatus) {
       var xs = grid.xs.filter(function (x) { return x >= 0.055 * pw && x <= 0.985 * pw; });
       if (xs.length !== 17) continue;                 /* nao e a tabela de cabos */
 
-      if (!revDoc) {                                  /* revisao lida do carimbo */
-        try { revDoc = await _lcOcrRev(worker, cnv, S, pw, ph); } catch (e) { revDoc = ''; }
-      }
+      var revPag = '';                                /* revisao do carimbo DESTA folha */
+      try { revPag = await _lcOcrRev(worker, cnv, S, pw, ph); } catch (e) { revPag = ''; }
+      if (!revDoc && revPag) revDoc = revPag;         /* primeira encontrada = a do documento */
 
       var bands = [];
       for (var i = 0; i + 1 < grid.ys.length; i++) {
@@ -5223,6 +5304,7 @@ async function _lcOcrExtract(file, opts, setStatus) {
         var para  = await ocrCell(_LC_COLIDX.para,  y0, y1);
         num = num.replace(/O(\d)/g, '0$1').replace(/(\d)O/g, '$10');
         recs.push({
+          rev: (opts.revTouched && opts.rev) ? opts.rev : (revPag || ''),
           cabo: num,
           secao: (secao ? secao + ' mm\u00b2' : '') + (tipo ? ' ' + tipo : ''),
           qtd: parseFloat(String(comp).replace(',', '.')) || null,
