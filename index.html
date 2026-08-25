@@ -1209,7 +1209,7 @@ function goView(v, pid) {
   else if (v === 'isos') renderIsoView();
   renderHeader();
 }
-const HY_BUILD = '24/08/2026 19:02';
+const HY_BUILD = '25/08/2026 18:13';
 function renderHeader() {
   const el = document.getElementById('hdr-acts');
   if (currentView === 'projects' && !currentProjId) {
@@ -8784,6 +8784,28 @@ function _saldo(q, r) {
   var sv  = Number.isInteger(s) ? String(s) : s.toFixed(2).replace('.', ',');
   return '<span style="color:' + col + ';font-weight:600">' + sv + '</span>';
 }
+
+/* ─── Exclusao de materiais ──────────────────────────────────────────── */
+async function matsDelItem(id) {
+  var m = matsCtrl.find(function (x) { return x.id === id; });
+  if (!m) return;
+  if (!confirm('Excluir este material?\n\n' + String(m.descricao || m.iso || id).slice(0, 60))) return;
+  matsCtrl = matsCtrl.filter(function (x) { return x.id !== id; });
+  matsSelected.delete(id);
+  await matsCtrlSave();
+  _matsRenderTable();
+}
+
+async function matsDelSelected() {
+  if (!matsSelected.size) { alert('Marque ao menos um material para excluir.'); return; }
+  var n = matsSelected.size;
+  if (!confirm('Excluir ' + n + ' material(is) selecionado(s)? Esta acao nao pode ser desfeita.')) return;
+  matsCtrl = matsCtrl.filter(function (x) { return !matsSelected.has(x.id); });
+  matsSelected.clear();
+  await matsCtrlSave();
+  renderIsoView();
+}
+
 function _matsRenderTable() {
   const items = matsGetFiltered();
   const allSelected = items.length > 0 && items.every(m => matsSelected.has(m.id));
@@ -8804,10 +8826,11 @@ function _matsRenderTable() {
     <thead><tr>
       <th class="td-check"><input type="checkbox" id="mats-chk-all" ${allSelected?'checked':''} onchange="matsToggleAll(this.checked)"></th>
       ${cols.map(c=>`<th onclick="matsSetSort('${c.col}')" class="${matsSortCol===c.col?(matsSortDir>0?'sort-asc':'sort-desc'):''}">${c.lbl}</th>`).join('')}
+      <th style="text-align:center;width:52px">Ações</th>
     </tr></thead>
     <tbody>
     ${!items.length
-      ? `<tr><td colspan="${cols.length+1}" style="text-align:center;padding:20px;color:var(--hmu)">Nenhum item encontrado.</td></tr>`
+      ? `<tr><td colspan="${cols.length+2}" style="text-align:center;padding:20px;color:var(--hmu)">Nenhum item encontrado.</td></tr>`
       : items.map(m => `<tr class="${matsSelected.has(m.id)?'selected':''}">
         <td class="td-check"><input type="checkbox" ${matsSelected.has(m.id)?'checked':''} onchange="matsToggleRow('${m.id}',this.checked)"></td>
         <td style="max-width:190px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:9.5px" title="${m.iso}">${m.iso}</td>
@@ -8822,6 +8845,8 @@ function _matsRenderTable() {
         <td><select class="mats-status-sel" style="width:98px" onchange="matsUpdateItem('${m.id}','classificacao',this.value);_matsRenderTable()"><option value="fabricacao" ${m.classificacao==='fabricacao'?'selected':''}>Fabricação</option><option value="montagem" ${m.classificacao==='montagem'?'selected':''}>Montagem</option></select></td>
         <td><select class="mats-status-sel" style="width:88px" onchange="matsUpdateItem('${m.id}','status',this.value);_matsRenderTable()"><option value="estoque" ${m.status==='estoque'?'selected':''}>Estoque</option><option value="pendente" ${m.status==='pendente'?'selected':''}>Pendente</option><option value="em_compra" ${m.status==='em_compra'?'selected':''}>Em Compra</option></select></td>
         <td><input type="date" class="mats-date-inp" value="${m.dataRetirada||''}" onchange="matsUpdateItem('${m.id}','dataRetirada',this.value)"></td>
+      
+        <td style="text-align:center"><button onclick="matsDelItem('${m.id}')" title="Excluir este material" style="background:#fdecea;border:1px solid #e0c8c8;color:#c62828;border-radius:5px;padding:2px 7px;font-size:11px;cursor:pointer">🗑️</button></td>
       </tr>`).join('')}
     </tbody>
   </table>`;
@@ -8924,6 +8949,7 @@ function _matsHTML() {
     + '<label style="font-size:10px;color:var(--hmu)">Status: <select id="mats-bulk-status-inline" style="font-size:10px;padding:2px 6px;border-radius:4px;border:1px solid var(--hbr);background:var(--hg);color:var(--ht);margin-left:3px"><option value="">—</option><option value="estoque">✔ Estoque</option><option value="pendente">⏳ Pendente</option><option value="em_compra">🛒 Em Compra</option></select></label>'
     + '<label style="font-size:10px;color:var(--hmu)">Classif.: <select id="mats-bulk-classif-inline" style="font-size:10px;padding:2px 6px;border-radius:4px;border:1px solid var(--hbr);background:var(--hg);color:var(--ht);margin-left:3px"><option value="">—</option><option value="fabricacao">Fabricação</option><option value="montagem">Montagem</option></select></label>'
     + '<button onclick="applyMatsBulkInline()" style="font-size:10px;padding:4px 12px;border-radius:5px;border:none;background:var(--hb);color:#fff;cursor:pointer;font-weight:600">✅ Aplicar</button>'
+    + '<button onclick="matsDelSelected()" style="font-size:10px;font-weight:700;padding:4px 12px;border-radius:5px;border:1px solid #e0c8c8;background:#fdecea;color:#c62828;cursor:pointer">🗑️ Excluir selecionados</button>'
     + '<button onclick="matsSelected.clear();_matsRenderTable()" style="font-size:10px;padding:4px 10px;border-radius:5px;border:1px solid var(--hbr);background:var(--hg);color:var(--hmu);cursor:pointer">✕ Cancelar</button>'
     + '</div>'
     + '<div id="mats-tbl-wrap" class="mats-tbl-wrap"></div>'
