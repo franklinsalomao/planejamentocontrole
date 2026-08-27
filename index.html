@@ -936,6 +936,8 @@ async function loadAll() {
   try { const v=await storageGet(SK_DT_EL);   if(v){const d=JSON.parse(v);if(d&&d.length)dtEl=d;}         } catch(e) {}
   try { const v=await storageGet(SK_DT_INS);  if(v){const d=JSON.parse(v);if(d&&d.length)dtIns=d;}        } catch(e) {}
   try { const v=await storageGet(SK_INSTR_TAGS);    if(v){const d=JSON.parse(v);if(d&&d.length)instrTags=d;}    } catch(e) {}
+  try { const v=await storageGet(SK_JUNTAS);       if(v){const d=JSON.parse(v);if(d&&d.length)juntas=d;} } catch(e) {}
+  try { const v=await storageGet(SK_JUNTAS_CFG);   if(v){const d=JSON.parse(v);if(d)juntasCfg=Object.assign(juntasCfg,d);} } catch(e) {}
   try { const v=await storageGet(SK_INSTR_CABOS);   if(v){const d=JSON.parse(v);if(d&&d.length)instrCabos=d;}   } catch(e) {}
   try { const v=await storageGet(SK_ELET_CABOS);    if(v){const d=JSON.parse(v);if(d&&d.length)eletCabos=d;}    } catch(e) {}
   try { const v=await storageGet(SK_INSTR_SUPS);    if(v){const d=JSON.parse(v);if(d&&d.length)instrSups=d;}    } catch(e) {}
@@ -1120,6 +1122,7 @@ async function saveAll() {
   try { await storageSet(SK_DT_EL,   JSON.stringify(dtEl));         } catch(e) {}
   try { await storageSet(SK_DT_INS,  JSON.stringify(dtIns));        } catch(e) {}
   try { await storageSet(SK_INSTR_TAGS,    JSON.stringify(instrTags));    } catch(e) {}
+  try { await storageSet(SK_JUNTAS,        JSON.stringify(juntas));        } catch(e) {}
   try { await storageSet(SK_INSTR_CABOS,   JSON.stringify(instrCabos));   } catch(e) {}
   try { await storageSet(SK_ELET_CABOS,    JSON.stringify(eletCabos));    } catch(e) {}
   try { await storageSet(SK_INSTR_SUPS,    JSON.stringify(instrSups));    } catch(e) {}
@@ -1209,7 +1212,7 @@ function goView(v, pid) {
   else if (v === 'isos') renderIsoView();
   renderHeader();
 }
-const HY_BUILD = '25/08/2026 18:13';
+const HY_BUILD = '27/08/2026 20:40';
 function renderHeader() {
   const el = document.getElementById('hdr-acts');
   if (currentView === 'projects' && !currentProjId) {
@@ -1365,8 +1368,8 @@ function sincronizarPlanilha() {
 }
 
 const DISC_TABS = {
-  caldeiraria: { label:'🔧 Caldeiraria', subs:['dashboard','isometricos','suportes','materiais','estrutura'],
-    labels:['Dashboard','Controle de Isométricos','Controle de Suportes','Controle de Materiais','Estrutura Metálica'] },
+  caldeiraria: { label:'🔧 Caldeiraria', subs:['dashboard','isometricos','suportes','materiais','estrutura','juntas'],
+    labels:['Dashboard','Controle de Isométricos','Controle de Suportes','Controle de Materiais','Estrutura Metálica','Mapa de Juntas'] },
   eletrica: { label:'⚡ Elétrica', subs:['elet-cabos'],
     labels:['Controle de Cabos'] },
   instr: { label:'🔬 Instrumentação', subs:['instr-dash','instr-tags','instr-cabos','instr-suportes','instr-encam'],
@@ -3794,6 +3797,287 @@ function renderInstrDash(discTabs, bc) {
     vazio ? '<div class="ph-panel"><div style="font-size:32px">\uD83D\uDCCA</div><strong>Nenhum dado neste projeto</strong>'
           + '<span style="font-size:11px">Importe ou cadastre instrumentos e cabos para ver os indicadores.</span></div>'
           : corpo);
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   MAPA DE JUNTAS - CALDEIRARIA
+   Base de juntas por projeto + metrica de produtividade de solda.
+   Meta: polegadas diametrais por soldador/dia, separada por local
+   (Pipe-Shop e Campo). O indicador compara o ritmo realizado com a meta.
+══════════════════════════════════════════════════════════════════════ */
+let juntas = []; const SK_JUNTAS = 'hy_juntas';
+let juntasCfg = { psPol: 20, psSold: 2, cpPol: 10, cpSold: 2 };
+const SK_JUNTAS_CFG = 'hy_juntas_cfg';
+
+let _jtSearch = '', _jtLocal = '', _jtTipo = '', _jtSit = '', _jtDiam = '';
+
+/* "3/4", "1 1/2" ou "12" -> numero */
+function _jtPol(v) {
+  var s = String(v == null ? '' : v).trim().replace(',', '.');
+  if (!s) return 0;
+  if (s.indexOf('/') >= 0) {
+    var t = 0;
+    s.split(/\s+/).forEach(function (p) {
+      if (p.indexOf('/') >= 0) { var ab = p.split('/'); t += (parseFloat(ab[0]) || 0) / (parseFloat(ab[1]) || 1); }
+      else t += parseFloat(p) || 0;
+    });
+    return t;
+  }
+  return parseFloat(s) || 0;
+}
+function _jtFmt(n) { return (Math.round(n * 10) / 10).toLocaleString('pt-BR'); }
+function _jtEhPipe(j) { return /pipe/i.test(j.local || ''); }
+/* junta considerada executada */
+function _jtFeita(j) { return !!j.dataExec || /conclu|soldad/i.test(j.situacao || ''); }
+function _jtProj() { return currentProjId ? juntas.filter(function (j) { return j.projId === currentProjId; }) : juntas; }
+
+/* ─── metrica ─────────────────────────────────────────────────────────
+   metaDia = polegadas por soldador x numero de soldadores            */
+function _jtMetrica(list) {
+  var ps = list.filter(_jtEhPipe), cp = list.filter(function (j) { return !_jtEhPipe(j); });
+  var somaPol = function (a, so) {
+    return a.filter(function (j) { return so ? _jtFeita(j) : true; })
+            .reduce(function (s, j) { return s + _jtPol(j.polDiam || j.diam); }, 0);
+  };
+  var m = {
+    ps: { nome: 'Pipe-Shop', juntas: ps.length, feitas: ps.filter(_jtFeita).length,
+          pol: somaPol(ps, false), polFeito: somaPol(ps, true),
+          metaDia: (parseFloat(juntasCfg.psPol) || 0) * (parseFloat(juntasCfg.psSold) || 0) },
+    cp: { nome: 'Campo', juntas: cp.length, feitas: cp.filter(_jtFeita).length,
+          pol: somaPol(cp, false), polFeito: somaPol(cp, true),
+          metaDia: (parseFloat(juntasCfg.cpPol) || 0) * (parseFloat(juntasCfg.cpSold) || 0) }
+  };
+  ['ps', 'cp'].forEach(function (k) {
+    var o = m[k];
+    o.saldoPol = Math.max(0, o.pol - o.polFeito);
+    o.diasPrev = o.metaDia > 0 ? o.pol / o.metaDia : 0;
+    o.diasRest = o.metaDia > 0 ? o.saldoPol / o.metaDia : 0;
+    /* ritmo real: polegadas executadas / dias distintos com producao */
+    var porDia = {};
+    (k === 'ps' ? ps : cp).forEach(function (j) {
+      if (j.dataExec) porDia[j.dataExec] = (porDia[j.dataExec] || 0) + _jtPol(j.polDiam || j.diam);
+    });
+    var dias = Object.keys(porDia);
+    o.diasProd = dias.length;
+    o.ritmo = dias.length ? dias.reduce(function (s, d) { return s + porDia[d]; }, 0) / dias.length : 0;
+    o.aderencia = o.metaDia > 0 && dias.length ? (o.ritmo / o.metaDia) * 100 : null;
+    o.porDia = porDia;
+  });
+  return m;
+}
+
+function _jtCorAder(p) { return p == null ? '#8a94a6' : p >= 100 ? '#1a8c4e' : p >= 80 ? '#c07000' : '#c62828'; }
+
+function _jtCardMetrica(o) {
+  var cor = _jtCorAder(o.aderencia);
+  var pctExec = o.pol > 0 ? Math.round(o.polFeito / o.pol * 100) : 0;
+  var sit = o.aderencia == null
+    ? 'Sem execucao lancada - informe a data de execucao das juntas para medir o ritmo.'
+    : (o.aderencia >= 100 ? 'Ritmo acima da meta.'
+      : o.aderencia >= 80 ? 'Ritmo levemente abaixo da meta.' : 'Ritmo abaixo da meta.');
+  return '<div style="background:var(--hc);border:0.5px solid var(--hbr);border-left:4px solid ' + cor + ';border-radius:10px;padding:12px 14px;margin:0 0 12px">'
+    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'
+    + '<div style="font-size:12px;font-weight:800;color:var(--hb)">' + o.nome + '</div>'
+    + '<div style="font-size:16px;font-weight:800;color:' + cor + '">'
+    + (o.aderencia == null ? '—' : Math.round(o.aderencia) + '%') + '</div></div>'
+    + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:6px;font-size:10px;margin-bottom:8px">'
+    + '<div><div style="color:var(--hmu)">Juntas</div><b>' + o.feitas + ' / ' + o.juntas + '</b></div>'
+    + '<div><div style="color:var(--hmu)">Pol. diametrais</div><b>' + _jtFmt(o.polFeito) + ' / ' + _jtFmt(o.pol) + '</b></div>'
+    + '<div><div style="color:var(--hmu)">Meta/dia</div><b>' + _jtFmt(o.metaDia) + ' pol</b></div>'
+    + '<div><div style="color:var(--hmu)">Ritmo real</div><b style="color:' + cor + '">' + (o.diasProd ? _jtFmt(o.ritmo) + ' pol' : '—') + '</b></div>'
+    + '<div><div style="color:var(--hmu)">Prazo total</div><b>' + _jtFmt(o.diasPrev) + ' dias</b></div>'
+    + '<div><div style="color:var(--hmu)">Falta</div><b>' + _jtFmt(o.diasRest) + ' dias</b></div>'
+    + '</div>'
+    + '<div style="height:12px;background:#eef2f8;border-radius:6px;overflow:hidden;margin-bottom:5px">'
+    + '<div style="height:100%;width:' + Math.min(pctExec, 100) + '%;background:' + cor + '"></div></div>'
+    + '<div style="font-size:9.5px;color:var(--hmu)">' + pctExec + '% das polegadas executadas · ' + sit + '</div>'
+    + '</div>';
+}
+
+function renderJuntas(discTabs, bc) {
+  var list = _jtProj();
+  var f = list.filter(function (j) {
+    if (_jtLocal && String(j.local || '') !== _jtLocal) return false;
+    if (_jtTipo && String(j.tipo || '') !== _jtTipo) return false;
+    if (_jtSit && String(j.situacao || '') !== _jtSit) return false;
+    if (_jtDiam && String(j.diam || '') !== _jtDiam) return false;
+    if (_jtSearch && JSON.stringify(j).toLowerCase().indexOf(_jtSearch.toLowerCase()) < 0) return false;
+    return true;
+  });
+
+  var m = _jtMetrica(list);
+  var totPol = m.ps.pol + m.cp.pol, feitoPol = m.ps.polFeito + m.cp.polFeito;
+  var feitas = m.ps.feitas + m.cp.feitas;
+  var prazo = Math.max(m.ps.diasPrev, m.cp.diasPrev);
+
+  var kpis = '<div class="sum-bar" style="margin:10px 16px 0;gap:8px">'
+    + _instrKpi(list.length, 'Juntas', 'var(--hb)')
+    + _instrKpi(_jtFmt(totPol), 'Pol. diametrais', 'var(--hb)')
+    + _instrKpiPct(feitas, list.length, 'Juntas executadas', '#0077b6')
+    + _instrKpiPct(Math.round(feitoPol), Math.round(totPol), 'Pol. executadas', '#1a8c4e')
+    + _instrKpi(_jtFmt(prazo) + ' d', 'Prazo pela meta', '#7b1fa2')
+    + '</div>';
+
+  var cfg = '<div style="margin:12px 16px 0;background:#f4f9ff;border:1px solid #b0ddf0;border-radius:10px;padding:10px 14px">'
+    + '<div style="font-size:10.5px;font-weight:800;color:#0077b6;margin-bottom:7px">PREMISSAS DA METRICA</div>'
+    + '<div style="display:flex;flex-wrap:wrap;gap:14px;align-items:center;font-size:10.5px">'
+    + '<label>Pipe-Shop: <input type="number" min="0" step="0.5" value="' + juntasCfg.psPol + '" onchange="jtCfgSet(\'psPol\',this.value)" style="width:58px;padding:3px 5px;border:0.5px solid var(--hbr);border-radius:5px"> pol/soldador/dia</label>'
+    + '<label>x <input type="number" min="0" step="1" value="' + juntasCfg.psSold + '" onchange="jtCfgSet(\'psSold\',this.value)" style="width:46px;padding:3px 5px;border:0.5px solid var(--hbr);border-radius:5px"> soldadores'
+    + ' = <b>' + _jtFmt(m.ps.metaDia) + ' pol/dia</b></label>'
+    + '<span style="color:var(--hbr)">|</span>'
+    + '<label>Campo: <input type="number" min="0" step="0.5" value="' + juntasCfg.cpPol + '" onchange="jtCfgSet(\'cpPol\',this.value)" style="width:58px;padding:3px 5px;border:0.5px solid var(--hbr);border-radius:5px"> pol/soldador/dia</label>'
+    + '<label>x <input type="number" min="0" step="1" value="' + juntasCfg.cpSold + '" onchange="jtCfgSet(\'cpSold\',this.value)" style="width:46px;padding:3px 5px;border:0.5px solid var(--hbr);border-radius:5px"> soldadores'
+    + ' = <b>' + _jtFmt(m.cp.metaDia) + ' pol/dia</b></label>'
+    + '</div></div>';
+
+  var indicadores = '<div style="padding:12px 16px 0;display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:0 14px">'
+    + _jtCardMetrica(m.ps) + _jtCardMetrica(m.cp) + '</div>';
+
+  var porQtd = function (fn) { return _dashCount(list, fn); };
+  var porPol = function (fn) { return _dashSum(list, fn, function (j) { return _jtPol(j.polDiam || j.diam); }); };
+  var dist = '<div style="padding:0 16px 18px;display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:0 14px">'
+    + _dashCard('JUNTAS POR TIPO', porQtd(function (j) { return j.tipo; }), list.length, '#0B3D91')
+    + _dashCard('JUNTAS POR DIAMETRO (pol)', porQtd(function (j) { return j.diam; }), list.length, '#0077b6')
+    + _dashCard('JUNTAS POR CLASSE DE INSPECAO', porQtd(function (j) { return j.classe; }), list.length, '#7b1fa2')
+    + _dashCard('JUNTAS POR SITUACAO', porQtd(function (j) { return j.situacao; }), list.length, '#c07000')
+    + _dashCard('JUNTAS POR LOCAL', porQtd(function (j) { return j.local; }), list.length, '#1a8c4e')
+    + _dashCard('POLEGADAS DIAMETRAIS POR DIAMETRO', porPol(function (j) { return j.diam; }), totPol, '#0B3D91', false, function (n) { return _jtFmt(n) + ' pol'; })
+    + '</div>';
+
+  var vals = function (k) { return [...new Set(list.map(function (j) { return String(j[k] || ''); }).filter(Boolean))].sort(); };
+  var sel = function (v, cur, fn, rot) {
+    return '<select onchange="' + fn + '=this.value;renderIsoView()" style="font-size:11px;padding:3px 7px;border:0.5px solid var(--hbr);border-radius:5px;background:' + (cur ? '#c8f5d0' : 'var(--hg)') + ';color:var(--ht)">'
+      + '<option value="">' + rot + '</option>'
+      + v.map(function (o) { return '<option value="' + o + '" ' + (cur === o ? 'selected' : '') + '>' + o + '</option>'; }).join('') + '</select>';
+  };
+  var barra = '<div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid var(--hbr)">'
+    + '<input id="srch-_jtSearch" placeholder="🔍 Buscar isometrico, spool, junta..." value="' + (_jtSearch || '') + '" autocomplete="off" oninput="_jtSearch=this.value;_instrSearchRerender(this)" style="font-size:11px;padding:4px 8px;border:0.5px solid var(--hbr);border-radius:5px;background:var(--hg);color:var(--ht);min-width:200px">'
+    + sel(vals('local'), _jtLocal, '_jtLocal', 'Local')
+    + sel(vals('tipo'), _jtTipo, '_jtTipo', 'Tipo')
+    + sel(vals('diam'), _jtDiam, '_jtDiam', 'Diametro')
+    + sel(vals('situacao'), _jtSit, '_jtSit', 'Situacao')
+    + '<span style="font-size:10px;color:var(--hmu)">' + f.length + ' de ' + list.length + '</span>'
+    + '<button class="btn-clr" onclick="_jtSearch=\'\';_jtLocal=\'\';_jtTipo=\'\';_jtSit=\'\';_jtDiam=\'\';renderIsoView()">✕</button>'
+    + '<button style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid #a5d6a7;background:rgba(46,125,50,.1);color:#2e7d32;cursor:pointer" onclick="jtImportXLSX()">📥 Importar XLSX</button>'
+    + '<button style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:1px solid #e0c8c8;background:#fdecea;color:var(--hd);cursor:pointer" onclick="jtDelAll()">🗑️ Excluir Tudo</button>'
+    + '</div>';
+
+  var SIT = ['01-Junta Concluida', '02-Aguardando END', '03-Sem requisito de END', '04-Junta Nao Iniciada'];
+  var linhas = f.slice(0, 400).map(function (j) {
+    var feito = _jtFeita(j);
+    return '<tr style="border-bottom:1px solid #f0f4fb;' + (feito ? 'background:#f3fbf5' : '') + '">'
+      + '<td style="padding:4px 7px;font-size:10px;font-family:monospace">' + (j.iso || '') + '</td>'
+      + '<td style="padding:4px 6px;text-align:center;font-size:10px">' + (j.spool || '') + '</td>'
+      + '<td style="padding:4px 6px;text-align:center;font-size:10px;font-weight:700">' + (j.junta || '') + '</td>'
+      + '<td style="padding:4px 6px;text-align:center;font-size:10px">' + (j.diam || '') + '</td>'
+      + '<td style="padding:4px 6px;text-align:right;font-size:10px">' + _jtFmt(_jtPol(j.polDiam || j.diam)) + '</td>'
+      + '<td style="padding:4px 6px;text-align:center;font-size:10px">' + (j.tipo || '') + '</td>'
+      + '<td style="padding:4px 6px;text-align:center;font-size:10px">' + (j.local || '') + '</td>'
+      + '<td style="padding:4px 6px;text-align:center;font-size:10px">' + (j.classe || '') + '</td>'
+      + '<td style="padding:4px 5px">' + _instrSel(j.id, 'jtSet', 'situacao', SIT.concat(j.situacao && SIT.indexOf(j.situacao) < 0 ? [j.situacao] : []), j.situacao || SIT[3], 175) + '</td>'
+      + '<td style="padding:4px 5px;text-align:center"><input type="date" value="' + (j.dataExec || '') + '" onclick="event.stopPropagation()" onchange="jtSet(\'' + j.id + '\',\'dataExec\',this.value)" style="padding:2px 4px;border:0.5px solid var(--hbr);border-radius:5px;font-size:10px;background:var(--hg);color:var(--ht)"></td>'
+      + '<td style="padding:4px 6px;text-align:center">' + _instrDelBtn(j.id, 'jtDel') + '</td>'
+      + '</tr>';
+  }).join('');
+
+  var tbl = f.length
+    ? '<div style="margin:10px 16px 16px;overflow-x:auto"><table style="width:100%;border-collapse:collapse;min-width:900px">'
+      + _instrTH(['ISOMETRICO', 'SPOOL', 'JUNTA', 'Ø (pol)', 'POL. DIAM.', 'TIPO', 'LOCAL', 'CLASSE', 'SITUACAO', 'DATA EXECUCAO', 'AÇÕES'])
+      + '<tbody>' + linhas + '</tbody></table>'
+      + (f.length > 400 ? '<div style="padding:6px 2px;font-size:10px;color:var(--hmu)">Mostrando as primeiras 400 de ' + f.length + ' juntas. Use os filtros para refinar.</div>' : '')
+      + '</div>'
+    : '<div class="ph-panel"><div style="font-size:32px">🔩</div><strong>Nenhuma junta cadastrada</strong>'
+      + '<span style="font-size:11px">Use "Importar XLSX" para carregar o mapa de juntas.</span></div>';
+
+  document.getElementById('view-isos').innerHTML = bc + discTabs
+    + '<div style="padding:10px 16px 4px;font-size:15px;font-weight:700;color:var(--hb)">🔧 Caldeiraria — Mapa de Juntas</div>'
+    + kpis + cfg + indicadores + dist + barra + tbl + '</div>';
+}
+
+async function jtCfgSet(k, v) {
+  juntasCfg[k] = parseFloat(v) || 0;
+  try { await storageSet(SK_JUNTAS_CFG, JSON.stringify(juntasCfg)); } catch (e) {}
+  renderIsoView();
+}
+async function jtSet(id, campo, valor) {
+  var j = juntas.find(function (x) { return x.id === id; });
+  if (!j) return;
+  j[campo] = valor;
+  if (campo === 'dataExec' && valor && /nao iniciada/i.test(j.situacao || '')) j.situacao = '01-Junta Concluida';
+  await saveAll();
+  renderIsoView();
+}
+async function jtDel(id) {
+  if (!confirm('Excluir esta junta?')) return;
+  juntas = juntas.filter(function (j) { return j.id !== id; });
+  await saveAll(); renderIsoView();
+}
+async function jtDelAll() {
+  var n = _jtProj().length;
+  if (!n) return;
+  if (!confirm('Excluir TODAS as ' + n + ' juntas' + (currentProjId ? ' deste projeto' : '') + '?')) return;
+  juntas = currentProjId ? juntas.filter(function (j) { return j.projId !== currentProjId; }) : [];
+  await saveAll(); renderIsoView();
+}
+
+/* ─── importacao XLSX ─────────────────────────────────────────────── */
+function jtImportXLSX() {
+  _instrXLSXModal('Importar Mapa de Juntas (XLSX)',
+    'Colunas reconhecidas: Isometrico, Spool, Junta, O (pol), Pol. Diametrais, Esp., Mat, Tipo, Local, Classe Insp. e Situacao da Junta.',
+    _jtProcessRows);
+}
+function _jtProcessRows(rows, setStatus, setPreview) {
+  var alvo = {
+    iso:      ['isometrico', 'isometrico'], spool: ['spool'], junta: ['junta'],
+    diam:     ['o pol', 'diametro', 'diam', 'bitola'],
+    polDiam:  ['pol diametrais', 'polegadas diametrais', 'pol diam'],
+    esp:      ['esp'], mat: ['mat'], tipo: ['tipo'], local: ['local'],
+    classe:   ['classe insp', 'classe de inspecao', 'classe'],
+    situacao: ['situacao da junta', 'situacao']
+  };
+  var hIdx = -1, cols = null, nota = 0;
+  for (var i = 0; i < Math.min(rows.length, 25); i++) {
+    var H = (rows[i] || []).map(function (h) { return _normH(h); });
+    var c = {}, n = 0;
+    Object.keys(alvo).forEach(function (f) {
+      c[f] = -1;
+      alvo[f].forEach(function (kw) {
+        if (c[f] < 0) for (var k = 0; k < H.length; k++) if (H[k] && H[k].indexOf(kw) >= 0) { c[f] = k; break; }
+      });
+      if (c[f] >= 0) n++;
+    });
+    if (n > nota) { nota = n; hIdx = i; cols = c; }
+  }
+  if (nota < 4) { setStatus('Nao foi possivel identificar o cabecalho do mapa de juntas.'); return; }
+  var C = cols, hdr = rows[hIdx];
+  setPreview('<div style="margin-bottom:6px;font-weight:600">Colunas reconhecidas:</div>'
+    + Object.keys(C).filter(function (k) { return C[k] >= 0; }).map(function (k) {
+        return '<span style="background:#e8f5e9;padding:1px 5px;border-radius:3px;margin:2px;display:inline-block">' + k + ' \u2190 "' + String(hdr[C[k]]).trim() + '"</span>';
+      }).join(''));
+
+  var t = function (r, i) { return (i >= 0 && r[i] != null) ? String(r[i]).trim() : ''; };
+  var add = 0, pula = 0;
+  for (var n2 = hIdx + 1; n2 < rows.length; n2++) {
+    var r = rows[n2] || [];
+    var iso = t(r, C.iso), jn = t(r, C.junta), dm = t(r, C.diam);
+    if (!iso && !jn && !dm) { pula++; continue; }
+    juntas.push({
+      id: _instrId('jt'), projId: currentProjId || null,
+      iso: iso, spool: t(r, C.spool), junta: jn, diam: dm,
+      polDiam: t(r, C.polDiam) || dm, esp: t(r, C.esp), mat: t(r, C.mat),
+      tipo: t(r, C.tipo), local: t(r, C.local), classe: t(r, C.classe),
+      situacao: t(r, C.situacao), dataExec: ''
+    });
+    add++;
+  }
+  if (!add) { setStatus('Nenhuma junta encontrada abaixo do cabecalho.'); return; }
+  saveAll().then(function () {
+    setStatus(add + ' junta(s) importada(s)' + (pula ? ' - ' + pula + ' linha(s) ignorada(s)' : '') + '.');
+    setTimeout(function () {
+      var mo = document.getElementById('instr-xlsx-modal'); if (mo) mo.remove();
+      renderIsoView();
+    }, 1800);
+  });
 }
 
 /* ══════════════ 1. TAGS DE INSTRUMENTOS ════════════════════════════════
@@ -6415,6 +6699,10 @@ function renderIsoView(force) {
     renderEstruturaView(discTabs, bc); return;
   }
 
+  if (currentDisc === 'caldeiraria' && currentSubTab === 'juntas') {
+    renderJuntas(discTabs, bc); return;
+  }
+
   if (currentDisc === 'caldeiraria' && currentSubTab === 'dashboard') {
     renderDashboard(discTabs, bc); return;
   }
@@ -6953,6 +7241,7 @@ async function delProject(id) {
   materiais = materiais.filter(m => m.projId !== id && !projIsoNums.has(m.iso));
   estrutura = estrutura.filter(e => e.projId !== id);
   instrTags    = instrTags.filter(r => r.projId !== id);
+  juntas       = juntas.filter(r => r.projId !== id);
   instrCabos   = instrCabos.filter(r => r.projId !== id);
   eletCabos    = eletCabos.filter(r => r.projId !== id);
   instrSups    = instrSups.filter(r => r.projId !== id);
