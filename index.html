@@ -1212,7 +1212,7 @@ function goView(v, pid) {
   else if (v === 'isos') renderIsoView();
   renderHeader();
 }
-const HY_BUILD = '27/08/2026 20:40';
+const HY_BUILD = '27/08/2026 20:48';
 function renderHeader() {
   const el = document.getElementById('hdr-acts');
   if (currentView === 'projects' && !currentProjId) {
@@ -3894,6 +3894,44 @@ function _jtCardMetrica(o) {
     + '</div>';
 }
 
+/* agrupa devolvendo quantidade e polegadas por chave */
+function _jtGroup(list, fn) {
+  var m = {};
+  (list || []).forEach(function (j) {
+    var k = fn(j); k = (k == null || k === '') ? '—' : String(k).trim();
+    if (!m[k]) m[k] = { k: k, n: 0, pol: 0 };
+    m[k].n++; m[k].pol += _jtPol(j.polDiam || j.diam);
+  });
+  return Object.keys(m).map(function (k) { return m[k]; })
+    .sort(function (a, b) { return b.pol - a.pol || b.n - a.n; });
+}
+
+/* tabela compacta: item | juntas | participacao | polegadas */
+function _jtMiniTab(titulo, itens, totN, totPol) {
+  var linhas = itens.map(function (i) {
+    var pct = totPol ? (i.pol / totPol * 100) : 0;
+    return '<tr>'
+      + '<td style="padding:3px 8px;font-size:10.5px;font-weight:600;color:var(--ht)">' + i.k + '</td>'
+      + '<td style="padding:3px 6px;font-size:10.5px;text-align:right;font-variant-numeric:tabular-nums">' + i.n + '</td>'
+      + '<td style="padding:3px 6px;width:74px">'
+      +   '<div style="height:5px;background:#e9eef6;border-radius:3px;overflow:hidden">'
+      +     '<div style="height:100%;width:' + Math.round(pct) + '%;background:#0B3D91"></div></div></td>'
+      + '<td style="padding:3px 6px;font-size:10px;text-align:right;color:var(--hmu);font-variant-numeric:tabular-nums">' + Math.round(pct) + '%</td>'
+      + '<td style="padding:3px 8px;font-size:10.5px;text-align:right;font-variant-numeric:tabular-nums">' + _jtFmt(i.pol) + '</td>'
+      + '</tr>';
+  }).join('');
+  return '<div style="border:1px solid var(--hbr);border-radius:8px;overflow:hidden;background:var(--hc)">'
+    + '<div style="padding:7px 10px;background:#f4f7fc;border-bottom:1px solid var(--hbr);font-size:9.5px;font-weight:800;letter-spacing:.5px;color:#334">'
+    + titulo + '</div>'
+    + '<table style="width:100%;border-collapse:collapse">'
+    + '<thead><tr style="color:var(--hmu);font-size:8.5px;letter-spacing:.4px">'
+    + '<th style="padding:3px 8px;text-align:left;font-weight:700">ITEM</th>'
+    + '<th style="padding:3px 6px;text-align:right;font-weight:700">JUNTAS</th>'
+    + '<th colspan="2" style="padding:3px 6px;text-align:left;font-weight:700">PARTICIPAÇÃO</th>'
+    + '<th style="padding:3px 8px;text-align:right;font-weight:700">POL.</th>'
+    + '</tr></thead><tbody>' + (linhas || '<tr><td colspan="5" style="padding:8px;font-size:10px;color:var(--hmu)">Sem dados.</td></tr>') + '</tbody></table></div>';
+}
+
 function renderJuntas(discTabs, bc) {
   var list = _jtProj();
   var f = list.filter(function (j) {
@@ -3906,73 +3944,150 @@ function renderJuntas(discTabs, bc) {
   });
 
   var m = _jtMetrica(list);
-  var totPol = m.ps.pol + m.cp.pol, feitoPol = m.ps.polFeito + m.cp.polFeito;
+  var totPol = m.ps.pol + m.cp.pol;
+  var feitoPol = m.ps.polFeito + m.cp.polFeito;
   var feitas = m.ps.feitas + m.cp.feitas;
+  var critico = m.cp.diasPrev >= m.ps.diasPrev ? m.cp : m.ps;
   var prazo = Math.max(m.ps.diasPrev, m.cp.diasPrev);
+  var pctPol = totPol ? Math.round(feitoPol / totPol * 100) : 0;
 
-  var kpis = '<div class="sum-bar" style="margin:10px 16px 0;gap:8px">'
-    + _instrKpi(list.length, 'Juntas', 'var(--hb)')
-    + _instrKpi(_jtFmt(totPol), 'Pol. diametrais', 'var(--hb)')
-    + _instrKpiPct(feitas, list.length, 'Juntas executadas', '#0077b6')
-    + _instrKpiPct(Math.round(feitoPol), Math.round(totPol), 'Pol. executadas', '#1a8c4e')
-    + _instrKpi(_jtFmt(prazo) + ' d', 'Prazo pela meta', '#7b1fa2')
+  /* ── faixa de veredito ── */
+  var aderGeral = null, somaR = 0, somaM = 0;
+  ['ps', 'cp'].forEach(function (k) { if (m[k].aderencia != null) { somaR += m[k].ritmo; somaM += m[k].metaDia; } });
+  if (somaM > 0) aderGeral = somaR / somaM * 100;
+  var corG = _jtCorAder(aderGeral);
+  var msgG = aderGeral == null
+      ? 'Aguardando lançamento de execução'
+      : aderGeral >= 100 ? 'Dentro da meta' : aderGeral >= 80 ? 'Levemente abaixo da meta' : 'Abaixo da meta';
+
+  var faixa = '<div style="margin:10px 16px 0;border:1px solid var(--hbr);border-left:5px solid ' + corG + ';border-radius:10px;background:var(--hc);padding:12px 16px;display:flex;flex-wrap:wrap;gap:26px;align-items:center">'
+    + '<div><div style="font-size:9px;letter-spacing:.6px;color:var(--hmu);font-weight:700">ADERÊNCIA À META</div>'
+    +   '<div style="font-size:24px;font-weight:800;color:' + corG + ';line-height:1.1">' + (aderGeral == null ? '—' : Math.round(aderGeral) + '%') + '</div>'
+    +   '<div style="font-size:9.5px;color:var(--hmu)">' + msgG + '</div></div>'
+    + '<div style="width:1px;height:38px;background:var(--hbr)"></div>'
+    + '<div><div style="font-size:9px;letter-spacing:.6px;color:var(--hmu);font-weight:700">CAMINHO CRÍTICO</div>'
+    +   '<div style="font-size:15px;font-weight:800;color:var(--hb);line-height:1.3">' + critico.nome + '</div>'
+    +   '<div style="font-size:9.5px;color:var(--hmu)">' + _jtFmt(prazo) + ' dias no ritmo de meta</div></div>'
+    + '<div style="width:1px;height:38px;background:var(--hbr)"></div>'
+    + '<div><div style="font-size:9px;letter-spacing:.6px;color:var(--hmu);font-weight:700">ESCOPO</div>'
+    +   '<div style="font-size:15px;font-weight:800;color:var(--hb);line-height:1.3">' + list.length + ' juntas · ' + _jtFmt(totPol) + ' pol</div>'
+    +   '<div style="font-size:9.5px;color:var(--hmu)">' + feitas + ' executadas (' + pctPol + '% das polegadas)</div></div>'
+    + '<div style="flex:1;min-width:150px">'
+    +   '<div style="height:8px;background:#e9eef6;border-radius:4px;overflow:hidden">'
+    +     '<div style="height:100%;width:' + Math.min(pctPol, 100) + '%;background:' + corG + '"></div></div></div>'
     + '</div>';
 
-  var cfg = '<div style="margin:12px 16px 0;background:#f4f9ff;border:1px solid #b0ddf0;border-radius:10px;padding:10px 14px">'
-    + '<div style="font-size:10.5px;font-weight:800;color:#0077b6;margin-bottom:7px">PREMISSAS DA METRICA</div>'
-    + '<div style="display:flex;flex-wrap:wrap;gap:14px;align-items:center;font-size:10.5px">'
-    + '<label>Pipe-Shop: <input type="number" min="0" step="0.5" value="' + juntasCfg.psPol + '" onchange="jtCfgSet(\'psPol\',this.value)" style="width:58px;padding:3px 5px;border:0.5px solid var(--hbr);border-radius:5px"> pol/soldador/dia</label>'
-    + '<label>x <input type="number" min="0" step="1" value="' + juntasCfg.psSold + '" onchange="jtCfgSet(\'psSold\',this.value)" style="width:46px;padding:3px 5px;border:0.5px solid var(--hbr);border-radius:5px"> soldadores'
-    + ' = <b>' + _jtFmt(m.ps.metaDia) + ' pol/dia</b></label>'
-    + '<span style="color:var(--hbr)">|</span>'
-    + '<label>Campo: <input type="number" min="0" step="0.5" value="' + juntasCfg.cpPol + '" onchange="jtCfgSet(\'cpPol\',this.value)" style="width:58px;padding:3px 5px;border:0.5px solid var(--hbr);border-radius:5px"> pol/soldador/dia</label>'
-    + '<label>x <input type="number" min="0" step="1" value="' + juntasCfg.cpSold + '" onchange="jtCfgSet(\'cpSold\',this.value)" style="width:46px;padding:3px 5px;border:0.5px solid var(--hbr);border-radius:5px"> soldadores'
-    + ' = <b>' + _jtFmt(m.cp.metaDia) + ' pol/dia</b></label>'
-    + '</div></div>';
+  /* ── painel de produtividade ── */
+  function linhaProd(o, polSold, nSold, kPol, kSold) {
+    var cor = _jtCorAder(o.aderencia);
+    return '<tr style="border-top:1px solid #eef2f8">'
+      + '<td style="padding:7px 10px;font-size:11px;font-weight:800;color:var(--hb)">' + o.nome + '</td>'
+      + '<td style="padding:5px 6px;text-align:center">'
+      +   '<input type="number" min="0" step="0.5" value="' + polSold + '" onchange="jtCfgSet(\'' + kPol + '\',this.value)" style="width:52px;padding:2px 4px;border:0.5px solid var(--hbr);border-radius:4px;font-size:10.5px;text-align:center;background:var(--hg);color:var(--ht)">'
+      +   ' <span style="font-size:9px;color:var(--hmu)">pol</span></td>'
+      + '<td style="padding:5px 6px;text-align:center">'
+      +   '<input type="number" min="0" step="1" value="' + nSold + '" onchange="jtCfgSet(\'' + kSold + '\',this.value)" style="width:42px;padding:2px 4px;border:0.5px solid var(--hbr);border-radius:4px;font-size:10.5px;text-align:center;background:var(--hg);color:var(--ht)"></td>'
+      + '<td style="padding:7px 8px;text-align:right;font-size:11px;font-weight:700;font-variant-numeric:tabular-nums">' + _jtFmt(o.metaDia) + '</td>'
+      + '<td style="padding:7px 8px;text-align:right;font-size:10.5px;font-variant-numeric:tabular-nums">' + o.juntas + '</td>'
+      + '<td style="padding:7px 8px;text-align:right;font-size:10.5px;font-variant-numeric:tabular-nums">' + _jtFmt(o.pol) + '</td>'
+      + '<td style="padding:7px 8px;text-align:right;font-size:10.5px;font-variant-numeric:tabular-nums">' + _jtFmt(o.polFeito) + '</td>'
+      + '<td style="padding:7px 8px;text-align:right;font-size:10.5px;font-variant-numeric:tabular-nums;color:' + cor + ';font-weight:700">' + (o.diasProd ? _jtFmt(o.ritmo) : '—') + '</td>'
+      + '<td style="padding:7px 8px;text-align:right;font-size:10.5px;font-variant-numeric:tabular-nums">' + _jtFmt(o.diasPrev) + '</td>'
+      + '<td style="padding:7px 8px;text-align:right;font-size:10.5px;font-variant-numeric:tabular-nums">' + _jtFmt(o.diasRest) + '</td>'
+      + '<td style="padding:5px 10px;text-align:center">'
+      +   '<span style="display:inline-block;min-width:52px;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:800;color:#fff;background:' + cor + '">'
+      +   (o.aderencia == null ? '—' : Math.round(o.aderencia) + '%') + '</span></td>'
+      + '</tr>';
+  }
+  var prod = '<div style="margin:12px 16px 0;border:1px solid var(--hbr);border-radius:10px;overflow:hidden;background:var(--hc)">'
+    + '<div style="padding:8px 12px;background:#f4f7fc;border-bottom:1px solid var(--hbr);display:flex;justify-content:space-between;align-items:center">'
+    +   '<span style="font-size:9.5px;font-weight:800;letter-spacing:.5px;color:#334">PRODUTIVIDADE DE SOLDA — META x REALIZADO</span>'
+    +   '<span style="font-size:9px;color:var(--hmu)">premissas editáveis</span></div>'
+    + '<table style="width:100%;border-collapse:collapse">'
+    + '<thead><tr style="color:var(--hmu);font-size:8.5px;letter-spacing:.4px;background:#fafcff">'
+    +   '<th style="padding:5px 10px;text-align:left;font-weight:700">LOCAL</th>'
+    +   '<th style="padding:5px 6px;text-align:center;font-weight:700">POL/SOLDADOR</th>'
+    +   '<th style="padding:5px 6px;text-align:center;font-weight:700">SOLD.</th>'
+    +   '<th style="padding:5px 8px;text-align:right;font-weight:700">META/DIA</th>'
+    +   '<th style="padding:5px 8px;text-align:right;font-weight:700">JUNTAS</th>'
+    +   '<th style="padding:5px 8px;text-align:right;font-weight:700">POL. TOTAL</th>'
+    +   '<th style="padding:5px 8px;text-align:right;font-weight:700">POL. FEITAS</th>'
+    +   '<th style="padding:5px 8px;text-align:right;font-weight:700">RITMO REAL</th>'
+    +   '<th style="padding:5px 8px;text-align:right;font-weight:700">PRAZO (d)</th>'
+    +   '<th style="padding:5px 8px;text-align:right;font-weight:700">FALTA (d)</th>'
+    +   '<th style="padding:5px 10px;text-align:center;font-weight:700">ADERÊNCIA</th>'
+    + '</tr></thead><tbody>'
+    + linhaProd(m.ps, juntasCfg.psPol, juntasCfg.psSold, 'psPol', 'psSold')
+    + linhaProd(m.cp, juntasCfg.cpPol, juntasCfg.cpSold, 'cpPol', 'cpSold')
+    + '</tbody></table></div>';
 
-  var indicadores = '<div style="padding:12px 16px 0;display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:0 14px">'
-    + _jtCardMetrica(m.ps) + _jtCardMetrica(m.cp) + '</div>';
+  /* ── matriz diametro x local ── */
+  var diams = [...new Set(list.map(function (j) { return String(j.diam || '—'); }))]
+    .sort(function (a, b) { return _jtPol(a) - _jtPol(b); });
+  var mtx = diams.map(function (d) {
+    var da = list.filter(function (j) { return String(j.diam || '—') === d; });
+    var p = da.filter(_jtEhPipe), cq = da.filter(function (j) { return !_jtEhPipe(j); });
+    var sp = function (a) { return a.reduce(function (s, j) { return s + _jtPol(j.polDiam || j.diam); }, 0); };
+    return '<tr style="border-top:1px solid #eef2f8">'
+      + '<td style="padding:4px 10px;font-size:10.5px;font-weight:700">' + d + '"</td>'
+      + '<td style="padding:4px 8px;text-align:right;font-size:10.5px;font-variant-numeric:tabular-nums">' + p.length + '</td>'
+      + '<td style="padding:4px 8px;text-align:right;font-size:10px;color:var(--hmu);font-variant-numeric:tabular-nums">' + _jtFmt(sp(p)) + '</td>'
+      + '<td style="padding:4px 8px;text-align:right;font-size:10.5px;font-variant-numeric:tabular-nums">' + cq.length + '</td>'
+      + '<td style="padding:4px 8px;text-align:right;font-size:10px;color:var(--hmu);font-variant-numeric:tabular-nums">' + _jtFmt(sp(cq)) + '</td>'
+      + '<td style="padding:4px 10px;text-align:right;font-size:10.5px;font-weight:700;font-variant-numeric:tabular-nums">' + da.length + '</td>'
+      + '</tr>';
+  }).join('');
+  var matriz = '<div style="border:1px solid var(--hbr);border-radius:8px;overflow:hidden;background:var(--hc)">'
+    + '<div style="padding:7px 10px;background:#f4f7fc;border-bottom:1px solid var(--hbr);font-size:9.5px;font-weight:800;letter-spacing:.5px;color:#334">DIÂMETRO x LOCAL</div>'
+    + '<table style="width:100%;border-collapse:collapse">'
+    + '<thead><tr style="color:var(--hmu);font-size:8.5px;letter-spacing:.4px">'
+    +   '<th style="padding:3px 10px;text-align:left;font-weight:700">Ø</th>'
+    +   '<th colspan="2" style="padding:3px 8px;text-align:right;font-weight:700">PIPE-SHOP</th>'
+    +   '<th colspan="2" style="padding:3px 8px;text-align:right;font-weight:700">CAMPO</th>'
+    +   '<th style="padding:3px 10px;text-align:right;font-weight:700">TOTAL</th>'
+    + '</tr></thead><tbody>' + mtx + '</tbody></table></div>';
 
-  var porQtd = function (fn) { return _dashCount(list, fn); };
-  var porPol = function (fn) { return _dashSum(list, fn, function (j) { return _jtPol(j.polDiam || j.diam); }); };
-  var dist = '<div style="padding:0 16px 18px;display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:0 14px">'
-    + _dashCard('JUNTAS POR TIPO', porQtd(function (j) { return j.tipo; }), list.length, '#0B3D91')
-    + _dashCard('JUNTAS POR DIAMETRO (pol)', porQtd(function (j) { return j.diam; }), list.length, '#0077b6')
-    + _dashCard('JUNTAS POR CLASSE DE INSPECAO', porQtd(function (j) { return j.classe; }), list.length, '#7b1fa2')
-    + _dashCard('JUNTAS POR SITUACAO', porQtd(function (j) { return j.situacao; }), list.length, '#c07000')
-    + _dashCard('JUNTAS POR LOCAL', porQtd(function (j) { return j.local; }), list.length, '#1a8c4e')
-    + _dashCard('POLEGADAS DIAMETRAIS POR DIAMETRO', porPol(function (j) { return j.diam; }), totPol, '#0B3D91', false, function (n) { return _jtFmt(n) + ' pol'; })
+  var dist = '<div style="padding:12px 16px 0;display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px">'
+    + _jtMiniTab('JUNTAS POR TIPO', _jtGroup(list, function (j) { return j.tipo; }), list.length, totPol)
+    + _jtMiniTab('JUNTAS POR DIÂMETRO', _jtGroup(list, function (j) { return j.diam; }), list.length, totPol)
+    + _jtMiniTab('CLASSE DE INSPEÇÃO', _jtGroup(list, function (j) { return j.classe; }), list.length, totPol)
+    + _jtMiniTab('SITUAÇÃO DA JUNTA', _jtGroup(list, function (j) { return j.situacao; }), list.length, totPol)
+    + matriz
     + '</div>';
 
+  /* ── filtros ── */
   var vals = function (k) { return [...new Set(list.map(function (j) { return String(j[k] || ''); }).filter(Boolean))].sort(); };
   var sel = function (v, cur, fn, rot) {
-    return '<select onchange="' + fn + '=this.value;renderIsoView()" style="font-size:11px;padding:3px 7px;border:0.5px solid var(--hbr);border-radius:5px;background:' + (cur ? '#c8f5d0' : 'var(--hg)') + ';color:var(--ht)">'
+    return '<select onchange="' + fn + '=this.value;renderIsoView()" style="font-size:11px;padding:3px 7px;border:0.5px solid var(--hbr);border-radius:5px;background:' + (cur ? '#e8f2ff' : 'var(--hg)') + ';color:var(--ht)">'
       + '<option value="">' + rot + '</option>'
       + v.map(function (o) { return '<option value="' + o + '" ' + (cur === o ? 'selected' : '') + '>' + o + '</option>'; }).join('') + '</select>';
   };
-  var barra = '<div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid var(--hbr)">'
-    + '<input id="srch-_jtSearch" placeholder="🔍 Buscar isometrico, spool, junta..." value="' + (_jtSearch || '') + '" autocomplete="off" oninput="_jtSearch=this.value;_instrSearchRerender(this)" style="font-size:11px;padding:4px 8px;border:0.5px solid var(--hbr);border-radius:5px;background:var(--hg);color:var(--ht);min-width:200px">'
+  var barra = '<div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:12px 16px 10px">'
+    + '<input id="srch-_jtSearch" placeholder="🔍 Isométrico, spool, junta..." value="' + (_jtSearch || '') + '" autocomplete="off" oninput="_jtSearch=this.value;_instrSearchRerender(this)" style="font-size:11px;padding:4px 8px;border:0.5px solid var(--hbr);border-radius:5px;background:var(--hg);color:var(--ht);min-width:200px">'
     + sel(vals('local'), _jtLocal, '_jtLocal', 'Local')
     + sel(vals('tipo'), _jtTipo, '_jtTipo', 'Tipo')
-    + sel(vals('diam'), _jtDiam, '_jtDiam', 'Diametro')
-    + sel(vals('situacao'), _jtSit, '_jtSit', 'Situacao')
+    + sel(vals('diam'), _jtDiam, '_jtDiam', 'Diâmetro')
+    + sel(vals('situacao'), _jtSit, '_jtSit', 'Situação')
     + '<span style="font-size:10px;color:var(--hmu)">' + f.length + ' de ' + list.length + '</span>'
     + '<button class="btn-clr" onclick="_jtSearch=\'\';_jtLocal=\'\';_jtTipo=\'\';_jtSit=\'\';_jtDiam=\'\';renderIsoView()">✕</button>'
+    + '<span style="margin-left:auto"></span>'
     + '<button style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid #a5d6a7;background:rgba(46,125,50,.1);color:#2e7d32;cursor:pointer" onclick="jtImportXLSX()">📥 Importar XLSX</button>'
     + '<button style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:1px solid #e0c8c8;background:#fdecea;color:var(--hd);cursor:pointer" onclick="jtDelAll()">🗑️ Excluir Tudo</button>'
     + '</div>';
 
   var SIT = ['01-Junta Concluida', '02-Aguardando END', '03-Sem requisito de END', '04-Junta Nao Iniciada'];
-  var linhas = f.slice(0, 400).map(function (j) {
+  var linhas = f.slice(0, 400).map(function (j, ix) {
     var feito = _jtFeita(j);
-    return '<tr style="border-bottom:1px solid #f0f4fb;' + (feito ? 'background:#f3fbf5' : '') + '">'
-      + '<td style="padding:4px 7px;font-size:10px;font-family:monospace">' + (j.iso || '') + '</td>'
+    var zebra = ix % 2 ? 'background:#fbfcfe;' : '';
+    return '<tr style="border-bottom:1px solid #f0f4fb;' + (feito ? 'background:#f2faf5;' : zebra) + '">'
+      + '<td style="padding:4px 10px;font-size:10px;font-family:monospace;color:var(--ht)">' + (j.iso || '') + '</td>'
       + '<td style="padding:4px 6px;text-align:center;font-size:10px">' + (j.spool || '') + '</td>'
       + '<td style="padding:4px 6px;text-align:center;font-size:10px;font-weight:700">' + (j.junta || '') + '</td>'
-      + '<td style="padding:4px 6px;text-align:center;font-size:10px">' + (j.diam || '') + '</td>'
-      + '<td style="padding:4px 6px;text-align:right;font-size:10px">' + _jtFmt(_jtPol(j.polDiam || j.diam)) + '</td>'
+      + '<td style="padding:4px 6px;text-align:center;font-size:10px;font-variant-numeric:tabular-nums">' + (j.diam || '') + '</td>'
+      + '<td style="padding:4px 8px;text-align:right;font-size:10px;font-variant-numeric:tabular-nums">' + _jtFmt(_jtPol(j.polDiam || j.diam)) + '</td>'
       + '<td style="padding:4px 6px;text-align:center;font-size:10px">' + (j.tipo || '') + '</td>'
-      + '<td style="padding:4px 6px;text-align:center;font-size:10px">' + (j.local || '') + '</td>'
+      + '<td style="padding:4px 6px;text-align:center;font-size:10px">'
+      +   '<span style="padding:1px 7px;border-radius:9px;font-size:9px;font-weight:700;background:' + (_jtEhPipe(j) ? '#e8f2ff;color:#0B3D91' : '#fff3e0;color:#c07000') + '">' + (j.local || '') + '</span></td>'
       + '<td style="padding:4px 6px;text-align:center;font-size:10px">' + (j.classe || '') + '</td>'
       + '<td style="padding:4px 5px">' + _instrSel(j.id, 'jtSet', 'situacao', SIT.concat(j.situacao && SIT.indexOf(j.situacao) < 0 ? [j.situacao] : []), j.situacao || SIT[3], 175) + '</td>'
       + '<td style="padding:4px 5px;text-align:center"><input type="date" value="' + (j.dataExec || '') + '" onclick="event.stopPropagation()" onchange="jtSet(\'' + j.id + '\',\'dataExec\',this.value)" style="padding:2px 4px;border:0.5px solid var(--hbr);border-radius:5px;font-size:10px;background:var(--hg);color:var(--ht)"></td>'
@@ -3981,17 +4096,17 @@ function renderJuntas(discTabs, bc) {
   }).join('');
 
   var tbl = f.length
-    ? '<div style="margin:10px 16px 16px;overflow-x:auto"><table style="width:100%;border-collapse:collapse;min-width:900px">'
-      + _instrTH(['ISOMETRICO', 'SPOOL', 'JUNTA', 'Ø (pol)', 'POL. DIAM.', 'TIPO', 'LOCAL', 'CLASSE', 'SITUACAO', 'DATA EXECUCAO', 'AÇÕES'])
+    ? '<div style="margin:0 16px 16px;border:1px solid var(--hbr);border-radius:8px;overflow:auto"><table style="width:100%;border-collapse:collapse;min-width:920px">'
+      + _instrTH(['ISOMÉTRICO', 'SPOOL', 'JUNTA', 'Ø', 'POL. DIAM.', 'TIPO', 'LOCAL', 'CLASSE', 'SITUAÇÃO', 'DATA EXECUÇÃO', 'AÇÕES'])
       + '<tbody>' + linhas + '</tbody></table>'
-      + (f.length > 400 ? '<div style="padding:6px 2px;font-size:10px;color:var(--hmu)">Mostrando as primeiras 400 de ' + f.length + ' juntas. Use os filtros para refinar.</div>' : '')
+      + (f.length > 400 ? '<div style="padding:6px 10px;font-size:10px;color:var(--hmu);border-top:1px solid var(--hbr)">Mostrando 400 de ' + f.length + ' juntas — refine pelos filtros.</div>' : '')
       + '</div>'
     : '<div class="ph-panel"><div style="font-size:32px">🔩</div><strong>Nenhuma junta cadastrada</strong>'
       + '<span style="font-size:11px">Use "Importar XLSX" para carregar o mapa de juntas.</span></div>';
 
   document.getElementById('view-isos').innerHTML = bc + discTabs
-    + '<div style="padding:10px 16px 4px;font-size:15px;font-weight:700;color:var(--hb)">🔧 Caldeiraria — Mapa de Juntas</div>'
-    + kpis + cfg + indicadores + dist + barra + tbl + '</div>';
+    + '<div style="padding:10px 16px 0;font-size:15px;font-weight:700;color:var(--hb)">🔧 Caldeiraria — Mapa de Juntas</div>'
+    + faixa + prod + dist + barra + tbl + '</div>';
 }
 
 async function jtCfgSet(k, v) {
