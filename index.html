@@ -1212,7 +1212,7 @@ function goView(v, pid) {
   else if (v === 'isos') renderIsoView();
   renderHeader();
 }
-const HY_BUILD = '27/08/2026 20:48';
+const HY_BUILD = '27/08/2026 20:54';
 function renderHeader() {
   const el = document.getElementById('hdr-acts');
   if (currentView === 'projects' && !currentProjId) {
@@ -3806,7 +3806,7 @@ function renderInstrDash(discTabs, bc) {
    (Pipe-Shop e Campo). O indicador compara o ritmo realizado com a meta.
 ══════════════════════════════════════════════════════════════════════ */
 let juntas = []; const SK_JUNTAS = 'hy_juntas';
-let juntasCfg = { psPol: 20, psSold: 2, cpPol: 10, cpSold: 2 };
+let juntasCfg = { psPol: 20, psSold: 2, cpPol: 10, cpSold: 2, dtInicio: '', diasSem: 5, prazoAlvo: '' };
 const SK_JUNTAS_CFG = 'hy_juntas_cfg';
 
 let _jtSearch = '', _jtLocal = '', _jtTipo = '', _jtSit = '', _jtDiam = '';
@@ -3895,6 +3895,167 @@ function _jtCardMetrica(o) {
 }
 
 /* agrupa devolvendo quantidade e polegadas por chave */
+/* ─── calendario de dias uteis ─────────────────────────────────────── */
+function _jtDiaUtil(d, diasSem) {
+  var w = d.getDay();
+  if (diasSem >= 7) return true;
+  if (diasSem === 6) return w !== 0;
+  return w !== 0 && w !== 6;
+}
+function _jtSomaDiasUteis(iso, n, diasSem) {
+  if (!iso) return '';
+  var d = new Date(iso + 'T12:00:00');
+  if (isNaN(d)) return '';
+  var restam = Math.ceil(n);
+  var guard = 0;
+  while (restam > 0 && guard < 5000) {
+    d.setDate(d.getDate() + 1);
+    if (_jtDiaUtil(d, diasSem)) restam--;
+    guard++;
+  }
+  return d.toISOString().slice(0, 10);
+}
+function _jtDataBR(iso) {
+  if (!iso) return '—';
+  var p = String(iso).slice(0, 10).split('-');
+  return p.length === 3 ? p[2] + '/' + p[1] + '/' + p[0] : iso;
+}
+
+/* ─── analise de prazo, dimensionamento e curva de avanco ──────────── */
+function _jtAnalise(list, m) {
+  var diasSem = parseFloat(juntasCfg.diasSem) || 5;
+  var inicio = juntasCfg.dtInicio || '';
+  var alvo = parseFloat(juntasCfg.prazoAlvo) || 0;
+  var a = { diasSem: diasSem, inicio: inicio, alvo: alvo, locais: [] };
+
+  ['ps', 'cp'].forEach(function (k) {
+    var o = m[k];
+    var polSold = parseFloat(k === 'ps' ? juntasCfg.psPol : juntasCfg.cpPol) || 0;
+    var termMeta = inicio ? _jtSomaDiasUteis(inicio, o.diasPrev, diasSem) : '';
+    /* projecao pelo ritmo real, a partir de hoje */
+    var hoje = new Date().toISOString().slice(0, 10);
+    var diasProj = o.ritmo > 0 ? o.saldoPol / o.ritmo : null;
+    var termProj = diasProj != null ? _jtSomaDiasUteis(hoje, diasProj, diasSem) : '';
+    /* efetivo necessario para o prazo alvo */
+    var soldNec = (alvo > 0 && polSold > 0) ? Math.ceil(o.pol / (polSold * alvo)) : null;
+    a.locais.push({
+      k: k, nome: o.nome, o: o, polSold: polSold,
+      termMeta: termMeta, diasProj: diasProj, termProj: termProj,
+      soldNec: soldNec, soldAtual: parseFloat(k === 'ps' ? juntasCfg.psSold : juntasCfg.cpSold) || 0
+    });
+  });
+  return a;
+}
+
+/* curva de avanco acumulado: planejado (meta, locais em paralelo) x realizado */
+function _jtCurvaSVG(list, m, an) {
+  var W = 660, H = 190, pad = { l: 44, r: 12, t: 12, b: 26 };
+  var totPol = m.ps.pol + m.cp.pol;
+  if (!totPol) return '';
+  var dur = Math.ceil(Math.max(m.ps.diasPrev, m.cp.diasPrev)) || 1;
+
+  /* planejado: cada local avanca a sua meta ate esgotar o proprio escopo */
+  var plan = [];
+  for (var t = 0; t <= dur; t++) {
+    plan.push(Math.min(m.ps.metaDia * t, m.ps.pol) + Math.min(m.cp.metaDia * t, m.cp.pol));
+  }
+  /* realizado: acumulado por data de execucao, convertido em dia util desde o inicio */
+  var porDia = {};
+  list.forEach(function (j) {
+    if (j.dataExec) porDia[j.dataExec] = (porDia[j.dataExec] || 0) + _jtPol(j.polDiam || j.diam);
+  });
+  var datas = Object.keys(porDia).sort();
+  var real = [];
+  if (datas.length) {
+    var base = an.inicio || datas[0], acc = 0;
+    datas.forEach(function (d) {
+      acc += porDia[d];
+      var n = 0, cur = new Date(base + 'T12:00:00'), fim = new Date(d + 'T12:00:00'), g = 0;
+      while (cur < fim && g < 4000) { cur.setDate(cur.getDate() + 1); if (_jtDiaUtil(cur, an.diasSem)) n++; g++; }
+      real.push({ x: n, y: acc });
+    });
+  }
+  var X = function (i) { return pad.l + (i / dur) * (W - pad.l - pad.r); };
+  var Y = function (v) { return H - pad.b - (v / totPol) * (H - pad.t - pad.b); };
+  var linhaPlan = plan.map(function (v, i) { return (i ? 'L' : 'M') + X(i).toFixed(1) + ',' + Y(v).toFixed(1); }).join(' ');
+  var linhaReal = real.length
+    ? 'M' + X(0).toFixed(1) + ',' + Y(0).toFixed(1) + ' ' + real.map(function (p) { return 'L' + X(p.x).toFixed(1) + ',' + Y(p.y).toFixed(1); }).join(' ')
+    : '';
+  var grid = [0, 0.25, 0.5, 0.75, 1].map(function (fr) {
+    var y = Y(totPol * fr);
+    return '<line x1="' + pad.l + '" y1="' + y.toFixed(1) + '" x2="' + (W - pad.r) + '" y2="' + y.toFixed(1) + '" stroke="#e9eef6"/>'
+      + '<text x="' + (pad.l - 6) + '" y="' + (y + 3).toFixed(1) + '" text-anchor="end" font-size="8" fill="#8a94a6">' + Math.round(totPol * fr) + '</text>';
+  }).join('');
+  var marcas = [0, Math.round(dur / 2), dur].map(function (d) {
+    return '<text x="' + X(d).toFixed(1) + '" y="' + (H - 8) + '" text-anchor="middle" font-size="8" fill="#8a94a6">d' + d + '</text>';
+  }).join('');
+  return '<div style="border:1px solid var(--hbr);border-radius:8px;background:var(--hc);overflow:hidden">'
+    + '<div style="padding:7px 10px;background:#f4f7fc;border-bottom:1px solid var(--hbr);display:flex;justify-content:space-between;align-items:center">'
+    +   '<span style="font-size:9.5px;font-weight:800;letter-spacing:.5px;color:#334">CURVA DE AVANÇO — POLEGADAS ACUMULADAS</span>'
+    +   '<span style="font-size:9px;color:var(--hmu)">'
+    +     '<span style="color:#0B3D91;font-weight:700">— planejado</span> &nbsp; '
+    +     '<span style="color:#1a8c4e;font-weight:700">— realizado</span></span></div>'
+    + '<svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;height:auto;display:block">'
+    +   grid + marcas
+    +   '<path d="' + linhaPlan + '" fill="none" stroke="#0B3D91" stroke-width="2"/>'
+    +   (linhaReal ? '<path d="' + linhaReal + '" fill="none" stroke="#1a8c4e" stroke-width="2.4"/>' : '')
+    +   (real.length ? real.map(function (p) { return '<circle cx="' + X(p.x).toFixed(1) + '" cy="' + Y(p.y).toFixed(1) + '" r="2.6" fill="#1a8c4e"/>'; }).join('') : '')
+    +   (!real.length ? '<text x="' + (W / 2) + '" y="' + (H / 2) + '" text-anchor="middle" font-size="10" fill="#a9b2c1">sem execução lançada</text>' : '')
+    + '</svg></div>';
+}
+
+/* painel de prazo e dimensionamento */
+function _jtPainelPrazo(an, m) {
+  var linhas = an.locais.map(function (L) {
+    var o = L.o;
+    var desvio = (L.diasProj != null && o.diasRest > 0) ? L.diasProj - o.diasRest : null;
+    var corD = desvio == null ? '#8a94a6' : desvio <= 0 ? '#1a8c4e' : desvio <= o.diasRest * 0.1 ? '#c07000' : '#c62828';
+    var corS = L.soldNec == null ? '#8a94a6' : L.soldNec <= L.soldAtual ? '#1a8c4e' : '#c62828';
+    return '<tr style="border-top:1px solid #eef2f8">'
+      + '<td style="padding:7px 10px;font-size:11px;font-weight:800;color:var(--hb)">' + L.nome + '</td>'
+      + '<td style="padding:7px 8px;text-align:right;font-size:10.5px;font-variant-numeric:tabular-nums">' + _jtFmt(o.diasPrev) + ' d</td>'
+      + '<td style="padding:7px 8px;text-align:center;font-size:10.5px">' + _jtDataBR(L.termMeta) + '</td>'
+      + '<td style="padding:7px 8px;text-align:right;font-size:10.5px;font-variant-numeric:tabular-nums">' + (L.diasProj == null ? '—' : _jtFmt(L.diasProj) + ' d') + '</td>'
+      + '<td style="padding:7px 8px;text-align:center;font-size:10.5px">' + _jtDataBR(L.termProj) + '</td>'
+      + '<td style="padding:7px 8px;text-align:right;font-size:10.5px;font-weight:700;color:' + corD + ';font-variant-numeric:tabular-nums">'
+      +   (desvio == null ? '—' : (desvio > 0 ? '+' : '') + _jtFmt(desvio) + ' d') + '</td>'
+      + '<td style="padding:7px 8px;text-align:center;font-size:10.5px;font-weight:700;color:' + corS + '">'
+      +   (L.soldNec == null ? '—' : L.soldNec + ' / ' + L.soldAtual) + '</td>'
+      + '</tr>';
+  }).join('');
+
+  return '<div style="margin:12px 16px 0;border:1px solid var(--hbr);border-radius:10px;overflow:hidden;background:var(--hc)">'
+    + '<div style="padding:8px 12px;background:#f4f7fc;border-bottom:1px solid var(--hbr);display:flex;flex-wrap:wrap;gap:14px;align-items:center">'
+    +   '<span style="font-size:9.5px;font-weight:800;letter-spacing:.5px;color:#334">ANÁLISE DE PRAZO E DIMENSIONAMENTO</span>'
+    +   '<span style="margin-left:auto;display:flex;flex-wrap:wrap;gap:12px;align-items:center;font-size:10px;color:var(--hmu)">'
+    +     '<label>Início: <input type="date" value="' + (juntasCfg.dtInicio || '') + '" onchange="jtCfgSet(\'dtInicio\',this.value)" style="padding:2px 5px;border:0.5px solid var(--hbr);border-radius:4px;font-size:10px;background:var(--hg);color:var(--ht)"></label>'
+    +     '<label>Jornada: <select onchange="jtCfgSet(\'diasSem\',this.value)" style="padding:2px 5px;border:0.5px solid var(--hbr);border-radius:4px;font-size:10px;background:var(--hg);color:var(--ht)">'
+    +       [5, 6, 7].map(function (d) { return '<option value="' + d + '" ' + ((parseFloat(juntasCfg.diasSem) || 5) === d ? 'selected' : '') + '>' + d + ' dias/sem</option>'; }).join('')
+    +     '</select></label>'
+    +     '<label>Prazo alvo: <input type="number" min="0" step="1" value="' + (juntasCfg.prazoAlvo || '') + '" placeholder="dias" onchange="jtCfgSet(\'prazoAlvo\',this.value)" style="width:60px;padding:2px 5px;border:0.5px solid var(--hbr);border-radius:4px;font-size:10px;background:var(--hg);color:var(--ht)"> dias úteis</label>'
+    +   '</span></div>'
+    + '<table style="width:100%;border-collapse:collapse">'
+    + '<thead><tr style="color:var(--hmu);font-size:8.5px;letter-spacing:.4px;background:#fafcff">'
+    +   '<th style="padding:5px 10px;text-align:left;font-weight:700">LOCAL</th>'
+    +   '<th style="padding:5px 8px;text-align:right;font-weight:700">PRAZO META</th>'
+    +   '<th style="padding:5px 8px;text-align:center;font-weight:700">TÉRMINO PELA META</th>'
+    +   '<th style="padding:5px 8px;text-align:right;font-weight:700">FALTA (RITMO REAL)</th>'
+    +   '<th style="padding:5px 8px;text-align:center;font-weight:700">TÉRMINO PROJETADO</th>'
+    +   '<th style="padding:5px 8px;text-align:right;font-weight:700">DESVIO</th>'
+    +   '<th style="padding:5px 8px;text-align:center;font-weight:700">SOLDADORES NEC./ATUAL</th>'
+    + '</tr></thead><tbody>' + linhas + '</tbody></table>'
+    + (an.alvo > 0 ? '' : '<div style="padding:6px 12px;font-size:9.5px;color:var(--hmu);border-top:1px solid #eef2f8">Informe o prazo alvo para dimensionar o efetivo necessário.</div>')
+    + '</div>';
+}
+
+/* maiores pendencias por isometrico */
+function _jtBacklog(list) {
+  var pend = list.filter(function (j) { return !_jtFeita(j); });
+  var g = _jtGroup(pend, function (j) { return j.iso; }).slice(0, 8);
+  var tot = pend.reduce(function (s, j) { return s + _jtPol(j.polDiam || j.diam); }, 0);
+  return _jtMiniTab('MAIORES PENDÊNCIAS POR ISOMÉTRICO', g, pend.length, tot);
+}
+
 function _jtGroup(list, fn) {
   var m = {};
   (list || []).forEach(function (j) {
@@ -4047,12 +4208,17 @@ function renderJuntas(discTabs, bc) {
     +   '<th style="padding:3px 10px;text-align:right;font-weight:700">TOTAL</th>'
     + '</tr></thead><tbody>' + mtx + '</tbody></table></div>';
 
+  var an = _jtAnalise(list, m);
+  var prazo2 = _jtPainelPrazo(an, m);
+  var curva = '<div style="padding:12px 16px 0">' + _jtCurvaSVG(list, m, an) + '</div>';
+
   var dist = '<div style="padding:12px 16px 0;display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px">'
     + _jtMiniTab('JUNTAS POR TIPO', _jtGroup(list, function (j) { return j.tipo; }), list.length, totPol)
     + _jtMiniTab('JUNTAS POR DIÂMETRO', _jtGroup(list, function (j) { return j.diam; }), list.length, totPol)
     + _jtMiniTab('CLASSE DE INSPEÇÃO', _jtGroup(list, function (j) { return j.classe; }), list.length, totPol)
     + _jtMiniTab('SITUAÇÃO DA JUNTA', _jtGroup(list, function (j) { return j.situacao; }), list.length, totPol)
     + matriz
+    + _jtBacklog(list)
     + '</div>';
 
   /* ── filtros ── */
@@ -4106,11 +4272,11 @@ function renderJuntas(discTabs, bc) {
 
   document.getElementById('view-isos').innerHTML = bc + discTabs
     + '<div style="padding:10px 16px 0;font-size:15px;font-weight:700;color:var(--hb)">🔧 Caldeiraria — Mapa de Juntas</div>'
-    + faixa + prod + dist + barra + tbl + '</div>';
+    + faixa + prod + prazo2 + curva + dist + barra + tbl + '</div>';
 }
 
 async function jtCfgSet(k, v) {
-  juntasCfg[k] = parseFloat(v) || 0;
+  juntasCfg[k] = (k === 'dtInicio') ? String(v || '') : (v === '' ? '' : (parseFloat(v) || 0));
   try { await storageSet(SK_JUNTAS_CFG, JSON.stringify(juntasCfg)); } catch (e) {}
   renderIsoView();
 }
