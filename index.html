@@ -1214,7 +1214,7 @@ function goView(v, pid) {
   else if (v === 'isos') renderIsoView();
   renderHeader();
 }
-const HY_BUILD = '27/08/2026 21:21';
+const HY_BUILD = '28/08/2026 11:44';
 function renderHeader() {
   const el = document.getElementById('hdr-acts');
   if (currentView === 'projects' && !currentProjId) {
@@ -3814,6 +3814,20 @@ const SK_JUNTAS_CFG = 'hy_juntas_cfg';
 let _jtSearch = '', _jtLocal = '', _jtTipo = '', _jtSit = '', _jtDiam = '';
 
 /* "3/4", "1 1/2" ou "12" -> numero */
+function _jtSetFiltro(k, v) {
+  switch (k) {
+    case '_jtSearch': _jtSearch = v; break;
+    case '_jtLocal':  _jtLocal  = v; break;
+    case '_jtTipo':   _jtTipo   = v; break;
+    case '_jtSit':    _jtSit    = v; break;
+    case '_jtDiam':   _jtDiam   = v; break;
+  }
+}
+function _jtLimpaFiltros() {
+  _jtSearch = ''; _jtLocal = ''; _jtTipo = ''; _jtSit = ''; _jtDiam = '';
+  renderIsoView();
+}
+
 function _jtPol(v) {
   var s = String(v == null ? '' : v).trim().replace(',', '.');
   if (!s) return 0;
@@ -4296,18 +4310,18 @@ function renderJuntas(discTabs, bc) {
   /* ── filtros ── */
   var vals = function (k) { return [...new Set(list.map(function (j) { return String(j[k] || ''); }).filter(Boolean))].sort(); };
   var sel = function (v, cur, fn, rot) {
-    return '<select onchange="' + fn + '=this.value;renderIsoView()" style="font-size:11px;padding:3px 7px;border:0.5px solid var(--hbr);border-radius:5px;background:' + (cur ? '#e8eef4' : 'var(--hg)') + ';color:var(--ht)">'
+    return '<select onchange="_jtSetFiltro(\'' + fn + '\',this.value);renderIsoView()" style="font-size:11px;padding:3px 7px;border:0.5px solid var(--hbr);border-radius:5px;background:' + (cur ? '#e8eef4' : 'var(--hg)') + ';color:var(--ht)">'
       + '<option value="">' + rot + '</option>'
       + v.map(function (o) { return '<option value="' + o + '" ' + (cur === o ? 'selected' : '') + '>' + o + '</option>'; }).join('') + '</select>';
   };
   var barra = '<div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:12px 16px 10px">'
-    + '<input id="srch-_jtSearch" placeholder="🔍 Isométrico, spool, junta..." value="' + (_jtSearch || '') + '" autocomplete="off" oninput="_jtSearch=this.value;_instrSearchRerender(this)" style="font-size:11px;padding:4px 8px;border:0.5px solid var(--hbr);border-radius:5px;background:var(--hg);color:var(--ht);min-width:200px">'
+    + '<input id="srch-_jtSearch" placeholder="🔍 Isométrico, spool, junta..." value="' + (_jtSearch || '') + '" autocomplete="off" oninput="_jtSetFiltro(\'_jtSearch\',this.value);_instrSearchRerender(this)" style="font-size:11px;padding:4px 8px;border:0.5px solid var(--hbr);border-radius:5px;background:var(--hg);color:var(--ht);min-width:200px">'
     + sel(vals('local'), _jtLocal, '_jtLocal', 'Local')
     + sel(vals('tipo'), _jtTipo, '_jtTipo', 'Tipo')
     + sel(vals('diam'), _jtDiam, '_jtDiam', 'Diâmetro')
     + sel(vals('situacao'), _jtSit, '_jtSit', 'Situação')
     + '<span style="font-size:10px;color:var(--hmu)">' + f.length + ' de ' + list.length + '</span>'
-    + '<button class="btn-clr" onclick="_jtSearch=\'\';_jtLocal=\'\';_jtTipo=\'\';_jtSit=\'\';_jtDiam=\'\';renderIsoView()">✕</button>'
+    + '<button class="btn-clr" onclick="_jtLimpaFiltros()">✕</button>'
     + '<span style="margin-left:auto"></span>'
     + '<button style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid #a5d6a7;background:rgba(46,125,50,.1);color:#2e7d32;cursor:pointer" onclick="jtImportXLSX()">📥 Importar XLSX</button>'
     + '<button style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:1px solid #e0c8c8;background:#fdecea;color:var(--hd);cursor:pointer" onclick="jtDelAll()">🗑️ Excluir Tudo</button>'
