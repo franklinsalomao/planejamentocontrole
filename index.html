@@ -1214,7 +1214,7 @@ function goView(v, pid) {
   else if (v === 'isos') renderIsoView();
   renderHeader();
 }
-const HY_BUILD = '28/08/2026 11:44';
+const HY_BUILD = '28/08/2026 11:53';
 function renderHeader() {
   const el = document.getElementById('hdr-acts');
   if (currentView === 'projects' && !currentProjId) {
@@ -4268,10 +4268,10 @@ function renderJuntas(discTabs, bc) {
     + '</tbody></table></div>';
 
   /* ── matriz diametro x local ── */
-  var diams = [...new Set(list.map(function (j) { return String(j.diam || '—'); }))]
+  var diams = [...new Set(f.map(function (j) { return String(j.diam || '—'); }))]
     .sort(function (a, b) { return _jtPol(a) - _jtPol(b); });
   var mtx = diams.map(function (d) {
-    var da = list.filter(function (j) { return String(j.diam || '—') === d; });
+    var da = f.filter(function (j) { return String(j.diam || '—') === d; });
     var p = da.filter(_jtEhPipe), cq = da.filter(function (j) { return !_jtEhPipe(j); });
     var sp = function (a) { return a.reduce(function (s, j) { return s + _jtPol(j.polDiam || j.diam); }, 0); };
     return '<tr style="border-top:1px solid #eef2f8">'
@@ -4298,13 +4298,21 @@ function renderJuntas(discTabs, bc) {
   var curva = '<div style="padding:12px 16px 0;display:grid;grid-template-columns:1.55fr 1fr;gap:12px;align-items:start">'
     + _jtCurvaSVG(list, m, an) + _jtBarrasPrevReal(m) + '</div>';
 
+  /* os quadros seguem a selecao dos filtros */
+  var polF = f.reduce(function (s, j) { return s + _jtPol(j.polDiam || j.diam); }, 0);
+  var filtrado = (_jtLocal || _jtTipo || _jtSit || _jtDiam || _jtSearch);
+  var aviso = filtrado
+    ? '<div style="grid-column:1/-1;margin-bottom:2px;font-size:10px;color:var(--hmu)">Quadros abaixo referentes ao filtro ativo: <b style="color:var(--ht)">'
+      + f.length + ' de ' + list.length + ' juntas · ' + _jtFmt(polF) + ' de ' + _jtFmt(totPol) + ' pol</b></div>'
+    : '';
   var dist = '<div style="padding:12px 16px 0;display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px">'
-    + _jtMiniTab('JUNTAS POR TIPO', _jtGroup(list, function (j) { return j.tipo; }), list.length, totPol)
-    + _jtMiniTab('JUNTAS POR DIÂMETRO', _jtGroup(list, function (j) { return j.diam; }), list.length, totPol)
-    + _jtMiniTab('CLASSE DE INSPEÇÃO', _jtGroup(list, function (j) { return j.classe; }), list.length, totPol)
-    + _jtMiniTab('SITUAÇÃO DA JUNTA', _jtGroup(list, function (j) { return j.situacao; }), list.length, totPol)
+    + aviso
+    + _jtMiniTab('JUNTAS POR TIPO', _jtGroup(f, function (j) { return j.tipo; }), f.length, polF)
+    + _jtMiniTab('JUNTAS POR DIÂMETRO', _jtGroup(f, function (j) { return j.diam; }), f.length, polF)
+    + _jtMiniTab('CLASSE DE INSPEÇÃO', _jtGroup(f, function (j) { return j.classe; }), f.length, polF)
+    + _jtMiniTab('SITUAÇÃO DA JUNTA', _jtGroup(f, function (j) { return j.situacao; }), f.length, polF)
     + matriz
-    + _jtBacklog(list)
+    + _jtBacklog(f)
     + '</div>';
 
   /* ── filtros ── */
