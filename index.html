@@ -1214,7 +1214,7 @@ function goView(v, pid) {
   else if (v === 'isos') renderIsoView();
   renderHeader();
 }
-const HY_BUILD = '28/08/2026 16:37';
+const HY_BUILD = '01/09/2026 14:08';
 function renderHeader() {
   const el = document.getElementById('hdr-acts');
   if (currentView === 'projects' && !currentProjId) {
@@ -4661,6 +4661,85 @@ async function instrTagSetDt(id, field, value) {
   renderIsoView();
 }
 
+
+/* ─── Exportar itens selecionados para XLSX ──────────────────────────
+   Exporta o que estiver marcado; sem marcacao, exporta o que os
+   filtros deixaram visivel (com confirmacao).                        */
+const _EXP_COLS = {
+  tags: [
+    ['Disciplina','disc'], ['Doc. Rastreabilidade','doc'], ['TAG','tag'],
+    ['Linha / Equipamento','linhaEquip'], ['Cód. Suprimentos','codSup'], ['Qtde','qtd'],
+    ['St. Suprimentos','stSup'], ['Data Chegada','dtChegada'],
+    ['Calibração','stCal'], ['Classificação','classif'], ['St. Montagem','stMon'],
+    ['DT Elét.','stDtEl'], ['St. DT Elét.','stDtElEx'],
+    ['DT Pneu.','stDtPn'], ['St. DT Pneu.','stDtPnEx'],
+    ['DT Proc.','stDtPr'], ['St. DT Proc.','stDtPrEx'],
+    ['Interligação','stInterl'], ['Aterramento','stAter'], ['Loop Teste','stLoop']
+  ],
+  cabos: [
+    ['Rastreabilidade','doc'], ['Rev.','rev'], ['Disciplina','disc'], ['Seção do Cabo','secao'],
+    ['Qtde Projetada','qtd'], ['Qtde Real Lançado','qtdReal'], ['St. Suprimentos','stSup'],
+    ['Data Chegada','dtChegada'], ['Cód. Suprimentos','codSup'],
+    ['Origem (De)','origem'], ['Destino (Para)','destino'],
+    ['Status Lançamento','stLanc2'], ['Data Lançamento','dtLanc'], ['Localização','loc']
+  ],
+  sups: [
+    ['Rastreabilidade','doc'], ['Disciplina','disc'], ['Instrumento','instrumento'],
+    ['Tipo de Suporte','tipoSup'], ['St. Fabricação','stFab'], ['Dt. Fabricação','dtFab'],
+    ['St. Pintura','stPint'], ['Dt. Pintura','dtPint'], ['St. Montagem','stMon'], ['Dt. Montagem','dtMon']
+  ],
+  encam: [
+    ['Rastreabilidade','doc'], ['Disciplina','disc'], ['Tipo de Encaminhamento','tipo'],
+    ['Diâmetro','diam'], ['Qtde','qtd'], ['St. Suprimentos','stSup'],
+    ['Data Chegada','dtChegada'], ['St. Montagem','stMon']
+  ]
+};
+const _EXP_NOME = { tags:'Tags_Instrumentos', cabos:'Lista_Cabos', sups:'Suportes', encam:'Encaminhamento' };
+
+function instrExportSel(tab) {
+  if (typeof XLSX === 'undefined') { alert('Biblioteca de planilhas ainda carregando. Tente de novo em instantes.'); return; }
+  var marcados = Object.keys(_instrSelSet[tab] || {});
+  var todos = _instrArrOf(tab);
+  var linhas;
+  if (marcados.length) {
+    var mk = {}; marcados.forEach(function (id) { mk[id] = 1; });
+    linhas = todos.filter(function (r) { return mk[r.id]; });
+  } else {
+    var vis = _instrVisible[tab] || [];
+    if (!vis.length) { alert('Nao ha itens para exportar.'); return; }
+    if (!confirm('Nenhum item marcado.\n\nExportar os ' + vis.length + ' item(ns) visiveis com os filtros atuais?')) return;
+    var mv = {}; vis.forEach(function (id) { mv[id] = 1; });
+    linhas = todos.filter(function (r) { return mv[r.id]; });
+  }
+  if (!linhas.length) { alert('Nao ha itens para exportar.'); return; }
+
+  var cols = _EXP_COLS[tab] || [];
+  var dados = linhas.map(function (r) {
+    var o = {};
+    cols.forEach(function (c) {
+      var v = r[c[1]];
+      o[c[0]] = (v === null || v === undefined) ? '' : v;
+    });
+    return o;
+  });
+  var ws = XLSX.utils.json_to_sheet(dados, { header: cols.map(function (c) { return c[0]; }) });
+  ws['!cols'] = cols.map(function (c) { return { wch: Math.max(12, Math.min(30, c[0].length + 4)) }; });
+  var wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Dados');
+
+  var proj = (typeof projects !== 'undefined' && currentProjId)
+    ? (projects.find(function (p) { return p.id === currentProjId; }) || {}).name : '';
+  var nome = (_EXP_NOME[tab] || 'Export')
+    + (proj ? '_' + String(proj).replace(/[^\w\-]+/g, '_') : '')
+    + '_' + new Date().toISOString().slice(0, 10) + '.xlsx';
+  XLSX.writeFile(wb, nome);
+}
+function _instrExpBtn(tab) {
+  return '<button onclick="instrExportSel(\'' + tab + '\')" title="Exportar os itens marcados para Excel"'
+    + ' style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid #a5d6a7;'
+    + 'background:rgba(46,125,50,.10);color:#2e7d32;cursor:pointer">\u2B07\uFE0F Exportar selecionados</button>';
+}
+
 function renderInstrTags(discTabs,bc){
   var list=_instrProjFilter(instrTags);
   var filtered=list.filter(function(r){return (!_itArea||_instrArea(r.doc)===_itArea) && (!_itSearch||JSON.stringify(r).toLowerCase().includes(_itSearch.toLowerCase()));});
@@ -4701,7 +4780,7 @@ function renderInstrTags(discTabs,bc){
       +'</tr>';
   }).join(''):null;
   _instrHeader(discTabs,bc,'Tags de Instrumentos / Equipamentos',kpis,
-    _instrFilterBar(_itSearch,'_itSearch',_instrSelBtn('tags',filtered)+_instrAreaSel('_itArea',list,_itArea)+'<button onclick="instrTagImportPDF()" style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid #b0ddf0;background:rgba(0,119,182,.1);color:#0F766E;cursor:pointer">📎 Importar PDF</button><button onclick="instrTagImportXLSX()" style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid #a5d6a7;background:rgba(46,125,50,.1);color:#2e7d32;cursor:pointer">📥 Importar XLSX</button><button onclick="instrExportPDF(\'tags\')" style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid var(--hbr);background:var(--hg);color:var(--ht);cursor:pointer">📄 Exportar PDF</button>','instrTagAdd','instrTagDelAll','_itArea'),
+    _instrFilterBar(_itSearch,'_itSearch',_instrSelBtn('tags',filtered)+_instrExpBtn('tags')+_instrAreaSel('_itArea',list,_itArea)+'<button onclick="instrTagImportPDF()" style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid #b0ddf0;background:rgba(0,119,182,.1);color:#0F766E;cursor:pointer">📎 Importar PDF</button><button onclick="instrTagImportXLSX()" style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid #a5d6a7;background:rgba(46,125,50,.1);color:#2e7d32;cursor:pointer">📥 Importar XLSX</button><button onclick="instrExportPDF(\'tags\')" style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid var(--hbr);background:var(--hg);color:var(--ht);cursor:pointer">📄 Exportar PDF</button>','instrTagAdd','instrTagDelAll','_itArea'),
     _instrTable([_instrChkHead('tags'),'DISCIPLINA','DOC. RASTREABILIDADE','TAG','LINHA / EQUIPAMENTO','CÓD. SUPRIMENTOS','QTDE','ST. SUPRIMENTOS','DATA CHEGADA','CALIBRAÇÃO','CLASSIFICAÇÃO','ST. MONTAGEM','DT ELÉT.','ST. DT ELÉT.','DT PNEU.','ST. DT PNEU.','DT PROC.','ST. DT PROC.','INTERLIGAÇÃO','ATERRAMENTO','LOOP TESTE','AÇÕES'],rows,'🏷️','Nenhuma tag cadastrada'));
 }
 async function instrTagSet(id,f,v){var r=instrTags.find(function(x){return x.id===id;});if(r){r[f]=v;await saveAll();}}
