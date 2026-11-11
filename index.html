@@ -1187,9 +1187,8 @@ function goView(v, pid) {
     // Toggle: if same project clicked again, close it
     currentProjId = (currentProjId === pid) ? null : pid;
     if (currentProjId) {
-      currentDisc = 'caldeiraria';
-      const effTabs = getEffectiveDiscTabs(currentProjId);
-      currentSubTab = effTabs.caldeiraria.subs[0];
+      currentDisc = 'dash';
+      currentSubTab = 'dash-geral';
     }
     // Reseta lastTemplate ao trocar de projeto — evita vazamento de dados entre projetos
     if (currentProjId !== prevProj) {
@@ -1214,7 +1213,7 @@ function goView(v, pid) {
   else if (v === 'isos') renderIsoView();
   renderHeader();
 }
-const HY_BUILD = '11/11/2026 12:45';
+const HY_BUILD = '11/11/2026 13:06';
 function renderHeader() {
   const el = document.getElementById('hdr-acts');
   if (currentView === 'projects' && !currentProjId) {
@@ -1370,13 +1369,17 @@ function sincronizarPlanilha() {
 }
 
 const DISC_TABS = {
-  caldeiraria: { label:'🔧 Caldeiraria', subs:['dashboard','isometricos','suportes','materiais','estrutura','juntas'],
-    labels:['Dashboard','Controle de Isométricos','Controle de Suportes','Controle de Materiais','Estrutura Metálica','Mapa de Juntas'] },
-  eletrica: { label:'⚡ Elétrica', subs:['elet-dash','elet-cabos'],
-    labels:['Dashboard','Controle de Cabos'] },
-  instr: { label:'🔬 Instrumentação', subs:['instr-dash','instr-tags','instr-cabos','instr-suportes','instr-encam'],
-    labels:['Dashboard','Tags de Instrumentos','Lista de Cabos','Suportes','Encaminhamento'] }
+  dash: { label:'📊 Dashboard', subs:['dash-geral','dash-cald','dash-eletinst'],
+    labels:['Visão Geral','Caldeiraria','Elétrica e Instrumentação'] },
+  caldeiraria: { label:'🔧 Caldeiraria', subs:['isometricos','suportes','materiais','estrutura','juntas'],
+    labels:['Controle de Isométricos','Controle de Suportes','Controle de Materiais','Estrutura Metálica','Mapa de Juntas'] },
+  eletrica: { label:'⚡ Elétrica', subs:['elet-cabos'],
+    labels:['Controle de Cabos'] },
+  instr: { label:'🔬 Instrumentação', subs:['instr-tags','instr-cabos','instr-suportes','instr-encam'],
+    labels:['Tags de Instrumentos','Lista de Cabos','Suportes','Encaminhamento'] }
 };
+/* sub-abas antigas de dashboard, agora reunidas na aba 📊 Dashboard */
+const _DASH_LEGADO = { 'dashboard':'dash-cald', 'elet-dash':'dash-eletinst', 'instr-dash':'dash-eletinst' };
 function setDisc(d) {
   currentDisc = d;
   const tabs = getEffectiveDiscTabs(currentProjId);
@@ -1396,13 +1399,15 @@ function getEffectiveDiscTabs(projId) {
       ? { label: DISC_TABS[disc].label, subs: (proj.tabConfig[disc].subs||[]).slice(), labels: (proj.tabConfig[disc].labels||[]).slice() }
       : DISC_TABS[disc];
   });
-  /* garante a sub-aba Dashboard de cada disciplina mesmo em projetos
-     que ja tinham tabConfig salvo antes da criacao dos dashboards */
-  const DASH = { caldeiraria:['dashboard','Dashboard'], eletrica:['elet-dash','Dashboard'], instr:['instr-dash','Dashboard'] };
-  Object.keys(DASH).forEach(disc => {
-    const d = result[disc]; if (!d || !d.subs) return;
-    if (d.subs.indexOf(DASH[disc][0]) < 0) { d.subs.unshift(DASH[disc][0]); d.labels.unshift(DASH[disc][1]); }
+  /* projetos salvos antes da unificacao podem trazer as sub-abas antigas
+     de dashboard dentro das disciplinas — removidas aqui */
+  Object.keys(result).forEach(disc => {
+    const d = result[disc]; if (!d || !d.subs || disc === 'dash') return;
+    for (let i = d.subs.length - 1; i >= 0; i--) {
+      if (_DASH_LEGADO[d.subs[i]]) { d.subs.splice(i, 1); d.labels.splice(i, 1); }
+    }
   });
+  result.dash = DISC_TABS.dash;
   return result;
 }
 
@@ -2536,11 +2541,12 @@ function _v3Rank(titulo, itens, opts) {
   var cor = opts.cor || V3.dark, lim = opts.lim || 12, fmt = opts.fmt || _v3N;
   var arr = (itens || []).slice(0, lim);
   if (!arr.length) return _v3Panel(titulo, '<div style="font-size:10px;color:var(--hmu);text-align:center;padding:22px 0">Sem dados.</div>', opts.extra);
-  var max = 0; arr.forEach(function (i) { if (i.n > max) max = i.n; });
+  var max = opts.max || 0; if (!max) arr.forEach(function (i) { if (i.n > max) max = i.n; });
+  var lblW = opts.lblW || 92;
   var body = arr.map(function (i) {
     var p = max > 0 ? Math.round(i.n / max * 100) : 0;
     return '<div style="display:flex;align-items:center;gap:7px;margin-bottom:4px">'
-      + '<div style="width:92px;flex:none;font-size:9.5px;font-weight:700;color:var(--ht);overflow:hidden;'
+      + '<div style="width:' + lblW + 'px;flex:none;font-size:9.5px;font-weight:700;color:var(--ht);overflow:hidden;'
       + 'text-overflow:ellipsis;white-space:nowrap" title="' + i.k + '">' + i.k + '</div>'
       + '<div style="flex:1;height:15px;background:#eef2f8;border-radius:3px;overflow:hidden;position:relative">'
       + '<div style="height:100%;width:' + Math.max(p, 4) + '%;background:' + cor + ';border-radius:3px"></div>'
@@ -2762,6 +2768,96 @@ function _v3Escopo() {
                               b: d.reduce(function (s, r) { return s + (parseFloat(r.qtdReal) || 0); }, 0) };
           }), 'Projetado', 'Lançado', { lim: 10, extra: 'grid-column:span 4' })
     );
+}
+
+
+/* ══════════════ DASHBOARD UNIFICADO — VISAO GERAL ════════════════════ */
+function renderDashGeral(discTabs, bc) {
+  var proj  = projects.find(function (p) { return p.id === currentProjId; });
+  var list  = currentProjId ? projIsos(currentProjId) : isos;
+  var J     = _jtProj();
+  var sups  = currentProjId
+    ? suportes.filter(function (s) { return list.some(function (e) { return e.num === s.isometrico; }); })
+    : suportes;
+  var tags  = _instrProjFilter(instrTags);
+  var E     = _v3EscopoDados();
+  var cabos = E.cabos, isups = E.sups, encam = E.encam;
+
+  var ativos = list.filter(function (e) { return ['Referência','Desmontagem','Escopo cancelado','Hold'].indexOf(e.classif||'Fabricação') < 0; });
+  var pFab = ativos.length ? Math.round(ativos.reduce(function (s,e) { return s + fabPct(e); },0) / ativos.length) : 0;
+  var pMon = ativos.length ? Math.round(ativos.reduce(function (s,e) { return s + monPct(e); },0) / ativos.length) : 0;
+  var avFis = ativos.length ? Math.round(ativos.reduce(function (s,e) { return s + (fabPct(e)*0.4 + monPct(e)*0.6); },0) / ativos.length) : 0;
+
+  var jFeitas = J.filter(_jtFeita).length;
+  var polT = J.reduce(function (s,j) { return s + _jtPol(j.polDiam || j.diam); }, 0);
+  var polF = J.filter(_jtFeita).reduce(function (s,j) { return s + _jtPol(j.polDiam || j.diam); }, 0);
+  var supMon = sups.filter(function (s) { return s.mon === 'Montado'; }).length;
+  var tagMon = tags.filter(function (r) { return r.stMon === 'Sim'; }).length;
+  var mProj = cabos.reduce(function (s,r) { return s + (parseFloat(r.qtd)||0); }, 0);
+  var mReal = cabos.reduce(function (s,r) { return s + (parseFloat(r.qtdReal)||0); }, 0);
+  var mont = function (v) { return v === 'Montado' || v === 'Sim' || v === 'Concluído'; };
+  var isupMon = isups.filter(function (r) { return mont(r.stMon); }).length;
+  var encProj = encam.reduce(function (s,r) { return s + (parseFloat(r.qtd)||0); }, 0);
+  var encReal = encam.filter(function (r) { return mont(r.stMon); }).reduce(function (s,r) { return s + (parseFloat(r.qtd)||0); }, 0);
+
+  var hoje = new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'short',year:'numeric'});
+  var cab = '<div style="padding:14px 16px 2px;display:flex;align-items:center;justify-content:space-between">'
+    + '<div><div style="font-size:15px;font-weight:700;color:var(--hb)">' + (proj ? proj.name : 'Todos os projetos') + ' — Visão Geral</div>'
+    + '<div style="font-size:10px;color:var(--hmu);margin-top:2px">Caldeiraria · Elétrica · Instrumentação &nbsp;|&nbsp; atualizado em ' + hoje + '</div></div>'
+    + '</div>';
+
+  function kpi(val, lbl, sub, cor) {
+    return '<div class="sum-card"><div class="sum-val" style="color:' + cor + '">' + val + '</div>'
+      + '<div class="sum-lbl">' + lbl + '</div>'
+      + (sub ? '<div style="font-size:9px;color:var(--hmu)">' + sub + '</div>' : '') + '</div>';
+  }
+  var kpis = '<div class="sum-bar" style="margin:8px 16px 0;gap:8px">'
+    + kpi(list.length, 'Isométricos', ativos.length + ' ativos', 'var(--hb)')
+    + kpi(avFis + '%', 'Avanço físico', 'fab ' + pFab + '% · mon ' + pMon + '%', '#2F7D53')
+    + kpi(J.length, 'Juntas', jFeitas + ' executadas', 'var(--hb)')
+    + kpi(_jtFmt(polT), 'Pol. diametrais', _jtFmt(polF) + ' executadas', '#2A4661')
+    + kpi(sups.length, 'Suportes tubulação', supMon + ' montados', 'var(--hb)')
+    + kpi(tags.length, 'Instrumentos', tagMon + ' montados', 'var(--hb)')
+    + kpi(cabos.length, 'Cabos', _dashM(mProj) + ' projetados', 'var(--hb)')
+    + kpi(_dashM(mReal), 'Cabo lançado', (mProj > 0 ? Math.round(mReal/mProj*100) : 0) + '% do projeto', '#2F7D53')
+    + kpi(isups.length, 'Sup. instrumentos', isupMon + ' montados', 'var(--hb)')
+    + kpi(encam.length, 'Encaminhamento', _dashM(encProj) + ' previstos', 'var(--hb)')
+    + '</div>';
+
+  var corpo = '<div style="padding:4px 0 24px">'
+    + _v3Title('VISÃO 360&deg;', 'CONSOLIDADO DO PROJETO')
+    + _v3Grid(190,
+        _v3Gauge('% avanço físico total', avFis, 100, V3.dark)
+      + _v3Gauge('Juntas executadas', jFeitas, J.length || 1, V3.light)
+      + _v3Gauge('Pol. diametrais executadas', Math.round(polF), Math.round(polT) || 1, V3.dark)
+      + _v3Gauge('Suportes montados', supMon, sups.length || 1, V3.light)
+      + _v3Gauge('Instrumentos montados', tagMon, tags.length || 1, V3.dark)
+      + _v3Gauge('Sup. instrum. montados', isupMon, isups.length || 1, V3.light)
+      + _v3Gauge('Lançamento de cabos (m)', Math.round(mReal), Math.round(mProj) || 1, V3.dark)
+      + _v3Gauge('Montagem encaminh. (m)', Math.round(encReal), Math.round(encProj) || 1, V3.light)
+    )
+    + _v3Grid(250,
+        _v3Bars('Juntas por área', _dashCount(J, _v3AreaJunta), { lim: 10, extra: 'grid-column:span 2' })
+      + _v3Bars('Juntas por local', _dashCount(J, function (j) { return _jtEhPipe(j) ? 'Pipe-Shop' : 'Campo'; }), { lim: 4, cor: V3.light })
+      + _v3Bars('Suportes por área', _dashCount(sups, function (r) { return r.area || '(sem área)'; }), { lim: 8 })
+      + _v3Bars('Instrumentos por área', _dashCount(tags, function (r) { return _instrArea(r.doc) || '(sem área)'; }), { lim: 10, extra: 'grid-column:span 2' })
+      + _v3Bars('Cabos (m) por disciplina', _dashSum(cabos, function (r) { return r._d; }, function (r) { return r.qtd; }), { lim: 4, cor: V3.light })
+      + _v3Bars('Cabos (m) por localização', _dashSum(cabos, function (r) { return r.loc; }, function (r) { return r.qtd; }), { lim: 6 })
+      + _v3Rank('% de avanço por frente',
+          [ { k:'Juntas', t:J.length, f:jFeitas },
+            { k:'Pol. diametrais', t:polT, f:polF },
+            { k:'Suportes tubul.', t:sups.length, f:supMon },
+            { k:'Instrumentos', t:tags.length, f:tagMon },
+            { k:'Sup. instrumentos', t:isups.length, f:isupMon },
+            { k:'Cabos (m)', t:mProj, f:mReal },
+            { k:'Encaminhamento (m)', t:encProj, f:encReal } ]
+          .map(function (i) { return { k: i.k + '  (' + _v3N(Math.round(i.f)) + '/' + _v3N(Math.round(i.t)) + ')',
+                                       n: i.t > 0 ? Math.round(i.f / i.t * 1000) / 10 : 0 }; }),
+          { lim: 10, max: 100, lblW: 190, fmt: function (n) { return _v3N(n) + '%'; }, extra: 'grid-column:span 4' })
+    )
+    + '</div>';
+
+  document.getElementById('view-isos').innerHTML = bc + discTabs + cab + kpis + corpo + '</div>';
 }
 
 /* ══════════════ DASHBOARD — ELETRICA ═════════════════════════════════ */
@@ -3818,7 +3914,7 @@ function _instrDelBtn(id,fn){
 }
 function _instrHeader(discTabs,bc,title,kpis,filterBar,tbl){
   document.getElementById('view-isos').innerHTML = bc+discTabs
-    +'<div style="padding:10px 16px 4px;font-size:15px;font-weight:700;color:var(--hb)">'+(currentDisc==='eletrica'?'⚡ Elétrica':'🔬 Instrumentação')+' — '+title+'</div>'
+    +'<div style="padding:10px 16px 4px;font-size:15px;font-weight:700;color:var(--hb)">'+(currentDisc==='dash'?'📊 Dashboard':currentDisc==='eletrica'?'⚡ Elétrica':'🔬 Instrumentação')+' — '+title+'</div>'
     +kpis+filterBar+tbl+'</div>';
 }
 /* ─── Filtro por AREA, derivada do numero de rastreabilidade ───────────
@@ -4257,7 +4353,7 @@ function renderInstrDash(discTabs, bc) {
     + '</div>';
 
   var vazio = !tags.length && !cabos.length;
-  _instrHeader(discTabs, bc, 'Dashboard', kpis, '',
+  _instrHeader(discTabs, bc, currentDisc === 'dash' ? 'Elétrica e Instrumentação' : 'Dashboard', kpis, '',
     vazio ? '<div class="ph-panel"><div style="font-size:32px">\uD83D\uDCCA</div><strong>Nenhum dado neste projeto</strong>'
           + '<span style="font-size:11px">Importe ou cadastre instrumentos e cabos para ver os indicadores.</span></div>'
           : corpo);
@@ -7741,6 +7837,16 @@ function renderIsoView(force) {
 
   const effTabs = getEffectiveDiscTabs(currentProjId);
 
+  /* estado salvo apontando para uma sub-aba de dashboard antiga */
+  if (currentDisc !== 'dash' && _DASH_LEGADO[currentSubTab]) {
+    currentSubTab = _DASH_LEGADO[currentSubTab];
+    currentDisc = 'dash';
+  }
+  if (currentDisc === 'dash' && effTabs.dash.subs.indexOf(currentSubTab) < 0) currentSubTab = 'dash-geral';
+  if (currentDisc !== 'dash' && effTabs[currentDisc] && effTabs[currentDisc].subs.indexOf(currentSubTab) < 0) {
+    currentSubTab = effTabs[currentDisc].subs[0];
+  }
+
   const discTabs = `
     <div class="disc-tabs">
       ${Object.entries(effTabs).map(([k,v])=>`<div class="disc-tab ${currentDisc===k?'active':''}" onclick="setDisc('${k}')">${v.label}</div>`).join('')}
@@ -7765,12 +7871,13 @@ function renderIsoView(force) {
     renderJuntas(discTabs, bc); return;
   }
 
-  if (currentDisc === 'caldeiraria' && currentSubTab === 'dashboard') {
-    renderDashboard(discTabs, bc); return;
+  if (currentDisc === 'dash') {
+    if (currentSubTab === 'dash-cald')     { renderDashboard(discTabs, bc); return; }
+    if (currentSubTab === 'dash-eletinst') { renderInstrDash(discTabs, bc); return; }
+    renderDashGeral(discTabs, bc); return;
   }
 
   if (currentDisc === 'eletrica') {
-    if (currentSubTab === 'elet-dash') { renderEletDash(discTabs, bc); return; }
     renderInstrCabos(discTabs, bc); return;
   }
 
