@@ -1213,7 +1213,7 @@ function goView(v, pid) {
   else if (v === 'isos') renderIsoView();
   renderHeader();
 }
-const HY_BUILD = '11/11/2026 13:31';
+const HY_BUILD = '11/11/2026 13:39';
 function renderHeader() {
   const el = document.getElementById('hdr-acts');
   if (currentView === 'projects' && !currentProjId) {
@@ -1490,7 +1490,7 @@ function renderEstruturaView(discTabs, bc) {
     <div class="sum-card" style="${atrasados>0?'border-color:var(--hd);background:#fdecea':''}"><div class="sum-val" style="color:${atrasados>0?'var(--hd)':'var(--hmu)'}">${atrasados}</div><div class="sum-lbl">${atrasados>0?'⚠️ Atrasados':'Atrasados'}</div><div style="font-size:9px;color:var(--hmu)">grade/cobertura além do prazo</div></div>
   </div>`;
 
-  const filterBar = `<div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid var(--hbr)">
+  const filterBar = `<div data-filtro="1" style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid var(--hbr)">
     <input id="ef-search" placeholder="🔍 Número do desenho" value="${_estSearch||''}" oninput="_estSearch=this.value;_instrSearchRerender(this)" style="font-size:11px;padding:4px 8px;border:0.5px solid var(--hbr);border-radius:5px;background:var(--hg);color:var(--ht);min-width:170px">
     <select id="ef-fab" onchange="_estFab=this.value;renderIsoView()" style="font-size:11px;padding:3px 7px;border:0.5px solid var(--hbr);border-radius:5px;background:var(--hg);color:var(--ht)">
       <option value="">Fabricação</option>
@@ -1716,7 +1716,7 @@ function renderSuportesView(discTabs, bc) {
     </div>
   </div>`;
 
-  const filters = `<div class="filter-bar" style="flex-wrap:wrap;gap:6px;padding:8px 16px">
+  const filters = `<div class="filter-bar" data-filtro="1" style="flex-wrap:wrap;gap:6px;padding:8px 16px">
     <input id="sf-search" class="f-inp" placeholder="🔍 SEQ / Tipo / Linha / Isométrico" style="min-width:220px" value="${fSearch}" oninput="_supSearch=this.value;_instrSearchRerender(this)">
     <select id="sf-area" onchange="_supArea=this.value;renderIsoView()" style="font-size:11px;padding:3px 7px;border:0.5px solid var(--hbr);border-radius:5px;background:var(--hg);color:var(--ht)">
       <option value="">Área</option>
@@ -1751,7 +1751,7 @@ function renderSuportesView(discTabs, bc) {
     <button class="btn-del-sel" id="sbtn-del-sel" style="display:none" onclick="reqAuth('del-sup-sel','')">🗑️ Excluir selecionados (<span id="s-sel-count">0</span>)</button>
   <button style="height:27px;font-size:11px;padding:3px 10px;border-radius:6px;border:1px solid #e0c8c8;background:#fdecea;color:var(--hd);cursor:pointer" onclick="delAllSuportes()">🗑️ Excluir Tudo</button>
   </div>
-  <div id="sup-bulk-bar" style="display:none;flex-wrap:wrap;align-items:center;gap:8px;padding:6px 16px 8px;background:rgba(25,118,210,.07);border-bottom:1px solid var(--hbr)">
+  <div id="sup-bulk-bar" data-filtro="1" style="display:none;flex-wrap:wrap;align-items:center;gap:8px;padding:6px 16px 8px;background:rgba(25,118,210,.07);border-bottom:1px solid var(--hbr)">
     <span style="font-size:11px;font-weight:600;color:var(--hb)">📋 <span id="sup-bulk-count">0</span> selecionado(s) — aplicar status:</span>
     <label style="font-size:10px;color:var(--hmu)">Fabricação:
       <select id="bulk-fab" style="font-size:10px;padding:2px 6px;border-radius:4px;border:1px solid var(--hbr);background:var(--hg);color:var(--ht);margin-left:3px">
@@ -2671,7 +2671,7 @@ function _v3LimpaF() { _v3fDisc = ''; _v3fSecao = ''; _v3fDoc = ''; _v3fArea = '
 function _v3Rerender() {
   var sc = document.scrollingElement ? document.scrollingElement.scrollTop : 0;
   var at = document.activeElement ? document.activeElement.id : '';
-  renderIsoView();
+  renderIsoView(true);
   if (document.scrollingElement) document.scrollingElement.scrollTop = sc;
   if (at) { var n = document.getElementById(at); if (n) n.focus(); }
 }
@@ -2712,7 +2712,7 @@ function _v3BarraFiltros() {
     .forEach(function (r) { addA(_v3AreaIso(r)); });
   secoes.sort(); docs.sort(); areas.sort();
 
-  return '<div style="position:sticky;top:0;z-index:40;display:flex;flex-wrap:wrap;align-items:center;gap:10px;'
+  return '<div data-filtro="1" style="position:sticky;top:0;z-index:40;display:flex;flex-wrap:wrap;align-items:center;gap:10px;'
     + 'margin:0;padding:9px 16px;background:var(--hcard);border-bottom:2px solid ' + V3.dark + ';box-shadow:0 2px 6px rgba(20,40,70,.06)">'
     + '<span style="font-size:10px;font-weight:800;color:' + V3.dark + ';letter-spacing:.6px">\u25BC FILTROS</span>'
     + _v3Sel('Área:', 'v3f-area', _v3fArea, areas, 'area')
@@ -3130,7 +3130,7 @@ function renderCabosView(discTabs,bc){
   var locs=[...new Set(list.map(function(c){return c.localizacao;}).filter(Boolean))].sort();
   var interls=[...new Set(list.map(function(c){return c.interligacao;}).filter(Boolean))].sort();
 
-  var filterBar='<div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid var(--hbr)">'
+  var filterBar='<div data-filtro="1" style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid var(--hbr)">'
     +'<input id="srch-_cabSearch" placeholder="🔍 Buscar..." value="'+(_cabSearch||'')+'" oninput="_cabSearch=this.value;_instrSearchRerender(this)" style="font-size:11px;padding:4px 8px;border:0.5px solid var(--hbr);border-radius:5px;background:var(--hg);color:var(--ht);min-width:160px">'
     +'<select onchange="_cabLoc=this.value;renderIsoView()" style="font-size:11px;padding:3px 7px;border:0.5px solid var(--hbr);border-radius:5px;background:var(--hg);color:var(--ht)">'
       +'<option value="">Localização</option>'+locs.map(function(l){return '<option value="'+l+'" '+(_cabLoc===l?'selected':'')+'>'+l+'</option>';}).join('')+'</select>'
@@ -3341,7 +3341,7 @@ function renderSupEletricaView(discTabs,bc){
     +'<div class="sum-card"><div class="sum-val" style="color:'+(pMon>=100?'#2F7D53':pMon>=70?'#B07A16':'#0F766E')+'">'+pMon+'%</div><div class="sum-lbl">Montagem</div><div class="kpi-bar" style="margin-top:4px"><div style="width:'+pMon+'%;height:5px;border-radius:3px;background:'+(pMon>=100?'#2F7D53':pMon>=70?'#B07A16':'#0F766E')+'"></div></div></div>'
     +'</div>';
 
-  var filterBar='<div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid var(--hbr)">'
+  var filterBar='<div data-filtro="1" style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid var(--hbr)">'
     +'<input id="srch-_supElSearch" placeholder="🔍 Rastreabilidade..." value="'+(_supElSearch||'')+'" oninput="_supElSearch=this.value;_instrSearchRerender(this)" style="font-size:11px;padding:4px 8px;border:0.5px solid var(--hbr);border-radius:5px;background:var(--hg);color:var(--ht);min-width:180px">'
     +'<select onchange="_supElFab=this.value;renderIsoView()" style="font-size:11px;padding:3px 7px;border:0.5px solid var(--hbr);border-radius:5px;background:var(--hg);color:var(--ht)">'
       +'<option value="">Fabricação</option>'+SUP_EL_FAB_OPTS.map(function(o){return '<option value="'+o+'" '+(_supElFab===o?'selected':'')+'>'+o+'</option>';}).join('')+'</select>'
@@ -3438,7 +3438,7 @@ function renderDTView(discTabs,bc){
     +'<div class="sum-card"><div class="sum-val" style="color:'+(pTrip>=100?'#2F7D53':pTrip>=70?'#B07A16':'#e65100')+'">'+pTrip+'%</div><div class="sum-lbl">Trip Teste</div><div class="kpi-bar" style="margin-top:4px"><div style="width:'+pTrip+'%;height:5px;border-radius:3px;background:'+(pTrip>=100?'#2F7D53':pTrip>=70?'#B07A16':'#e65100')+'"></div></div></div>'
     +'</div>';
 
-  var filterBar='<div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid var(--hbr)">'
+  var filterBar='<div data-filtro="1" style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid var(--hbr)">'
     +'<input id="srch-_dtSearch" placeholder="🔍 Tag ou Código..." value="'+(_dtSearch||'')+'" oninput="_dtSearch=this.value;_instrSearchRerender(this)" style="font-size:11px;padding:4px 8px;border:0.5px solid var(--hbr);border-radius:5px;background:var(--hg);color:var(--ht);min-width:170px">'
     +'<select onchange="_dtTipo=this.value;renderIsoView()" style="font-size:11px;padding:3px 7px;border:0.5px solid var(--hbr);border-radius:5px;background:var(--hg);color:var(--ht)">'
       +'<option value="">Tipo DT</option>'+DT_TIPO_OPTS.map(function(o){return '<option value="'+o+'" '+(_dtTipo===o?'selected':'')+'>'+o+'</option>';}).join('')+'</select>'
@@ -3686,7 +3686,7 @@ function renderInstView(discTabs,bc){
   var locs=[...new Set(list.map(function(r){return r.loc;}).filter(Boolean))].sort();
   var discs2=[...new Set(list.map(function(r){return r.disc;}).filter(Boolean))].sort();
 
-  var filterBar='<div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid var(--hbr)">'
+  var filterBar='<div data-filtro="1" style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid var(--hbr)">'
     +'<input id="srch-_instSearch" placeholder="🔍 Tag, Rastreab., Local..." value="'+(_instSearch||'')+'" oninput="_instSearch=this.value;_instrSearchRerender(this)" style="font-size:11px;padding:4px 8px;border:0.5px solid var(--hbr);border-radius:5px;background:var(--hg);color:var(--ht);min-width:180px">'
     +'<select onchange="_instLoc=this.value;renderIsoView()" style="font-size:11px;padding:3px 7px;border:0.5px solid var(--hbr);border-radius:5px;background:var(--hg);color:var(--ht)">'
       +'<option value="">Localização</option>'+locs.map(function(l){return '<option value="'+l+'" '+(_instLoc===l?'selected':'')+'>'+l+'</option>';}).join('')+'</select>'
@@ -3804,7 +3804,7 @@ function renderInfraView(discTabs,bc){
     +'</div>';
 
   var tipos=[...new Set(list.map(function(r){return r.tipo;}).filter(Boolean))].sort();
-  var filterBar='<div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid var(--hbr)">'
+  var filterBar='<div data-filtro="1" style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid var(--hbr)">'
     +'<input id="srch-_infraSearch" placeholder="🔍 Rastreab., Tipo, Cód..." value="'+(_infraSearch||'')+'" oninput="_infraSearch=this.value;_instrSearchRerender(this)" style="font-size:11px;padding:4px 8px;border:0.5px solid var(--hbr);border-radius:5px;background:var(--hg);color:var(--ht);min-width:180px">'
     +'<select onchange="_infraTipo=this.value;renderIsoView()" style="font-size:11px;padding:3px 7px;border:0.5px solid var(--hbr);border-radius:5px;background:var(--hg);color:var(--ht)">'
       +'<option value="">Tipo Encam.</option>'+INFRA_TIPO_OPTS.map(function(o){return '<option value="'+o+'" '+(_infraTipo===o?'selected':'')+'>'+o+'</option>';}).join('')+'</select>'
@@ -4024,7 +4024,7 @@ function _instrSearchRerender(el) {
   try { pos = el.selectionStart; } catch (e) {}
   clearTimeout(_instrSrchTimer);
   _instrSrchTimer = setTimeout(function () {
-    renderIsoView();
+    renderIsoView(true);
     var n = document.getElementById(id);
     if (n) {
       n.focus();
@@ -4035,7 +4035,7 @@ function _instrSearchRerender(el) {
 }
 
 function _instrFilterBar(search,searchKey,extraSelects,addFn,delAllFn,areaKey){
-  return '<div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid var(--hbr)">'
+  return '<div data-filtro="1" style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid var(--hbr)">'
     +'<input id="srch-'+searchKey+'" placeholder="🔍 Buscar..." value="'+(search||'')+'" autocomplete="off" oninput="_instrSetSearch(\''+searchKey+'\',this.value);_instrSearchRerender(this)" style="font-size:11px;padding:4px 8px;border:0.5px solid var(--hbr);border-radius:5px;background:var(--hg);color:var(--ht);min-width:160px">'
     +(extraSelects||'')
     +'<button class="btn-clr" onclick="_instrSetSearch(\''+searchKey+'\',\'\');'+(areaKey?'_instrSetArea(\''+areaKey+'\',\'\');':'')+'renderIsoView()">✕</button>'
@@ -7818,11 +7818,15 @@ function renderPlanejamento(discTabs, bc) {
 }
 
 function renderIsoView(force) {
-  // Não re-renderiza se o usuário está editando um campo (a menos que forçado)
+  // Não re-renderiza se o usuário está EDITANDO um registro (a menos que forçado).
+  // Controles de filtro (marcados com .filter-bar ou [data-filtro]) nunca abortam o
+  // re-render — senão o próprio filtro em foco impediria a tela de ser atualizada.
   if (!force) {
     const active = document.activeElement;
-    if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.tagName === 'SELECT') && active.closest('#view-isos')) {
-      return; // campo em foco — aborta re-render
+    if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.tagName === 'SELECT')
+        && active.closest('#view-isos')
+        && !active.closest('.filter-bar') && !active.closest('[data-filtro]')) {
+      return; // campo de edição em foco — aborta re-render
     }
   }
   const _isoContainer = document.getElementById('view-isos');
@@ -7937,7 +7941,7 @@ function renderIsoView(force) {
     return;
   }
 
-  const isoBulkBar = `<div id="iso-bulk-bar" style="display:none;flex-wrap:wrap;align-items:center;gap:8px;padding:6px 16px 8px;background:rgba(25,118,210,.07);border-bottom:1px solid var(--hbr)">
+  const isoBulkBar = `<div id="iso-bulk-bar" data-filtro="1" style="display:none;flex-wrap:wrap;align-items:center;gap:8px;padding:6px 16px 8px;background:rgba(25,118,210,.07);border-bottom:1px solid var(--hbr)">
     <span style="font-size:11px;font-weight:600;color:var(--hb)">📋 <span id="iso-bulk-count">0</span> selecionado(s) — aplicar status:</span>
     <label style="font-size:10px;color:var(--hmu)">Pintura:
       <select id="iso-bulk-paint" style="font-size:10px;padding:2px 6px;border-radius:4px;border:1px solid var(--hbr);background:var(--hg);color:var(--ht);margin-left:3px">
