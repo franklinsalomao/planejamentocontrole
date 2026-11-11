@@ -1214,7 +1214,7 @@ function goView(v, pid) {
   else if (v === 'isos') renderIsoView();
   renderHeader();
 }
-const HY_BUILD = '11/11/2026 11:32';
+const HY_BUILD = '11/11/2026 11:57';
 function renderHeader() {
   const el = document.getElementById('hdr-acts');
   if (currentView === 'projects' && !currentProjId) {
@@ -1372,8 +1372,8 @@ function sincronizarPlanilha() {
 const DISC_TABS = {
   caldeiraria: { label:'🔧 Caldeiraria', subs:['dashboard','isometricos','suportes','materiais','estrutura','juntas'],
     labels:['Dashboard','Controle de Isométricos','Controle de Suportes','Controle de Materiais','Estrutura Metálica','Mapa de Juntas'] },
-  eletrica: { label:'⚡ Elétrica', subs:['elet-cabos'],
-    labels:['Controle de Cabos'] },
+  eletrica: { label:'⚡ Elétrica', subs:['elet-dash','elet-cabos'],
+    labels:['Dashboard','Controle de Cabos'] },
   instr: { label:'🔬 Instrumentação', subs:['instr-dash','instr-tags','instr-cabos','instr-suportes','instr-encam'],
     labels:['Dashboard','Tags de Instrumentos','Lista de Cabos','Suportes','Encaminhamento'] }
 };
@@ -2413,6 +2413,332 @@ function dashGoToArea(area) {
   }, 60);
 }
 
+
+/* ══════════════════════════════════════════════════════════════════════
+   VISAO 360 — kit de visuais no padrao BI (gauges + barras + paineis)
+   Usado pelos dashboards de Caldeiraria, Eletrica e Instrumentacao.
+══════════════════════════════════════════════════════════════════════ */
+var V3 = {
+  dark:  '#1F4E79',   /* azul escuro — serie principal   */
+  light: '#1E9BE0',   /* azul claro  — serie secundaria  */
+  chip:  '#8E9AA8',   /* cinza do rotulo de valor        */
+  track: '#E6EAF0'    /* trilho dos gauges               */
+};
+
+function _v3N(n) {
+  if (n == null || !isFinite(n)) return '0';
+  return (Math.round(n * 100) / 100).toLocaleString('pt-BR');
+}
+
+/* titulo de secao — "VISAO 360 METRICAS DE FABRICACAO" */
+function _v3Title(pre, strong) {
+  return '<div style="text-align:center;margin:22px 0 12px;font-size:17px;font-weight:800;letter-spacing:.6px;color:' + V3.dark + '">'
+    + pre + ' <span style="color:#D32F2F">' + strong + '</span></div>';
+}
+
+/* painel com barra-titulo azul */
+function _v3Panel(titulo, body, extra) {
+  return '<div style="background:var(--hcard);border:1px solid var(--hbr);border-radius:8px;overflow:hidden;'
+    + 'box-shadow:0 1px 5px rgba(20,40,70,.07);display:flex;flex-direction:column;' + (extra || '') + '">'
+    + '<div style="background:' + V3.dark + ';color:#fff;font-size:10px;font-weight:800;letter-spacing:.7px;'
+    + 'text-align:center;padding:5px 8px;text-transform:uppercase">' + titulo + '</div>'
+    + '<div style="padding:10px 12px 12px;flex:1;display:flex;flex-direction:column;justify-content:center">' + body + '</div>'
+    + '</div>';
+}
+
+/* gauge semicircular */
+function _v3GaugeSVG(val, max, cor) {
+  var v = parseFloat(val) || 0, mx = parseFloat(max) || 0;
+  var frac = mx > 0 ? Math.max(0, Math.min(1, v / mx)) : 0;
+  var r = 52, cx = 70, cy = 66, sw = 20;
+  var L = Math.PI * r;
+  var d = 'M ' + (cx - r) + ' ' + cy + ' A ' + r + ' ' + r + ' 0 0 1 ' + (cx + r) + ' ' + cy;
+  return '<svg viewBox="0 0 140 86" style="width:100%;max-width:168px;height:auto;display:block;margin:0 auto">'
+    + '<path d="' + d + '" fill="none" stroke="' + V3.track + '" stroke-width="' + sw + '"/>'
+    + '<path d="' + d + '" fill="none" stroke="' + cor + '" stroke-width="' + sw + '" stroke-linecap="butt"'
+    + ' stroke-dasharray="' + L + ' ' + L + '" stroke-dashoffset="' + (L * (1 - frac)) + '"/>'
+    + '<text x="' + cx + '" y="' + (cy - 4) + '" text-anchor="middle" font-size="22" font-weight="700" fill="#6b7786"'
+    + ' font-family="Segoe UI,Arial,sans-serif">' + _v3N(v) + '</text>'
+    + '</svg>';
+}
+
+/* painel-gauge completo (titulo + arco + escala) */
+function _v3Gauge(titulo, val, max, cor) {
+  var body = _v3GaugeSVG(val, max, cor || V3.dark)
+    + '<div style="display:flex;justify-content:space-between;font-size:9px;color:var(--hmu);margin:-4px 6px 0;font-weight:600">'
+    + '<span>0</span><span>' + _v3N(max) + '</span></div>';
+  return _v3Panel(titulo, body);
+}
+
+/* grafico de barras verticais com chip de valor */
+function _v3Bars(titulo, itens, opts) {
+  opts = opts || {};
+  var cor = opts.cor || V3.dark;
+  var h   = opts.h || 118;
+  var lim = opts.lim || 14;
+  var fmt = opts.fmt || _v3N;
+  var arr = (itens || []).slice(0, lim);
+  if (!arr.length) {
+    return _v3Panel(titulo, '<div style="font-size:10px;color:var(--hmu);text-align:center;padding:22px 0">Sem dados.</div>', opts.extra);
+  }
+  var max = 0; arr.forEach(function (i) { if (i.n > max) max = i.n; });
+  var barras = arr.map(function (i) {
+    var ph = max > 0 ? Math.max(3, Math.round(i.n / max * h)) : 3;
+    var c  = i.cor || cor;
+    return '<div style="flex:1 1 0;min-width:26px;max-width:62px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end">'
+      + '<div style="background:' + V3.chip + ';color:#fff;font-size:8.5px;font-weight:700;border-radius:3px;padding:1px 4px;margin-bottom:3px;white-space:nowrap">' + fmt(i.n) + '</div>'
+      + '<div title="' + i.k + ': ' + fmt(i.n) + '" style="width:76%;height:' + ph + 'px;background:' + c + ';border-radius:2px 2px 0 0"></div>'
+      + '<div style="font-size:8.5px;color:var(--hmu);font-weight:600;margin-top:4px;text-align:center;line-height:1.15;'
+      + 'max-width:62px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + i.k + '">' + i.k + '</div>'
+      + '</div>';
+  }).join('');
+  var body = '<div style="display:flex;align-items:flex-end;justify-content:center;gap:10px;min-height:' + (h + 34) + 'px;'
+    + 'border-bottom:1px solid var(--hbr);padding-bottom:2px">' + barras + '</div>';
+  return _v3Panel(titulo, body, opts.extra);
+}
+
+/* barras agrupadas previsto x real */
+function _v3Bars2(titulo, itens, rotA, rotB, opts) {
+  opts = opts || {};
+  var h = opts.h || 120, lim = opts.lim || 14;
+  var arr = (itens || []).slice(0, lim);
+  if (!arr.length) return _v3Panel(titulo, '<div style="font-size:10px;color:var(--hmu);text-align:center;padding:22px 0">Sem dados.</div>', opts.extra);
+  var max = 0; arr.forEach(function (i) { max = Math.max(max, i.a || 0, i.b || 0); });
+  var grp = arr.map(function (i) {
+    var ha = max > 0 ? Math.max(2, Math.round((i.a || 0) / max * h)) : 2;
+    var hb = max > 0 ? Math.max(2, Math.round((i.b || 0) / max * h)) : 2;
+    var col = function (v, hh, c) {
+      return '<div style="display:flex;flex-direction:column;align-items:center;justify-content:flex-end">'
+        + '<div style="background:' + V3.chip + ';color:#fff;font-size:8px;font-weight:700;border-radius:3px;padding:0 3px;margin-bottom:2px">' + _v3N(v) + '</div>'
+        + '<div style="width:13px;height:' + hh + 'px;background:' + c + ';border-radius:2px 2px 0 0"></div></div>';
+    };
+    return '<div style="flex:1 1 0;min-width:40px;max-width:72px;display:flex;flex-direction:column;align-items:center">'
+      + '<div style="display:flex;gap:3px;align-items:flex-end">' + col(i.a || 0, ha, V3.light) + col(i.b || 0, hb, V3.dark) + '</div>'
+      + '<div style="font-size:8.5px;color:var(--hmu);font-weight:600;margin-top:4px;max-width:58px;overflow:hidden;'
+      + 'text-overflow:ellipsis;white-space:nowrap" title="' + i.k + '">' + i.k + '</div></div>';
+  }).join('');
+  var leg = '<div style="display:flex;gap:14px;justify-content:center;font-size:9px;color:var(--hmu);font-weight:600;margin-bottom:6px">'
+    + '<span><span style="display:inline-block;width:9px;height:9px;background:' + V3.light + ';border-radius:2px;margin-right:4px"></span>' + rotA + '</span>'
+    + '<span><span style="display:inline-block;width:9px;height:9px;background:' + V3.dark + ';border-radius:2px;margin-right:4px"></span>' + rotB + '</span></div>';
+  return _v3Panel(titulo, leg + '<div style="display:flex;align-items:flex-end;justify-content:center;gap:10px;min-height:' + (h + 34) + 'px;border-bottom:1px solid var(--hbr)">' + grp + '</div>', opts.extra);
+}
+
+/* barras horizontais (ranking) */
+function _v3Rank(titulo, itens, opts) {
+  opts = opts || {};
+  var cor = opts.cor || V3.dark, lim = opts.lim || 12, fmt = opts.fmt || _v3N;
+  var arr = (itens || []).slice(0, lim);
+  if (!arr.length) return _v3Panel(titulo, '<div style="font-size:10px;color:var(--hmu);text-align:center;padding:22px 0">Sem dados.</div>', opts.extra);
+  var max = 0; arr.forEach(function (i) { if (i.n > max) max = i.n; });
+  var body = arr.map(function (i) {
+    var p = max > 0 ? Math.round(i.n / max * 100) : 0;
+    return '<div style="display:flex;align-items:center;gap:7px;margin-bottom:4px">'
+      + '<div style="width:92px;flex:none;font-size:9.5px;font-weight:700;color:var(--ht);overflow:hidden;'
+      + 'text-overflow:ellipsis;white-space:nowrap" title="' + i.k + '">' + i.k + '</div>'
+      + '<div style="flex:1;height:15px;background:#eef2f8;border-radius:3px;overflow:hidden;position:relative">'
+      + '<div style="height:100%;width:' + Math.max(p, 4) + '%;background:' + cor + ';border-radius:3px"></div>'
+      + '<span style="position:absolute;left:6px;top:0;line-height:15px;font-size:9px;font-weight:700;color:#fff">' + fmt(i.n) + '</span>'
+      + '</div></div>';
+  }).join('');
+  return _v3Panel(titulo, '<div style="align-self:stretch">' + body + '</div>', (opts.extra || '') + ';justify-content:flex-start');
+}
+
+/* grade responsiva */
+function _v3Grid(cols, inner) {
+  return '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(' + cols + 'px,1fr));gap:10px;padding:0 16px 4px">' + inner + '</div>';
+}
+
+/* area de uma junta — do isometrico cadastrado, senao do proprio numero */
+function _v3AreaJunta(j) {
+  var e = isos.find(function (x) { return x.num === j.iso; });
+  if (e && e.area) return String(e.area);
+  var m = String(j.iso || '').match(/-(\d{3,5})-/);
+  return m ? m[1] : '(sem area)';
+}
+
+/* ══════════════ VISAO 360 — CALDEIRARIA ══════════════════════════════ */
+function _v3Caldeiraria() {
+  var J = _jtProj();
+  var list = currentProjId ? projIsos(currentProjId) : isos;
+  var sups = currentProjId
+    ? suportes.filter(function (s) { return list.some(function (e) { return e.num === s.isometrico; }); })
+    : suportes;
+
+  var fab = J.filter(_jtEhPipe);
+  var mon = J.filter(function (j) { return !_jtEhPipe(j); });
+  var polT = function (a) { return a.reduce(function (s, j) { return s + _jtPol(j.polDiam || j.diam); }, 0); };
+
+  function blocoJuntas(rot, arr, todas) {
+    var feitas = arr.filter(_jtFeita);
+    var g = _v3Grid(190,
+        _v3Gauge('Juntas ' + rot, arr.length, todas.length || 1, V3.dark)
+      + _v3Gauge('Juntas executadas', feitas.length, arr.length || 1, V3.light)
+      + _v3Gauge('Pol. diametrais', Math.round(polT(arr)), Math.round(polT(todas)) || 1, V3.dark)
+      + _v3Gauge('Pol. executadas', Math.round(polT(feitas)), Math.round(polT(arr)) || 1, V3.light)
+      + _v3Bars('Qtde juntas / classe insp.', _dashCount(arr, function (j) { return j.classe; }), { lim: 8, extra: 'grid-column:span 2' })
+    );
+    var g2 = _v3Grid(230,
+        _v3Bars('Juntas x tipo', _dashCount(arr, function (j) { return j.tipo; }), { lim: 8 })
+      + _v3Bars('Juntas x área', _dashCount(arr, _v3AreaJunta), { lim: 8 })
+      + _v3Bars('Qtde juntas / diâmetro', _dashCount(arr, function (j) { return j.diam; })
+            .sort(function (a, b) { return _jtPol(a.k) - _jtPol(b.k); }), { lim: 14, extra: 'grid-column:span 2' })
+    );
+    return g + g2;
+  }
+
+  /* avanco fisico e pintura — base isometricos */
+  var listFabMon = list.filter(function (e) { return ['Referência', 'Desmontagem', 'Escopo cancelado', 'Hold'].indexOf(e.classif || 'Fabricação') < 0; });
+  var avFis = listFabMon.length ? Math.round(listFabMon.reduce(function (s, e) { return s + (fabPct(e) * 0.4 + monPct(e) * 0.6); }, 0) / listFabMon.length) : 0;
+
+  /* TIE-INs */
+  var comTie = list.filter(function (e) { return (e.tiein || '').trim(); });
+  var tieArea = _dashCount(comTie, function (e) { return e.area || '(sem area)'; });
+
+  /* Suportes */
+  var supArea = _dashCount(sups, function (s) { return s.area || '(sem area)'; });
+  var supFabOk = sups.filter(function (s) { return s.fab === 'Fabricado'; }).length;
+  var supPintOk = sups.filter(function (s) { return s.pintura === 'Pintado'; }).length;
+  var supMonOk = sups.filter(function (s) { return s.mon === 'Montado'; }).length;
+  var supBase = sups.length || 1;
+
+  return '<div style="padding:4px 0 24px">'
+    + _v3Title('VISÃO 360&deg;', 'MÉTRICAS DE FABRICAÇÃO (PIPE-SHOP)')
+    + blocoJuntas('pipe-shop', fab, J)
+    + _v3Title('VISÃO 360&deg;', 'MÉTRICAS DE MONTAGEM (CAMPO)')
+    + blocoJuntas('campo', mon, J)
+    + _v3Title('VISÃO 360&deg;', 'SITUAÇÃO E AVANÇO')
+    + _v3Grid(190,
+        _v3Gauge('% avanço físico total', avFis, 100, V3.dark)
+      + _v3Gauge('Isométricos', list.length, list.length || 1, V3.light)
+      + _v3Bars('Situação da junta', _dashCount(J, function (j) { return (j.situacao || '').replace(/^\d+\s*-\s*/, ''); }), { lim: 6, extra: 'grid-column:span 2' })
+      + _v3Bars2('Previsto x realizado / área',
+          _dashCount(J, _v3AreaJunta).map(function (i) {
+            var da = J.filter(function (j) { return _v3AreaJunta(j) === i.k; });
+            return { k: i.k, a: da.length, b: da.filter(_jtFeita).length };
+          }), 'Previsto', 'Realizado', { lim: 10, extra: 'grid-column:span 2' })
+    )
+    + _v3Title('VISÃO 360&deg;', 'TIE-INS')
+    + _v3Grid(190,
+        _v3Gauge('Tie-ins cadastrados', comTie.length, list.length || 1, V3.light)
+      + _v3Bars('Qtde tie-ins por área', tieArea, { lim: 10, extra: 'grid-column:span 3' })
+    )
+    + _v3Title('VISÃO 360&deg;', 'SUPORTES PARA TUBULAÇÃO')
+    + _v3Grid(190,
+        _v3Gauge('Suportes fabricados', supFabOk, supBase, V3.dark)
+      + _v3Gauge('Suportes pintados', supPintOk, supBase, V3.light)
+      + _v3Gauge('Suportes montados', supMonOk, supBase, V3.dark)
+      + _v3Bars('Quantidade de suportes por área', supArea, { lim: 10, extra: 'grid-column:span 3' })
+      + _v3Bars('Suportes por classificação', _dashCount(sups, function (s) { return s.classif || 'Fabricação'; }), { lim: 6, cor: V3.light, extra: 'grid-column:span 2' })
+      + _v3Rank('Tipos de suporte', _dashCount(sups, function (s) { return s.tipo; }), { lim: 10, extra: 'grid-column:span 2' })
+    )
+    + '</div>';
+}
+
+/* ══════════════ DASHBOARD — ELETRICA ═════════════════════════════════ */
+function renderEletDash(discTabs, bc) {
+  var cabos = _instrProjFilter(eletCabos);
+  var proj = cabos.reduce(function (s, r) { return s + (parseFloat(r.qtd) || 0); }, 0);
+  var real = cabos.reduce(function (s, r) { return s + (parseFloat(r.qtdReal) || 0); }, 0);
+  var pct = proj > 0 ? Math.round(real / proj * 100) : 0;
+  var lanc = cabos.filter(function (r) { return r.stLanc2 === 'Concluído'; }).length;
+
+  var kpis = '<div class="sum-bar" style="margin:10px 16px 0;gap:8px">'
+    + _instrKpi(cabos.length, 'Cabos', 'var(--hb)')
+    + _instrKpi(_dashM(proj), 'Projetado', 'var(--hb)')
+    + _instrKpi(_dashM(real), 'Lançado', '#2F7D53')
+    + _instrKpiPct(Math.round(real), Math.round(proj) || 1, 'Lancamento (m)', '#0F766E')
+    + _instrKpiPct(lanc, cabos.length || 1, 'Circuitos concluídos', '#2A4661')
+    + '</div>';
+
+  var corpo = '<div style="padding:4px 0 24px">'
+    + _v3Title('ESCOPO -', 'ELÉTRICA')
+    + _v3Grid(190,
+        _v3Gauge('Qtde de cabos', cabos.length, cabos.length || 1, V3.dark)
+      + _v3Gauge('Lançamento de cabos (m)', Math.round(real), Math.round(proj) || 1, V3.light)
+      + _v3Gauge('% lançamento de cabos', pct, 100, V3.dark)
+      + _v3Gauge('Circuitos concluídos', lanc, cabos.length || 1, V3.light)
+    )
+    + _v3Grid(250,
+        _v3Bars('Qtde cabos / tipo-seção', _dashCount(cabos, function (r) { return r.secao; }), { lim: 12, extra: 'grid-column:span 2' })
+      + _v3Bars('Qtde cabos (m) / localização', _dashSum(cabos, function (r) { return r.loc; }, function (r) { return r.qtd; }), { lim: 8, cor: V3.light })
+      + _v3Bars('St. suprimentos', _dashCount(cabos, function (r) { return r.stSup || 'Pendente'; }), { lim: 6 })
+      + _v3Rank('Volume (m) por seção', _dashSum(cabos, function (r) { return r.secao; }, function (r) { return r.qtd; }), { lim: 12, fmt: _dashM, extra: 'grid-column:span 2' })
+      + _v3Rank('Cabos por rastreabilidade', _dashCount(cabos, function (r) { return r.doc; }), { lim: 10, cor: V3.light, extra: 'grid-column:span 2' })
+      + _v3Bars2('Projetado x lançado por seção',
+          _dashCount(cabos, function (r) { return r.secao; }).map(function (i) {
+            var d = cabos.filter(function (r) { return (r.secao || '(nao informado)') === i.k; });
+            return { k: i.k, a: d.reduce(function (s, r) { return s + (parseFloat(r.qtd) || 0); }, 0),
+                              b: d.reduce(function (s, r) { return s + (parseFloat(r.qtdReal) || 0); }, 0) };
+          }), 'Projetado', 'Lançado', { lim: 10, extra: 'grid-column:span 4' })
+    )
+    + '</div>';
+
+  var vazio = !cabos.length;
+  _instrHeader(discTabs, bc, 'Dashboard', kpis, '',
+    vazio ? '<div class="ph-panel"><div style="font-size:32px">📊</div><strong>Nenhum cabo neste projeto</strong>'
+          + '<span style="font-size:11px">Importe a lista de cabos para ver os indicadores.</span></div>' : corpo);
+}
+
+/* ══════════════ VISAO 360 — INSTRUMENTACAO ═══════════════════════════ */
+function _v3Instr(tags, cabos, sups, encam) {
+  var mont = tags.filter(function (r) { return r.stMon === 'Sim'; }).length;
+  var cal  = tags.filter(function (r) { return r.stCal === 'Concluído'; }).length;
+  var ater = tags.filter(function (r) { return r.stAter === 'Sim'; }).length;
+  var loop = tags.filter(function (r) { return r.stLoop === 'Sim' || r.stLoop === 'Concluído'; }).length;
+  var interl = tags.filter(function (r) { return r.stInterl === 'Sim' || r.stInterl === 'Concluído'; }).length;
+
+  function dtPar(campo, campoEx) {
+    var prev = tags.filter(function (r) { return r[campo] === 'Sim'; });
+    var feito = prev.filter(function (r) { return r[campoEx] === 'Sim' || r[campoEx] === 'Concluído'; });
+    return { prev: prev.length, feito: feito.length };
+  }
+  var dEl = dtPar('stDtEl', 'stDtElEx'), dPn = dtPar('stDtPn', 'stDtPnEx'), dPr = dtPar('stDtPr', 'stDtPrEx');
+
+  var mProj = cabos.reduce(function (s, r) { return s + (parseFloat(r.qtd) || 0); }, 0);
+  var mReal = cabos.reduce(function (s, r) { return s + (parseFloat(r.qtdReal) || 0); }, 0);
+  var supMon = sups.filter(function (r) { return r.stMon === 'Montado' || r.stMon === 'Sim' || r.stMon === 'Concluído'; }).length;
+  var encMon = encam.filter(function (r) { return r.stMon === 'Montado' || r.stMon === 'Sim' || r.stMon === 'Concluído'; }).length;
+
+  return '<div style="padding:4px 0 24px">'
+    + _v3Title('VISÃO 360&deg;', 'INST / EQUIP')
+    + _v3Grid(190,
+        _v3Panel('Total de instrumentos',
+          '<div style="text-align:center;font-size:40px;font-weight:800;color:' + V3.dark + ';line-height:1.1">' + tags.length + '</div>'
+          + '<div style="text-align:center;font-size:9px;color:var(--hmu);font-weight:600;margin-top:4px">tags cadastradas</div>')
+      + _v3Gauge('Inst. montados', mont, tags.length || 1, V3.dark)
+      + _v3Gauge('Inst. calibrados', cal, tags.length || 1, V3.light)
+      + _v3Gauge('Inst. aterrados', ater, tags.length || 1, V3.dark)
+      + _v3Gauge('Loop teste', loop, tags.length || 1, V3.light)
+      + _v3Gauge('Interligação', interl, tags.length || 1, V3.dark)
+      + _v3Gauge('Det. típico elétrico', dEl.feito, dEl.prev || 1, V3.light)
+      + _v3Gauge('Det. típico pneumático', dPn.feito, dPn.prev || 1, V3.dark)
+      + _v3Gauge('Det. típico processo', dPr.feito, dPr.prev || 1, V3.light)
+    )
+    + _v3Grid(250,
+        _v3Rank('Qtde instrumentos por área', _dashCount(tags, function (r) { return _instrArea(r.doc) || '(sem area)'; }), { lim: 12, extra: 'grid-column:span 2' })
+      + _v3Bars('Qtde instrumentos por tipo', _dashCount(tags, function (r) { return _instrTipoTag(r.tag); }), { lim: 16, extra: 'grid-column:span 2' })
+      + _v3Bars('Classificação', _dashCount(tags, function (r) { return r.classif || 'Novo'; }), { lim: 6, cor: V3.light })
+      + _v3Bars('St. suprimentos', _dashCount(tags, function (r) { return r.stSup || 'Pendente'; }), { lim: 6 })
+    )
+    + _v3Title('ESCOPO -', 'INSTRUMENTAÇÃO')
+    + _v3Grid(190,
+        _v3Gauge('Suportes p/ instrumentos', sups.length, sups.length || 1, V3.dark)
+      + _v3Gauge('Montagem de suportes', supMon, sups.length || 1, V3.light)
+      + _v3Gauge('Itens de encaminhamento', encam.length, encam.length || 1, V3.dark)
+      + _v3Gauge('Montagem de encaminhamento', encMon, encam.length || 1, V3.light)
+      + _v3Gauge('Lançamento de cabos (m)', Math.round(mReal), Math.round(mProj) || 1, V3.dark)
+      + _v3Gauge('% lançamento de cabos', mProj > 0 ? Math.round(mReal / mProj * 100) : 0, 100, V3.light)
+    )
+    + _v3Grid(250,
+        _v3Bars('Qtde eletroduto / eletrocalha diâm.', _dashSum(encam, function (r) { return r.diam; }, function (r) { return r.qtd || 1; }), { lim: 10, extra: 'grid-column:span 2' })
+      + _v3Bars('Qtde cabos (m) / localização', _dashSum(cabos, function (r) { return r.loc; }, function (r) { return r.qtd; }), { lim: 8, cor: V3.light })
+      + _v3Bars('Tipos de suporte', _dashCount(sups, function (r) { return r.tipoSup; }), { lim: 10 })
+      + _v3Bars('Qtde cabos / tipo-seção', _dashCount(cabos, function (r) { return r.secao; }), { lim: 12, extra: 'grid-column:span 2' })
+      + _v3Rank('Instrumentos por rastreabilidade', _dashCount(tags, function (r) { return r.doc; }), { lim: 10, cor: V3.light, extra: 'grid-column:span 2' })
+    )
+    + '</div>';
+}
+
 function renderDashboard(discTabs, bc) {
   const proj = projects.find(p => p.id === currentProjId);
   const list = currentProjId ? projIsos(currentProjId) : isos;
@@ -2523,7 +2849,9 @@ function renderDashboard(discTabs, bc) {
     </div>
   </div>`;
 
-  document.getElementById('view-isos').innerHTML = bc + discTabs + header + kpiBar + areaTable + '</div>';
+  let _v3 = '';
+  try { _v3 = _v3Caldeiraria(); } catch (err) { console.warn('[v3 caldeiraria]', err); _v3 = ''; }
+  document.getElementById('view-isos').innerHTML = bc + discTabs + header + kpiBar + areaTable + _v3 + '</div>';
 }
 
 
@@ -3771,7 +4099,7 @@ function renderInstrDash(discTabs, bc) {
     + _instrKpi(cabos.length, 'Cabos', 'var(--hb)')
     + _instrKpi(_dashM(compr), 'Cabo projetado', 'var(--hb)')
     + _instrKpi(_dashM(comprReal), 'Cabo lancado', '#2F7D53')
-    + _instrKpiPct(Math.round(comprReal), Math.round(compr), 'Lancado', '#0F766E')
+    + _instrKpiPct(Math.round(comprReal), Math.round(compr), 'Lançado', '#0F766E')
     + _instrKpi(sups.length, 'Suportes', 'var(--hb)')
     + _instrKpi(encam.length, 'Encaminhamento', 'var(--hb)')
     + _instrKpiPct(montOk, tags.length, 'Montagem', '#0F766E')
@@ -3796,26 +4124,29 @@ function renderInstrDash(discTabs, bc) {
       + seg(sim, '#2F7D53') + seg(pend, '#B07A16') + seg(na, '#8a94a6') + '</div></div>';
   }
   var dtCard = '<div style="background:var(--hcard);border:0.5px solid var(--hbr);border-radius:10px;padding:12px 14px;margin:0 0 12px">'
-    + '<div style="font-size:11.5px;font-weight:800;letter-spacing:.3px;color:var(--hb);margin-bottom:9px">DETALHES TIPICOS POR NATUREZA'
+    + '<div style="font-size:11.5px;font-weight:800;letter-spacing:.3px;color:var(--hb);margin-bottom:9px">DETALHES TÍPICOS POR NATUREZA'
     + ' <span style="color:var(--hmu);font-weight:600">(' + tags.length + ' instrumentos)</span></div>'
-    + dtLinha('Eletrico', 'stDtEl') + dtLinha('Pneumatico', 'stDtPn') + dtLinha('Processo', 'stDtPr')
+    + dtLinha('Elétrico', 'stDtEl') + dtLinha('Pneumático', 'stDtPn') + dtLinha('Processo', 'stDtPr')
     + '</div>';
 
-  var corpo = '<div style="padding:12px 16px 18px;display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:0 14px">'
+  var v3 = '';
+  try { v3 = _v3Instr(tags, cabos, sups, encam); } catch (err) { console.warn('[v3 instr]', err); }
+
+  var corpo = v3 + _v3Title('DETALHAMENTO', 'POR INDICADOR') + '<div style="padding:12px 16px 18px;display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:0 14px">'
     + _dashCard('INSTRUMENTOS POR TIPO (prefixo da TAG)', _dashCount(tags, function (r) { return _instrTipoTag(r.tag); }), tags.length, null, true)
-    + _dashCard('CABOS POR TIPO / SECAO (quantidade)', _dashCount(cabos, function (r) { return r.secao; }), cabos.length, '#0F766E')
-    + _dashCard('VOLUME DE CABO POR SECAO (m)',
+    + _dashCard('CABOS POR TIPO / SEÇÃO (quantidade)', _dashCount(cabos, function (r) { return r.secao; }), cabos.length, '#0F766E')
+    + _dashCard('VOLUME DE CABO POR SEÇÃO (m)',
         _dashSum(cabos, function (r) { return r.secao; }, function (r) { return r.qtd; }),
         compr, '#2A4661', false, _dashM)
-    + (comprReal > 0 ? _dashCard('VOLUME LANCADO POR SECAO (m)',
+    + (comprReal > 0 ? _dashCard('VOLUME LANÇADO POR SEÇÃO (m)',
         _dashSum(cabos, function (r) { return r.secao; }, function (r) { return r.qtdReal; }),
         comprReal, '#2F7D53', false, _dashM) : '')
     + (semCompr ? '<div style="background:#fff8e6;border:1px solid #ffe0a3;border-radius:10px;padding:10px 14px;margin:0 0 12px;font-size:10.5px;color:#7a5b00">'
         + semCompr + ' cabo(s) sem comprimento informado - nao entram no volume.</div>' : '')
     + dtCard
-    + _dashCard('CALIBRACAO POR SITUACAO', _dashCount(tags, function (r) { return r.stCal || 'Pendente'; }), tags.length)
-    + _dashCard('LOOP TESTE POR SITUACAO', _dashCount(tags, function (r) { return r.stLoop || 'Pendente'; }), tags.length)
-    + _dashCard('CLASSIFICACAO DOS INSTRUMENTOS', _dashCount(tags, function (r) { return r.classif || 'Novo'; }), tags.length, '#6B5B95')
+    + _dashCard('CALIBRAÇÃO POR SITUAÇÃO', _dashCount(tags, function (r) { return r.stCal || 'Pendente'; }), tags.length)
+    + _dashCard('LOOP TESTE POR SITUAÇÃO', _dashCount(tags, function (r) { return r.stLoop || 'Pendente'; }), tags.length)
+    + _dashCard('CLASSIFICAÇÃO DOS INSTRUMENTOS', _dashCount(tags, function (r) { return r.classif || 'Novo'; }), tags.length, '#6B5B95')
     + '</div>';
 
   var vazio = !tags.length && !cabos.length;
@@ -6105,8 +6436,8 @@ async function _lcExtract(file, setStatus) {
     }
     if (!disc) {
       var u = _liUp(all);
-      if (u.indexOf('INSTRUMENTACAO') >= 0) disc = 'Instrumentação';
-      else if (u.indexOf('ELETRICA') >= 0) disc = 'Elétrica';
+      if (u.indexOf('INSTRUMENTAÇÃO') >= 0) disc = 'Instrumentação';
+      else if (u.indexOf('ELÉTRICA') >= 0) disc = 'Elétrica';
     }
     if (!docRev) {
       var m2 = all.match(/Rev\.?\s*:?\s*(\d{1,2})/i);
@@ -7332,6 +7663,7 @@ function renderIsoView(force) {
   }
 
   if (currentDisc === 'eletrica') {
+    if (currentSubTab === 'elet-dash') { renderEletDash(discTabs, bc); return; }
     renderInstrCabos(discTabs, bc); return;
   }
 
