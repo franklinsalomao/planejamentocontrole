@@ -1213,7 +1213,7 @@ function goView(v, pid) {
   else if (v === 'isos') renderIsoView();
   renderHeader();
 }
-const HY_BUILD = '11/11/2026 15:31';
+const HY_BUILD = '11/11/2026 15:44';
 function renderHeader() {
   const el = document.getElementById('hdr-acts');
   if (currentView === 'projects' && !currentProjId) {
@@ -1894,7 +1894,9 @@ function renderSuportesView(discTabs, bc) {
     <tbody>${rows}</tbody>
   </table></div>`;
 
-  document.getElementById('view-isos').innerHTML = bc + discTabs + kpis + filters + tbl + '</div>';
+  const temFiltro = !!(fArea || fFab || fPint || fMon || _supSold || fSearch);
+  const resumoChumb = _chumbResumo(list, temFiltro ? '(itens filtrados)' : '(todo o projeto)');
+  document.getElementById('view-isos').innerHTML = bc + discTabs + kpis + resumoChumb + filters + tbl + '</div>';
   // Restaurar foco no campo de busca se o usuário estava digitando
   if (_supSearch !== '') {
     const _sf = document.getElementById('sf-search');
@@ -1936,6 +1938,82 @@ async function setChumb(id, field, value) {
   if (field === 'chumbDiam' && _chumbAuto(s.chumbDim)) s.chumbDim = _chumbPadrao(value);
   await saveAll(); renderIsoView(true);
 }
+/* ── Resumo de chumbadores por tipo e diâmetro ──────────────────────── */
+var _chumbResumoAberto = true;
+function toggleChumbResumo() { _chumbResumoAberto = !_chumbResumoAberto; renderIsoView(true); }
+
+function _chumbResumo(arr, escopo) {
+  var grupos = {}, tot = 0, totSup = 0;
+  (arr || []).forEach(function (s) {
+    if (!s.chumbTipo && !s.chumbDiam && !parseInt(s.chumbQtd, 10)) return;
+    var q = parseInt(s.chumbQtd, 10); if (!isFinite(q) || q <= 0) q = 0;
+    var n = parseFloat(s.qtd); if (!isFinite(n) || n <= 0) n = 1;
+    var tipo = s.chumbTipo || '(tipo não informado)';
+    var diam = s.chumbDiam || '—';
+    var k = tipo + '|' + diam;
+    if (!grupos[k]) grupos[k] = { tipo: tipo, diam: diam, dim: s.chumbDim || _chumbPadrao(diam) || '—', sup: 0, qtd: 0 };
+    grupos[k].sup += n;
+    grupos[k].qtd += q * n;
+    tot += q * n; totSup += n;
+  });
+  var linhas = Object.keys(grupos).map(function (k) { return grupos[k]; });
+  if (!linhas.length) {
+    return '<div style="margin:10px 16px 0;padding:10px 12px;border:1px dashed var(--hbr);border-radius:8px;'
+      + 'font-size:11px;color:var(--hmu)">🔩 <strong>Resumo de chumbadores</strong> — nenhum chumbador classificado ainda. '
+      + 'Escolha o tipo e o diâmetro na coluna Chumbador para montar o resumo.</div>';
+  }
+  var ordemT = { 'Chumbador CB - parede': 0, 'Chumbador CBO - piso': 1 };
+  linhas.sort(function (a, b) {
+    var da = (ordemT[a.tipo] == null ? 9 : ordemT[a.tipo]), db = (ordemT[b.tipo] == null ? 9 : ordemT[b.tipo]);
+    if (da !== db) return da - db;
+    return _jtPol(a.diam) - _jtPol(b.diam);
+  });
+
+  var cab = '<div onclick="toggleChumbResumo()" title="Mostrar/ocultar" style="display:flex;align-items:center;gap:8px;cursor:pointer;'
+    + 'padding:7px 12px;background:' + V3.dark + ';color:#fff;border-radius:8px 8px ' + (_chumbResumoAberto ? '0 0' : '8px 8px') + '">'
+    + '<span style="font-size:11px;font-weight:800;letter-spacing:.5px">🔩 RESUMO DE CHUMBADORES — POR TIPO E DIÂMETRO</span>'
+    + '<span style="font-size:9.5px;opacity:.85">' + escopo + '</span>'
+    + '<span style="margin-left:auto;font-size:11px;font-weight:700">' + _v3N(tot) + ' un</span>'
+    + '<span style="font-size:10px">' + (_chumbResumoAberto ? '▴' : '▾') + '</span></div>';
+  if (!_chumbResumoAberto) return '<div style="margin:10px 16px 0">' + cab + '</div>';
+
+  var th = function (t, al) { return '<th style="text-align:' + (al || 'left') + ';font-size:9.5px;letter-spacing:.4px;'
+    + 'padding:5px 8px;border-bottom:1px solid var(--hbr);color:var(--hmu);text-transform:uppercase">' + t + '</th>'; };
+  var tdc = 'padding:4px 8px;font-size:11px;border-bottom:1px solid #f1f3f7';
+  var tipoAnt = '';
+  var corpo = linhas.map(function (g) {
+    var novo = g.tipo !== tipoAnt; tipoAnt = g.tipo;
+    return '<tr>'
+      + '<td style="' + tdc + ';font-weight:' + (novo ? '700' : '400') + ';color:' + (novo ? 'var(--ht)' : 'var(--hmu)') + '">'
+        + (novo ? g.tipo : '') + '</td>'
+      + '<td style="' + tdc + ';text-align:center;font-weight:700">' + g.diam + '</td>'
+      + '<td style="' + tdc + ';color:var(--hmu)">' + g.dim + '</td>'
+      + '<td style="' + tdc + ';text-align:center">' + _v3N(g.sup) + '</td>'
+      + '<td style="' + tdc + ';text-align:center;font-weight:800;color:' + V3.dark + '">' + _v3N(g.qtd) + '</td>'
+      + '</tr>';
+  }).join('');
+
+  var porTipo = {};
+  linhas.forEach(function (g) { porTipo[g.tipo] = (porTipo[g.tipo] || 0) + g.qtd; });
+  var chips = Object.keys(porTipo).map(function (t) {
+    return '<span style="font-size:10px;font-weight:700;padding:3px 9px;border-radius:12px;background:#e3f2fd;color:#15467a">'
+      + t + ': ' + _v3N(porTipo[t]) + ' un</span>';
+  }).join('');
+
+  return '<div style="margin:10px 16px 0">' + cab
+    + '<div style="border:1px solid var(--hbr);border-top:none;border-radius:0 0 8px 8px;background:var(--hcard);padding:8px 12px 10px">'
+    + '<table style="width:100%;border-collapse:collapse"><thead><tr>'
+    + th('Tipo de chumbador') + th('Ø', 'center') + th('Dimensão') + th('Suportes', 'center') + th('Qtde total', 'center')
+    + '</tr></thead><tbody>' + corpo
+    + '<tr><td style="padding:6px 8px;font-size:11px;font-weight:800;border-top:2px solid ' + V3.dark + '">TOTAL</td>'
+    + '<td style="border-top:2px solid ' + V3.dark + '"></td><td style="border-top:2px solid ' + V3.dark + '"></td>'
+    + '<td style="padding:6px 8px;font-size:11px;font-weight:800;text-align:center;border-top:2px solid ' + V3.dark + '">' + _v3N(totSup) + '</td>'
+    + '<td style="padding:6px 8px;font-size:12px;font-weight:800;text-align:center;color:' + V3.dark + ';border-top:2px solid ' + V3.dark + '">' + _v3N(tot) + '</td></tr>'
+    + '</tbody></table>'
+    + '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">' + chips + '</div>'
+    + '</div></div>';
+}
+
 /* total de chumbadores — qtd por suporte x qtd de suportes */
 function _chumbTotal(arr, tipo) {
   return (arr || []).reduce(function (t, s) {
