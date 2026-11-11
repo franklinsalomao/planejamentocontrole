@@ -1213,7 +1213,7 @@ function goView(v, pid) {
   else if (v === 'isos') renderIsoView();
   renderHeader();
 }
-const HY_BUILD = '11/11/2026 15:53';
+const HY_BUILD = '11/11/2026 16:38';
 function renderHeader() {
   const el = document.getElementById('hdr-acts');
   if (currentView === 'projects' && !currentProjId) {
@@ -4627,7 +4627,20 @@ function renderInstrDash(discTabs, bc) {
    (Pipe-Shop e Campo). O indicador compara o ritmo realizado com a meta.
 ══════════════════════════════════════════════════════════════════════ */
 let juntas = []; const SK_JUNTAS = 'hy_juntas';
-let juntasCfg = { psPol: 20, psSold: 2, cpPol: 10, cpSold: 2, dtInicio: '', diasSem: 5, prazoAlvo: 60 };
+let juntasCfg = { psPol: 20, psSold: 2, cpPol: 10, cpSold: 2, dtIniFab: '', dtIniMon: '', dtInicio: '', diasSem: 5, prazoAlvo: 60 };
+/* projetos salvos antes da separação traziam uma única data de início:
+   ela passa a valer para as duas frentes até o usuário separá-las */
+function _jtMigraInicio() {
+  if (juntasCfg.dtInicio && !juntasCfg.dtIniFab && !juntasCfg.dtIniMon) {
+    juntasCfg.dtIniFab = juntasCfg.dtInicio;
+    juntasCfg.dtIniMon = juntasCfg.dtInicio;
+  }
+}
+/* data de início da frente: ps = fabricação (pipe-shop) · cp = montagem (campo) */
+function _jtInicioDe(k) {
+  _jtMigraInicio();
+  return (k === 'ps' ? juntasCfg.dtIniFab : juntasCfg.dtIniMon) || '';
+}
 const SK_JUNTAS_CFG = 'hy_juntas_cfg';
 
 let _jtSearch = '', _jtLocal = '', _jtTipo = '', _jtSit = '', _jtDiam = '';
@@ -4766,14 +4779,18 @@ function _jtDataBR(iso) {
 /* ─── analise de prazo, dimensionamento e curva de avanco ──────────── */
 function _jtAnalise(list, m) {
   var diasSem = parseFloat(juntasCfg.diasSem) || 5;
-  var inicio = juntasCfg.dtInicio || '';
+  _jtMigraInicio();
+  var iniFab = _jtInicioDe('ps'), iniMon = _jtInicioDe('cp');
+  /* para a curva de avanço (que soma as duas frentes) vale o início mais cedo */
+  var inicio = (iniFab && iniMon) ? (iniFab < iniMon ? iniFab : iniMon) : (iniFab || iniMon || '');
   var alvo = parseFloat(juntasCfg.prazoAlvo) || 0;
-  var a = { diasSem: diasSem, inicio: inicio, alvo: alvo, locais: [] };
+  var a = { diasSem: diasSem, inicio: inicio, iniFab: iniFab, iniMon: iniMon, alvo: alvo, locais: [] };
 
   ['ps', 'cp'].forEach(function (k) {
     var o = m[k];
+    var ini = _jtInicioDe(k);
     var polSold = parseFloat(k === 'ps' ? juntasCfg.psPol : juntasCfg.cpPol) || 0;
-    var termMeta = inicio ? _jtSomaDiasUteis(inicio, o.diasPrev, diasSem) : '';
+    var termMeta = ini ? _jtSomaDiasUteis(ini, o.diasPrev, diasSem) : '';
     /* projecao pelo ritmo real, a partir de hoje */
     var hoje = new Date().toISOString().slice(0, 10);
     var diasProj = o.ritmo > 0 ? o.saldoPol / o.ritmo : null;
@@ -4785,7 +4802,7 @@ function _jtAnalise(list, m) {
     var gapSold = (gapCap != null && polSold > 0) ? Math.ceil(gapCap / polSold) : null;
     var atende  = alvo > 0 ? o.diasPrev <= alvo : null;
     a.locais.push({
-      k: k, nome: o.nome, o: o, polSold: polSold,
+      k: k, nome: o.nome, o: o, polSold: polSold, inicio: ini,
       termMeta: termMeta, diasProj: diasProj, termProj: termProj,
       capNec: capNec, gapCap: gapCap, gapSold: gapSold, atende: atende,
       soldNec: soldNec, soldAtual: parseFloat(k === 'ps' ? juntasCfg.psSold : juntasCfg.cpSold) || 0
@@ -4893,7 +4910,10 @@ function _jtPainelPrazo(an, m) {
     var corD = desvio == null ? '#8a94a6' : desvio <= 0 ? '#2F7D53' : desvio <= o.diasRest * 0.1 ? '#B07A16' : '#B34A3C';
     var corS = L.soldNec == null ? '#8a94a6' : L.soldNec <= L.soldAtual ? '#2F7D53' : '#B34A3C';
     return '<tr style="border-top:1px solid #eef2f8">'
-      + '<td style="padding:7px 10px;font-size:11px;font-weight:800;color:var(--hb)">' + L.nome + '</td>'
+      + '<td style="padding:7px 10px;font-size:11px;font-weight:800;color:var(--hb)">' + L.nome
+      +   '<div style="font-size:8.5px;font-weight:600;color:var(--hmu)">' + (L.k === 'ps' ? 'fabricação' : 'montagem') + '</div></td>'
+      + '<td style="padding:7px 8px;text-align:center;font-size:10.5px;font-weight:700;color:' + (L.inicio ? 'var(--ht)' : '#8a94a6') + '">'
+      +   _jtDataBR(L.inicio) + '</td>'
       + '<td style="padding:7px 8px;text-align:right;font-size:10.5px;font-variant-numeric:tabular-nums">' + _jtFmt(o.diasPrev) + ' d</td>'
       + '<td style="padding:7px 8px;text-align:center;font-size:10.5px">' + _jtDataBR(L.termMeta) + '</td>'
       + '<td style="padding:7px 8px;text-align:right;font-size:10.5px;font-variant-numeric:tabular-nums">' + (L.diasProj == null ? '—' : _jtFmt(L.diasProj) + ' d') + '</td>'
@@ -4916,7 +4936,8 @@ function _jtPainelPrazo(an, m) {
     + '<div style="padding:8px 12px;background:#f7f8fa;border-bottom:1px solid var(--hbr);display:flex;flex-wrap:wrap;gap:14px;align-items:center">'
     +   '<span style="font-size:9.5px;font-weight:800;letter-spacing:.5px;color:#334">ANÁLISE DE PRAZO E DIMENSIONAMENTO</span>'
     +   '<span style="margin-left:auto;display:flex;flex-wrap:wrap;gap:12px;align-items:center;font-size:10px;color:var(--hmu)">'
-    +     '<label>Início: <input type="date" value="' + (juntasCfg.dtInicio || '') + '" onchange="jtCfgSet(\'dtInicio\',this.value)" style="padding:2px 5px;border:0.5px solid var(--hbr);border-radius:4px;font-size:10px;background:var(--hg);color:var(--ht)"></label>'
+    +     '<label title="Início da fabricação — frente de pipe-shop">🏭 Início fabricação: <input type="date" value="' + (_jtInicioDe('ps')) + '" onchange="jtCfgSet(\'dtIniFab\',this.value)" style="padding:2px 5px;border:0.5px solid var(--hbr);border-radius:4px;font-size:10px;background:var(--hg);color:var(--ht)"></label>'
+    +     '<label title="Início da montagem — frente de campo">🔧 Início montagem: <input type="date" value="' + (_jtInicioDe('cp')) + '" onchange="jtCfgSet(\'dtIniMon\',this.value)" style="padding:2px 5px;border:0.5px solid var(--hbr);border-radius:4px;font-size:10px;background:var(--hg);color:var(--ht)"></label>'
     +     '<label>Jornada: <select onchange="jtCfgSet(\'diasSem\',this.value)" style="padding:2px 5px;border:0.5px solid var(--hbr);border-radius:4px;font-size:10px;background:var(--hg);color:var(--ht)">'
     +       [5, 6, 7].map(function (d) { return '<option value="' + d + '" ' + ((parseFloat(juntasCfg.diasSem) || 5) === d ? 'selected' : '') + '>' + d + ' dias/sem</option>'; }).join('')
     +     '</select></label>'
@@ -4925,6 +4946,7 @@ function _jtPainelPrazo(an, m) {
     + '<table style="width:100%;border-collapse:collapse">'
     + '<thead><tr style="color:var(--hmu);font-size:8.5px;letter-spacing:.4px;background:#fcfcfd">'
     +   '<th style="padding:5px 10px;text-align:left;font-weight:700">LOCAL</th>'
+    +   '<th style="padding:5px 8px;text-align:center;font-weight:700">INÍCIO</th>'
     +   '<th style="padding:5px 8px;text-align:right;font-weight:700">PRAZO META</th>'
     +   '<th style="padding:5px 8px;text-align:center;font-weight:700">TÉRMINO PELA META</th>'
     +   '<th style="padding:5px 8px;text-align:right;font-weight:700">FALTA (RITMO REAL)</th>'
@@ -5326,7 +5348,9 @@ async function recarregarDados() {
 }
 
 async function jtCfgSet(k, v) {
-  juntasCfg[k] = (k === 'dtInicio') ? String(v || '') : (v === '' ? '' : (parseFloat(v) || 0));
+  juntasCfg[k] = (k === 'dtInicio' || k === 'dtIniFab' || k === 'dtIniMon')
+    ? String(v || '')
+    : (v === '' ? '' : (parseFloat(v) || 0));
   try { await storageSet(SK_JUNTAS_CFG, JSON.stringify(juntasCfg)); } catch (e) {}
   renderIsoView();
 }
