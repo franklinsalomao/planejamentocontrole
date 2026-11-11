@@ -1214,7 +1214,7 @@ function goView(v, pid) {
   else if (v === 'isos') renderIsoView();
   renderHeader();
 }
-const HY_BUILD = '11/11/2026 12:07';
+const HY_BUILD = '11/11/2026 12:45';
 function renderHeader() {
   const el = document.getElementById('hdr-acts');
   if (currentView === 'projects' && !currentProjId) {
@@ -2647,6 +2647,123 @@ function _v3Caldeiraria() {
     + '</div>';
 }
 
+
+/* ══════════════════════════════════════════════════════════════════════
+   ESCOPO — ELETRICA E INSTRUMENTACAO (painel unico das duas disciplinas)
+   Filtros: disciplina · tipo/secao de cabo · rastreabilidade
+══════════════════════════════════════════════════════════════════════ */
+var _v3fDisc = '', _v3fSecao = '', _v3fDoc = '';
+function _v3SetF(k, v) {
+  if (k === 'disc') _v3fDisc = v;
+  else if (k === 'secao') _v3fSecao = v;
+  else if (k === 'doc') _v3fDoc = v;
+  renderIsoView();
+}
+function _v3LimpaF() { _v3fDisc = ''; _v3fSecao = ''; _v3fDoc = ''; renderIsoView(); }
+
+/* disciplina de um registro — cabos de eletCabos sao sempre Eletrica */
+function _v3Disc(r, fallback) {
+  var d = String(r.disc || fallback || '').toLowerCase();
+  return d.indexOf('elet') >= 0 ? 'Elétrica' : 'Instrumentação';
+}
+
+function _v3EscopoDados() {
+  var cab = _instrProjFilter(eletCabos).map(function (r) { return Object.assign({}, r, { _d: 'Elétrica' }); })
+    .concat(_instrProjFilter(instrCabos).map(function (r) { return Object.assign({}, r, { _d: _v3Disc(r, 'Instrumentação') }); }));
+  var sup = _instrProjFilter(instrSups).map(function (r) { return Object.assign({}, r, { _d: _v3Disc(r, 'Instrumentação') }); });
+  var enc = _instrProjFilter(instrEncam).map(function (r) { return Object.assign({}, r, { _d: _v3Disc(r, 'Instrumentação') }); });
+
+  var fD = function (r) { return !_v3fDisc || r._d === _v3fDisc; };
+  var fS = function (r) { return !_v3fSecao || String(r.secao || '') === _v3fSecao; };
+  var fR = function (r) { return !_v3fDoc || String(r.doc || '') === _v3fDoc; };
+
+  return {
+    todosCabos: cab,
+    cabos: cab.filter(function (r) { return fD(r) && fS(r) && fR(r); }),
+    sups:  sup.filter(function (r) { return fD(r) && fR(r); }),
+    encam: enc.filter(function (r) { return fD(r) && fR(r); })
+  };
+}
+
+function _v3Sel(rot, id, cur, opts, chave) {
+  return '<label style="font-size:10px;color:var(--hmu);font-weight:700;display:flex;align-items:center;gap:4px">' + rot
+    + '<select id="' + id + '" onchange="_v3SetF(\'' + chave + '\',this.value)"'
+    + ' style="font-size:10.5px;padding:3px 7px;border:1px solid var(--hbr);border-radius:5px;background:var(--hg);color:var(--ht);max-width:210px">'
+    + '<option value="">— todas —</option>'
+    + opts.map(function (o) { return '<option value="' + o + '"' + (cur === o ? ' selected' : '') + '>' + o + '</option>'; }).join('')
+    + '</select></label>';
+}
+
+function _v3Escopo() {
+  var D = _v3EscopoDados();
+  var cabos = D.cabos, sups = D.sups, encam = D.encam;
+
+  var secoes = [];
+  var docs = [];
+  D.todosCabos.forEach(function (r) {
+    var s = String(r.secao || '').trim(); if (s && secoes.indexOf(s) < 0) secoes.push(s);
+  });
+  [].concat(D.todosCabos, _instrProjFilter(instrSups), _instrProjFilter(instrEncam)).forEach(function (r) {
+    var d = String(r.doc || '').trim(); if (d && docs.indexOf(d) < 0) docs.push(d);
+  });
+  secoes.sort(); docs.sort();
+
+  var mProj = cabos.reduce(function (s, r) { return s + (parseFloat(r.qtd) || 0); }, 0);
+  var mReal = cabos.reduce(function (s, r) { return s + (parseFloat(r.qtdReal) || 0); }, 0);
+  var pctCab = mProj > 0 ? Math.round(mReal / mProj * 1000) / 10 : 0;
+
+  var mont = function (v) { return v === 'Montado' || v === 'Sim' || v === 'Concluído'; };
+  var supMon = sups.filter(function (r) { return mont(r.stMon); }).length;
+  var pctSup = sups.length ? Math.round(supMon / sups.length * 1000) / 10 : 0;
+
+  var encProj = encam.reduce(function (s, r) { return s + (parseFloat(r.qtd) || 0); }, 0);
+  var encReal = encam.filter(function (r) { return mont(r.stMon); })
+    .reduce(function (s, r) { return s + (parseFloat(r.qtd) || 0); }, 0);
+  var pctEnc = encProj > 0 ? Math.round(encReal / encProj * 1000) / 10 : 0;
+
+  var ativo = _v3fDisc || _v3fSecao || _v3fDoc;
+  var filtros = '<div style="display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:0 16px 10px;padding:8px 12px;'
+    + 'background:var(--hcard);border:1px solid var(--hbr);border-radius:8px">'
+    + '<span style="font-size:10px;font-weight:800;color:' + V3.dark + ';letter-spacing:.5px">FILTROS</span>'
+    + _v3Sel('Disciplina:', 'v3f-disc', _v3fDisc, ['Elétrica', 'Instrumentação'], 'disc')
+    + _v3Sel('Tipo de cabo:', 'v3f-secao', _v3fSecao, secoes, 'secao')
+    + _v3Sel('Rastreabilidade:', 'v3f-doc', _v3fDoc, docs, 'doc')
+    + (ativo ? '<button onclick="_v3LimpaF()" style="font-size:10px;padding:4px 10px;border-radius:5px;border:1px solid var(--hbr);'
+        + 'background:var(--hg);color:var(--hmu);cursor:pointer;font-weight:700">✕ Limpar</button>' : '')
+    + '<span style="font-size:9.5px;color:var(--hmu);margin-left:auto">'
+    + cabos.length + ' cabo(s) · ' + sups.length + ' suporte(s) · ' + encam.length + ' item(ns) de encaminhamento</span>'
+    + '</div>';
+
+  return _v3Title('ESCOPO -', 'ELÉTRICA E INSTRUMENTAÇÃO')
+    + filtros
+    + _v3Grid(190,
+        _v3Gauge('Suportes p/ instrumentos', supMon, sups.length || 1, V3.dark)
+      + _v3Gauge('% mont. suportes p/ instrum.', pctSup, 100, V3.light)
+      + _v3Gauge('Itens de encaminhamento', encam.length, encam.length || 1, V3.dark)
+      + _v3Gauge('Montagem de encaminhamento (m)', Math.round(encReal), Math.round(encProj) || 1, V3.light)
+      + _v3Gauge('% mont. de encaminhamento (m)', pctEnc, 100, V3.dark)
+      + _v3Gauge('Lançamento de cabos (m)', Math.round(mReal), Math.round(mProj) || 1, V3.light)
+      + _v3Gauge('% lançamento de cabos', pctCab, 100, V3.dark)
+      + _v3Gauge('Cabos (circuitos)', cabos.length, cabos.length || 1, V3.light)
+    )
+    + _v3Grid(250,
+        _v3Bars('Qtde eletroduto / eletrocalha diâm.', _dashSum(encam, function (r) { return r.diam; }, function (r) { return r.qtd || 1; }), { lim: 10, extra: 'grid-column:span 2' })
+      + _v3Bars('Qtde cabos (m) / localização', _dashSum(cabos, function (r) { return r.loc; }, function (r) { return r.qtd; }), { lim: 8, cor: V3.light })
+      + _v3Bars('Cabos (m) por disciplina', _dashSum(cabos, function (r) { return r._d; }, function (r) { return r.qtd; }), { lim: 4 })
+      + _v3Bars('Qtde cabos / tipo-seção', _dashCount(cabos, function (r) { return r.secao; }), { lim: 12, extra: 'grid-column:span 2' })
+      + _v3Bars('Suportes por disciplina', _dashCount(sups, function (r) { return r._d; }), { lim: 4, cor: V3.light })
+      + _v3Bars('Encaminhamento por tipo', _dashCount(encam, function (r) { return r.tipo; }), { lim: 6 })
+      + _v3Rank('Volume (m) por tipo-seção', _dashSum(cabos, function (r) { return r.secao; }, function (r) { return r.qtd; }), { lim: 12, fmt: _dashM, extra: 'grid-column:span 2' })
+      + _v3Rank('Cabos por rastreabilidade', _dashCount(cabos, function (r) { return r.doc; }), { lim: 12, cor: V3.light, extra: 'grid-column:span 2' })
+      + _v3Bars2('Projetado x lançado por seção',
+          _dashCount(cabos, function (r) { return r.secao; }).map(function (i) {
+            var d = cabos.filter(function (r) { return (String(r.secao || '').trim() || '(nao informado)') === i.k; });
+            return { k: i.k, a: d.reduce(function (s, r) { return s + (parseFloat(r.qtd) || 0); }, 0),
+                              b: d.reduce(function (s, r) { return s + (parseFloat(r.qtdReal) || 0); }, 0) };
+          }), 'Projetado', 'Lançado', { lim: 10, extra: 'grid-column:span 4' })
+    );
+}
+
 /* ══════════════ DASHBOARD — ELETRICA ═════════════════════════════════ */
 function renderEletDash(discTabs, bc) {
   var cabos = _instrProjFilter(eletCabos);
@@ -2664,7 +2781,7 @@ function renderEletDash(discTabs, bc) {
     + '</div>';
 
   var corpo = '<div style="padding:4px 0 24px">'
-    + _v3Title('ESCOPO -', 'ELÉTRICA')
+    + _v3Title('VISÃO 360&deg;', 'CABOS DE ELÉTRICA')
     + _v3Grid(190,
         _v3Gauge('Qtde de cabos', cabos.length, cabos.length || 1, V3.dark)
       + _v3Gauge('Lançamento de cabos (m)', Math.round(real), Math.round(proj) || 1, V3.light)
@@ -2677,19 +2794,11 @@ function renderEletDash(discTabs, bc) {
       + _v3Bars('St. suprimentos', _dashCount(cabos, function (r) { return r.stSup || 'Pendente'; }), { lim: 6 })
       + _v3Rank('Volume (m) por seção', _dashSum(cabos, function (r) { return r.secao; }, function (r) { return r.qtd; }), { lim: 12, fmt: _dashM, extra: 'grid-column:span 2' })
       + _v3Rank('Cabos por rastreabilidade', _dashCount(cabos, function (r) { return r.doc; }), { lim: 10, cor: V3.light, extra: 'grid-column:span 2' })
-      + _v3Bars2('Projetado x lançado por seção',
-          _dashCount(cabos, function (r) { return r.secao; }).map(function (i) {
-            var d = cabos.filter(function (r) { return (r.secao || '(nao informado)') === i.k; });
-            return { k: i.k, a: d.reduce(function (s, r) { return s + (parseFloat(r.qtd) || 0); }, 0),
-                              b: d.reduce(function (s, r) { return s + (parseFloat(r.qtdReal) || 0); }, 0) };
-          }), 'Projetado', 'Lançado', { lim: 10, extra: 'grid-column:span 4' })
     )
+    + _v3Escopo()
     + '</div>';
 
-  var vazio = !cabos.length;
-  _instrHeader(discTabs, bc, 'Dashboard', kpis, '',
-    vazio ? '<div class="ph-panel"><div style="font-size:32px">📊</div><strong>Nenhum cabo neste projeto</strong>'
-          + '<span style="font-size:11px">Importe a lista de cabos para ver os indicadores.</span></div>' : corpo);
+  _instrHeader(discTabs, bc, 'Dashboard', kpis, '', corpo);
 }
 
 /* ══════════════ VISAO 360 — INSTRUMENTACAO ═══════════════════════════ */
@@ -2733,22 +2842,7 @@ function _v3Instr(tags, cabos, sups, encam) {
       + _v3Bars('Classificação', _dashCount(tags, function (r) { return r.classif || 'Novo'; }), { lim: 6, cor: V3.light })
       + _v3Bars('St. suprimentos', _dashCount(tags, function (r) { return r.stSup || 'Pendente'; }), { lim: 6 })
     )
-    + _v3Title('ESCOPO -', 'INSTRUMENTAÇÃO')
-    + _v3Grid(190,
-        _v3Gauge('Suportes p/ instrumentos', sups.length, sups.length || 1, V3.dark)
-      + _v3Gauge('Montagem de suportes', supMon, sups.length || 1, V3.light)
-      + _v3Gauge('Itens de encaminhamento', encam.length, encam.length || 1, V3.dark)
-      + _v3Gauge('Montagem de encaminhamento', encMon, encam.length || 1, V3.light)
-      + _v3Gauge('Lançamento de cabos (m)', Math.round(mReal), Math.round(mProj) || 1, V3.dark)
-      + _v3Gauge('% lançamento de cabos', mProj > 0 ? Math.round(mReal / mProj * 100) : 0, 100, V3.light)
-    )
-    + _v3Grid(250,
-        _v3Bars('Qtde eletroduto / eletrocalha diâm.', _dashSum(encam, function (r) { return r.diam; }, function (r) { return r.qtd || 1; }), { lim: 10, extra: 'grid-column:span 2' })
-      + _v3Bars('Qtde cabos (m) / localização', _dashSum(cabos, function (r) { return r.loc; }, function (r) { return r.qtd; }), { lim: 8, cor: V3.light })
-      + _v3Bars('Tipos de suporte', _dashCount(sups, function (r) { return r.tipoSup; }), { lim: 10 })
-      + _v3Bars('Qtde cabos / tipo-seção', _dashCount(cabos, function (r) { return r.secao; }), { lim: 12, extra: 'grid-column:span 2' })
-      + _v3Rank('Instrumentos por rastreabilidade', _dashCount(tags, function (r) { return r.doc; }), { lim: 10, cor: V3.light, extra: 'grid-column:span 2' })
-    )
+    + _v3Escopo()
     + '</div>';
 }
 
