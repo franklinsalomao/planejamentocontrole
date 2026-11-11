@@ -1213,7 +1213,7 @@ function goView(v, pid) {
   else if (v === 'isos') renderIsoView();
   renderHeader();
 }
-const HY_BUILD = '11/11/2026 13:06';
+const HY_BUILD = '11/11/2026 13:31';
 function renderHeader() {
   const el = document.getElementById('hdr-acts');
   if (currentView === 'projects' && !currentProjId) {
@@ -2577,11 +2577,11 @@ function _v3AreaJunta(j) {
 
 /* ══════════════ VISAO 360 — CALDEIRARIA ══════════════════════════════ */
 function _v3Caldeiraria() {
-  var J = _jtProj();
-  var list = currentProjId ? projIsos(currentProjId) : isos;
-  var sups = currentProjId
-    ? suportes.filter(function (s) { return list.some(function (e) { return e.num === s.isometrico; }); })
-    : suportes;
+  var J = _v3FiltraJuntas(_jtProj());
+  var list = _v3FiltraIsos(currentProjId ? projIsos(currentProjId) : isos);
+  var sups = _v3FiltraSups(currentProjId
+    ? suportes.filter(function (s) { return projIsos(currentProjId).some(function (e) { return e.num === s.isometrico; }); })
+    : suportes);
 
   var fab = J.filter(_jtEhPipe);
   var mon = J.filter(function (j) { return !_jtEhPipe(j); });
@@ -2658,14 +2658,73 @@ function _v3Caldeiraria() {
    ESCOPO — ELETRICA E INSTRUMENTACAO (painel unico das duas disciplinas)
    Filtros: disciplina · tipo/secao de cabo · rastreabilidade
 ══════════════════════════════════════════════════════════════════════ */
-var _v3fDisc = '', _v3fSecao = '', _v3fDoc = '';
+var _v3fDisc = '', _v3fSecao = '', _v3fDoc = '', _v3fArea = '';
 function _v3SetF(k, v) {
   if (k === 'disc') _v3fDisc = v;
   else if (k === 'secao') _v3fSecao = v;
   else if (k === 'doc') _v3fDoc = v;
-  renderIsoView();
+  else if (k === 'area') _v3fArea = v;
+  _v3Rerender();
 }
-function _v3LimpaF() { _v3fDisc = ''; _v3fSecao = ''; _v3fDoc = ''; renderIsoView(); }
+function _v3LimpaF() { _v3fDisc = ''; _v3fSecao = ''; _v3fDoc = ''; _v3fArea = ''; _v3Rerender(); }
+/* re-renderiza preservando a rolagem e o foco do filtro usado */
+function _v3Rerender() {
+  var sc = document.scrollingElement ? document.scrollingElement.scrollTop : 0;
+  var at = document.activeElement ? document.activeElement.id : '';
+  renderIsoView();
+  if (document.scrollingElement) document.scrollingElement.scrollTop = sc;
+  if (at) { var n = document.getElementById(at); if (n) n.focus(); }
+}
+function _v3TemFiltro() { return !!(_v3fDisc || _v3fSecao || _v3fDoc || _v3fArea); }
+/* area de um registro de instrumentacao/eletrica, pela rastreabilidade */
+function _v3AreaDoc(r) { return _instrArea(r.doc) || ''; }
+/* area de um suporte de tubulacao / isometrico */
+function _v3AreaIso(e) {
+  if (e.area) return String(e.area);
+  var m = String(e.num || e.isometrico || '').match(/-(\d{3,5})-/);
+  return m ? m[1] : '';
+}
+/* aplica o filtro de area as bases de caldeiraria */
+function _v3FiltraIsos(a)  { return !_v3fArea ? a : a.filter(function (e) { return _v3AreaIso(e) === _v3fArea; }); }
+function _v3FiltraJuntas(a){ return !_v3fArea ? a : a.filter(function (j) { return _v3AreaJunta(j) === _v3fArea; }); }
+function _v3FiltraSups(a)  { return !_v3fArea ? a : a.filter(function (r) { return _v3AreaIso(r) === _v3fArea; }); }
+function _v3FiltraTags(a)  { return !_v3fArea ? a : a.filter(function (r) { return _v3AreaDoc(r) === _v3fArea; }); }
+
+/* ── barra de filtros unica do dashboard (vale para as 3 sub-abas) ── */
+function _v3BarraFiltros() {
+  var cabAll = _instrProjFilter(eletCabos).concat(_instrProjFilter(instrCabos));
+  var supAll = _instrProjFilter(instrSups), encAll = _instrProjFilter(instrEncam);
+  var tagAll = _instrProjFilter(instrTags);
+  var isoAll = currentProjId ? projIsos(currentProjId) : isos;
+
+  var secoes = [], docs = [], areas = [];
+  var addA = function (v) { v = String(v || '').trim(); if (v && areas.indexOf(v) < 0) areas.push(v); };
+  cabAll.forEach(function (r) {
+    var x = String(r.secao || '').trim(); if (x && secoes.indexOf(x) < 0) secoes.push(x);
+  });
+  [].concat(cabAll, supAll, encAll, tagAll).forEach(function (r) {
+    var d = String(r.doc || '').trim(); if (d && docs.indexOf(d) < 0) docs.push(d);
+    addA(_v3AreaDoc(r));
+  });
+  isoAll.forEach(function (e) { addA(_v3AreaIso(e)); });
+  _jtProj().forEach(function (j) { addA(_v3AreaJunta(j)); });
+  (currentProjId ? suportes.filter(function (r) { return isoAll.some(function (e) { return e.num === r.isometrico; }); }) : suportes)
+    .forEach(function (r) { addA(_v3AreaIso(r)); });
+  secoes.sort(); docs.sort(); areas.sort();
+
+  return '<div style="position:sticky;top:0;z-index:40;display:flex;flex-wrap:wrap;align-items:center;gap:10px;'
+    + 'margin:0;padding:9px 16px;background:var(--hcard);border-bottom:2px solid ' + V3.dark + ';box-shadow:0 2px 6px rgba(20,40,70,.06)">'
+    + '<span style="font-size:10px;font-weight:800;color:' + V3.dark + ';letter-spacing:.6px">\u25BC FILTROS</span>'
+    + _v3Sel('Área:', 'v3f-area', _v3fArea, areas, 'area')
+    + _v3Sel('Disciplina:', 'v3f-disc', _v3fDisc, ['Elétrica', 'Instrumentação'], 'disc')
+    + _v3Sel('Tipo de cabo:', 'v3f-secao', _v3fSecao, secoes, 'secao')
+    + _v3Sel('Rastreabilidade:', 'v3f-doc', _v3fDoc, docs, 'doc')
+    + (_v3TemFiltro() ? '<button onclick="_v3LimpaF()" style="font-size:10px;padding:4px 10px;border-radius:5px;border:1px solid var(--hbr);'
+        + 'background:var(--hg);color:var(--hmu);cursor:pointer;font-weight:700">\u2715 Limpar</button>'
+        : '<span style="font-size:9.5px;color:var(--hmu)">nenhum filtro aplicado</span>')
+    + '<span style="font-size:9.5px;color:var(--hmu);margin-left:auto">os filtros valem para as 3 sub-abas do dashboard</span>'
+    + '</div>';
+}
 
 /* disciplina de um registro — cabos de eletCabos sao sempre Eletrica */
 function _v3Disc(r, fallback) {
@@ -2682,12 +2741,13 @@ function _v3EscopoDados() {
   var fD = function (r) { return !_v3fDisc || r._d === _v3fDisc; };
   var fS = function (r) { return !_v3fSecao || String(r.secao || '') === _v3fSecao; };
   var fR = function (r) { return !_v3fDoc || String(r.doc || '') === _v3fDoc; };
+  var fA = function (r) { return !_v3fArea || _v3AreaDoc(r) === _v3fArea; };
 
   return {
     todosCabos: cab,
-    cabos: cab.filter(function (r) { return fD(r) && fS(r) && fR(r); }),
-    sups:  sup.filter(function (r) { return fD(r) && fR(r); }),
-    encam: enc.filter(function (r) { return fD(r) && fR(r); })
+    cabos: cab.filter(function (r) { return fD(r) && fS(r) && fR(r) && fA(r); }),
+    sups:  sup.filter(function (r) { return fD(r) && fR(r) && fA(r); }),
+    encam: enc.filter(function (r) { return fD(r) && fR(r) && fA(r); })
   };
 }
 
@@ -2704,16 +2764,6 @@ function _v3Escopo() {
   var D = _v3EscopoDados();
   var cabos = D.cabos, sups = D.sups, encam = D.encam;
 
-  var secoes = [];
-  var docs = [];
-  D.todosCabos.forEach(function (r) {
-    var s = String(r.secao || '').trim(); if (s && secoes.indexOf(s) < 0) secoes.push(s);
-  });
-  [].concat(D.todosCabos, _instrProjFilter(instrSups), _instrProjFilter(instrEncam)).forEach(function (r) {
-    var d = String(r.doc || '').trim(); if (d && docs.indexOf(d) < 0) docs.push(d);
-  });
-  secoes.sort(); docs.sort();
-
   var mProj = cabos.reduce(function (s, r) { return s + (parseFloat(r.qtd) || 0); }, 0);
   var mReal = cabos.reduce(function (s, r) { return s + (parseFloat(r.qtdReal) || 0); }, 0);
   var pctCab = mProj > 0 ? Math.round(mReal / mProj * 1000) / 10 : 0;
@@ -2727,21 +2777,7 @@ function _v3Escopo() {
     .reduce(function (s, r) { return s + (parseFloat(r.qtd) || 0); }, 0);
   var pctEnc = encProj > 0 ? Math.round(encReal / encProj * 1000) / 10 : 0;
 
-  var ativo = _v3fDisc || _v3fSecao || _v3fDoc;
-  var filtros = '<div style="display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:0 16px 10px;padding:8px 12px;'
-    + 'background:var(--hcard);border:1px solid var(--hbr);border-radius:8px">'
-    + '<span style="font-size:10px;font-weight:800;color:' + V3.dark + ';letter-spacing:.5px">FILTROS</span>'
-    + _v3Sel('Disciplina:', 'v3f-disc', _v3fDisc, ['Elétrica', 'Instrumentação'], 'disc')
-    + _v3Sel('Tipo de cabo:', 'v3f-secao', _v3fSecao, secoes, 'secao')
-    + _v3Sel('Rastreabilidade:', 'v3f-doc', _v3fDoc, docs, 'doc')
-    + (ativo ? '<button onclick="_v3LimpaF()" style="font-size:10px;padding:4px 10px;border-radius:5px;border:1px solid var(--hbr);'
-        + 'background:var(--hg);color:var(--hmu);cursor:pointer;font-weight:700">✕ Limpar</button>' : '')
-    + '<span style="font-size:9.5px;color:var(--hmu);margin-left:auto">'
-    + cabos.length + ' cabo(s) · ' + sups.length + ' suporte(s) · ' + encam.length + ' item(ns) de encaminhamento</span>'
-    + '</div>';
-
   return _v3Title('ESCOPO -', 'ELÉTRICA E INSTRUMENTAÇÃO')
-    + filtros
     + _v3Grid(190,
         _v3Gauge('Suportes p/ instrumentos', supMon, sups.length || 1, V3.dark)
       + _v3Gauge('% mont. suportes p/ instrum.', pctSup, 100, V3.light)
@@ -2774,12 +2810,12 @@ function _v3Escopo() {
 /* ══════════════ DASHBOARD UNIFICADO — VISAO GERAL ════════════════════ */
 function renderDashGeral(discTabs, bc) {
   var proj  = projects.find(function (p) { return p.id === currentProjId; });
-  var list  = currentProjId ? projIsos(currentProjId) : isos;
-  var J     = _jtProj();
-  var sups  = currentProjId
-    ? suportes.filter(function (s) { return list.some(function (e) { return e.num === s.isometrico; }); })
-    : suportes;
-  var tags  = _instrProjFilter(instrTags);
+  var list  = _v3FiltraIsos(currentProjId ? projIsos(currentProjId) : isos);
+  var J     = _v3FiltraJuntas(_jtProj());
+  var sups  = _v3FiltraSups(currentProjId
+    ? suportes.filter(function (s) { return projIsos(currentProjId).some(function (e) { return e.num === s.isometrico; }); })
+    : suportes);
+  var tags  = _v3FiltraTags(_instrProjFilter(instrTags));
   var E     = _v3EscopoDados();
   var cabos = E.cabos, isups = E.sups, encam = E.encam;
 
@@ -2857,7 +2893,7 @@ function renderDashGeral(discTabs, bc) {
     )
     + '</div>';
 
-  document.getElementById('view-isos').innerHTML = bc + discTabs + cab + kpis + corpo + '</div>';
+  document.getElementById('view-isos').innerHTML = bc + discTabs + _v3BarraFiltros() + cab + kpis + corpo + '</div>';
 }
 
 /* ══════════════ DASHBOARD — ELETRICA ═════════════════════════════════ */
@@ -2944,7 +2980,9 @@ function _v3Instr(tags, cabos, sups, encam) {
 
 function renderDashboard(discTabs, bc) {
   const proj = projects.find(p => p.id === currentProjId);
-  const list = currentProjId ? projIsos(currentProjId) : isos;
+  const list = (typeof _v3FiltraIsos === 'function' && currentDisc === 'dash')
+    ? _v3FiltraIsos(currentProjId ? projIsos(currentProjId) : isos)
+    : (currentProjId ? projIsos(currentProjId) : isos);
   const listFabMon = list.filter(e => !['Referência','Desmontagem','Escopo cancelado','Hold'].includes(e.classif||'Fabricação'));
   const listFabD   = listFabMon.filter(e => !['Apenas Montagem','Desmontagem','Referência','Escopo cancelado','Hold'].includes(e.classif||'Fabricação'));
 
@@ -3054,7 +3092,8 @@ function renderDashboard(discTabs, bc) {
 
   let _v3 = '';
   try { _v3 = _v3Caldeiraria(); } catch (err) { console.warn('[v3 caldeiraria]', err); _v3 = _v3Erro('Caldeiraria', err); }
-  document.getElementById('view-isos').innerHTML = bc + discTabs + header + kpiBar + areaTable + _v3 + '</div>';
+  const _fb = (currentDisc === 'dash') ? _v3BarraFiltros() : '';
+  document.getElementById('view-isos').innerHTML = bc + discTabs + _fb + header + kpiBar + areaTable + _v3 + '</div>';
 }
 
 
@@ -4286,10 +4325,13 @@ function _dashCard(titulo, itens, total, corFixa, legenda, fmt) {
 }
 
 function renderInstrDash(discTabs, bc) {
-  var tags  = _instrProjFilter(instrTags);
-  var cabos = _instrProjFilter(_cabArr());
-  var sups  = _instrProjFilter(instrSups);
-  var encam = _instrProjFilter(instrEncam);
+  var _E = _v3EscopoDados();
+  var tags  = _v3FiltraTags(_instrProjFilter(instrTags))
+    .filter(function (r) { return !_v3fDisc || _v3Disc(r, 'Instrumentação') === _v3fDisc; })
+    .filter(function (r) { return !_v3fDoc || String(r.doc || '') === _v3fDoc; });
+  var cabos = _E.cabos;
+  var sups  = _E.sups;
+  var encam = _E.encam;
 
   var compr = cabos.reduce(function (s, r) { return s + (parseFloat(r.qtd) || 0); }, 0);
   var comprReal = cabos.reduce(function (s, r) { return s + (parseFloat(r.qtdReal) || 0); }, 0);
@@ -4353,7 +4395,8 @@ function renderInstrDash(discTabs, bc) {
     + '</div>';
 
   var vazio = !tags.length && !cabos.length;
-  _instrHeader(discTabs, bc, currentDisc === 'dash' ? 'Elétrica e Instrumentação' : 'Dashboard', kpis, '',
+  _instrHeader(discTabs + (currentDisc === 'dash' ? _v3BarraFiltros() : ''), bc,
+    currentDisc === 'dash' ? 'Elétrica e Instrumentação' : 'Dashboard', kpis, '',
     vazio ? '<div class="ph-panel"><div style="font-size:32px">\uD83D\uDCCA</div><strong>Nenhum dado neste projeto</strong>'
           + '<span style="font-size:11px">Importe ou cadastre instrumentos e cabos para ver os indicadores.</span></div>'
           : corpo);
