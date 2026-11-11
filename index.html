@@ -1213,7 +1213,7 @@ function goView(v, pid) {
   else if (v === 'isos') renderIsoView();
   renderHeader();
 }
-const HY_BUILD = '11/11/2026 16:38';
+const HY_BUILD = '11/11/2026 16:49';
 function renderHeader() {
   const el = document.getElementById('hdr-acts');
   if (currentView === 'projects' && !currentProjId) {
@@ -4847,25 +4847,36 @@ function _jtBarrasPrevReal(m) {
 }
 
 function _jtCurvaSVG(list, m, an) {
-  var W = 660, H = 190, pad = { l: 44, r: 12, t: 12, b: 26 };
-  var totPol = m.ps.pol + m.cp.pol;
-  if (!totPol) return '';
-  var dur = Math.ceil(Math.max(m.ps.diasPrev, m.cp.diasPrev)) || 1;
+  /* duas frentes, dois gráficos: fabricação e montagem acontecem em
+     momentos distintos, cada uma a partir da sua própria data de início */
+  var g1 = _jtCurvaFrente(list, m.ps, an, 'ps', 'FABRICAÇÃO — PIPE-SHOP', an.iniFab);
+  var g2 = _jtCurvaFrente(list, m.cp, an, 'cp', 'MONTAGEM — CAMPO', an.iniMon);
+  if (!g1 && !g2) return '';
+  return '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:10px">' + g1 + g2 + '</div>';
+}
 
-  /* planejado: cada local avanca a sua meta ate esgotar o proprio escopo */
+function _jtCurvaFrente(list, o, an, k, titulo, inicio) {
+  var W = 660, H = 190, pad = { l: 44, r: 12, t: 12, b: 26 };
+  var totPol = o.pol;
+  if (!totPol) return '';
+  var dur = Math.ceil(o.diasPrev) || 1;
+
+  /* planejado: a frente avanca a sua meta ate esgotar o proprio escopo */
   var plan = [];
-  for (var t = 0; t <= dur; t++) {
-    plan.push(Math.min(m.ps.metaDia * t, m.ps.pol) + Math.min(m.cp.metaDia * t, m.cp.pol));
-  }
-  /* realizado: acumulado por data de execucao, convertido em dia util desde o inicio */
+  for (var t = 0; t <= dur; t++) plan.push(Math.min(o.metaDia * t, o.pol));
+
+  /* realizado: so as juntas desta frente, por data de execucao */
   var porDia = {};
   list.forEach(function (j) {
-    if (j.dataExec) porDia[j.dataExec] = (porDia[j.dataExec] || 0) + _jtPol(j.polDiam || j.diam);
+    if (!j.dataExec) return;
+    var ehPS = _jtEhPipe(j);
+    if ((k === 'ps') !== ehPS) return;
+    porDia[j.dataExec] = (porDia[j.dataExec] || 0) + _jtPol(j.polDiam || j.diam);
   });
   var datas = Object.keys(porDia).sort();
   var real = [];
   if (datas.length) {
-    var base = an.inicio || datas[0], acc = 0;
+    var base = inicio || datas[0], acc = 0;
     datas.forEach(function (d) {
       acc += porDia[d];
       var n = 0, cur = new Date(base + 'T12:00:00'), fim = new Date(d + 'T12:00:00'), g = 0;
@@ -4873,7 +4884,9 @@ function _jtCurvaSVG(list, m, an) {
       real.push({ x: n, y: acc });
     });
   }
-  var X = function (i) { return pad.l + (i / dur) * (W - pad.l - pad.r); };
+  var maxX = dur;
+  real.forEach(function (p) { if (p.x > maxX) maxX = p.x; });
+  var X = function (i) { return pad.l + (i / (maxX || 1)) * (W - pad.l - pad.r); };
   var Y = function (v) { return H - pad.b - (v / totPol) * (H - pad.t - pad.b); };
   var linhaPlan = plan.map(function (v, i) { return (i ? 'L' : 'M') + X(i).toFixed(1) + ',' + Y(v).toFixed(1); }).join(' ');
   var linhaReal = real.length
@@ -4884,15 +4897,21 @@ function _jtCurvaSVG(list, m, an) {
     return '<line x1="' + pad.l + '" y1="' + y.toFixed(1) + '" x2="' + (W - pad.r) + '" y2="' + y.toFixed(1) + '" stroke="#e9edf3"/>'
       + '<text x="' + (pad.l - 6) + '" y="' + (y + 3).toFixed(1) + '" text-anchor="end" font-size="8" fill="#8a94a6">' + Math.round(totPol * fr) + '</text>';
   }).join('');
-  var marcas = [0, Math.round(dur / 2), dur].map(function (d) {
+  var marcas = [0, Math.round(maxX / 2), maxX].map(function (d) {
     return '<text x="' + X(d).toFixed(1) + '" y="' + (H - 8) + '" text-anchor="middle" font-size="8" fill="#8a94a6">d' + d + '</text>';
   }).join('');
+  var feito = real.length ? real[real.length - 1].y : 0;
+  var pct = totPol > 0 ? Math.round(feito / totPol * 100) : 0;
+
   return '<div style="border:1px solid var(--hbr);border-radius:8px;background:var(--hcard);overflow:hidden">'
-    + '<div style="padding:7px 10px;background:#f7f8fa;border-bottom:1px solid var(--hbr);display:flex;justify-content:space-between;align-items:center">'
-    +   '<span style="font-size:9.5px;font-weight:800;letter-spacing:.5px;color:#334">CURVA DE AVANÇO — POLEGADAS ACUMULADAS</span>'
+    + '<div style="padding:7px 10px;background:#f7f8fa;border-bottom:1px solid var(--hbr);display:flex;flex-wrap:wrap;gap:6px;justify-content:space-between;align-items:center">'
+    +   '<span style="font-size:9.5px;font-weight:800;letter-spacing:.5px;color:#334">CURVA DE AVANÇO — ' + titulo + '</span>'
     +   '<span style="font-size:9px;color:var(--hmu)">'
     +     '<span style="color:#2A4661;font-weight:700">— planejado</span> &nbsp; '
     +     '<span style="color:#2F7D53;font-weight:700">— realizado</span></span></div>'
+    + '<div style="padding:4px 10px 0;font-size:9px;color:var(--hmu)">início '
+    +   '<strong style="color:var(--ht)">' + _jtDataBR(inicio) + '</strong> · prazo meta <strong style="color:var(--ht)">'
+    +   _jtFmt(o.diasPrev) + ' d</strong> · ' + _jtFmt(feito) + ' / ' + _jtFmt(totPol) + ' pol · <strong style="color:#2F7D53">' + pct + '%</strong></div>'
     + '<svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;height:auto;display:block">'
     +   grid + marcas
     +   '<path d="' + linhaPlan + '" fill="none" stroke="#2A4661" stroke-width="2"/>'
@@ -5253,8 +5272,8 @@ function renderJuntas(discTabs, bc) {
 
   var an = _jtAnalise(list, m);
   var prazo2 = _jtPainelPrazo(an, m);
-  var curva = '<div style="padding:12px 16px 0;display:grid;grid-template-columns:1.55fr 1fr;gap:12px;align-items:start">'
-    + _jtCurvaSVG(list, m, an) + _jtBarrasPrevReal(m) + '</div>';
+  var curva = '<div style="padding:12px 16px 0">' + _jtCurvaSVG(list, m, an) + '</div>'
+    + '<div style="padding:12px 16px 0">' + _jtBarrasPrevReal(m) + '</div>';
 
   /* os quadros seguem a selecao dos filtros */
   var polF = f.reduce(function (s, j) { return s + _jtPol(j.polDiam || j.diam); }, 0);
