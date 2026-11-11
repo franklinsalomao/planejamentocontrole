@@ -1214,7 +1214,7 @@ function goView(v, pid) {
   else if (v === 'isos') renderIsoView();
   renderHeader();
 }
-const HY_BUILD = '11/11/2026 11:57';
+const HY_BUILD = '11/11/2026 12:07';
 function renderHeader() {
   const el = document.getElementById('hdr-acts');
   if (currentView === 'projects' && !currentProjId) {
@@ -1393,8 +1393,15 @@ function getEffectiveDiscTabs(projId) {
   const result = {};
   Object.keys(DISC_TABS).forEach(disc => {
     result[disc] = (proj.tabConfig[disc])
-      ? { label: DISC_TABS[disc].label, ...proj.tabConfig[disc] }
+      ? { label: DISC_TABS[disc].label, subs: (proj.tabConfig[disc].subs||[]).slice(), labels: (proj.tabConfig[disc].labels||[]).slice() }
       : DISC_TABS[disc];
+  });
+  /* garante a sub-aba Dashboard de cada disciplina mesmo em projetos
+     que ja tinham tabConfig salvo antes da criacao dos dashboards */
+  const DASH = { caldeiraria:['dashboard','Dashboard'], eletrica:['elet-dash','Dashboard'], instr:['instr-dash','Dashboard'] };
+  Object.keys(DASH).forEach(disc => {
+    const d = result[disc]; if (!d || !d.subs) return;
+    if (d.subs.indexOf(DASH[disc][0]) < 0) { d.subs.unshift(DASH[disc][0]); d.labels.unshift(DASH[disc][1]); }
   });
   return result;
 }
@@ -2548,6 +2555,12 @@ function _v3Grid(cols, inner) {
   return '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(' + cols + 'px,1fr));gap:10px;padding:0 16px 4px">' + inner + '</div>';
 }
 
+function _v3Erro(onde, err) {
+  return '<div style="margin:14px 16px;padding:12px 14px;border:1px solid #ffcdd2;background:#fdecea;border-radius:8px;'
+    + 'font-size:11px;color:#B34A3C"><strong>Nao foi possivel montar o painel Visao 360 de ' + onde + '.</strong><br>'
+    + String((err && err.message) || err) + '</div>';
+}
+
 /* area de uma junta — do isometrico cadastrado, senao do proprio numero */
 function _v3AreaJunta(j) {
   var e = isos.find(function (x) { return x.num === j.iso; });
@@ -2850,7 +2863,7 @@ function renderDashboard(discTabs, bc) {
   </div>`;
 
   let _v3 = '';
-  try { _v3 = _v3Caldeiraria(); } catch (err) { console.warn('[v3 caldeiraria]', err); _v3 = ''; }
+  try { _v3 = _v3Caldeiraria(); } catch (err) { console.warn('[v3 caldeiraria]', err); _v3 = _v3Erro('Caldeiraria', err); }
   document.getElementById('view-isos').innerHTML = bc + discTabs + header + kpiBar + areaTable + _v3 + '</div>';
 }
 
@@ -4130,7 +4143,7 @@ function renderInstrDash(discTabs, bc) {
     + '</div>';
 
   var v3 = '';
-  try { v3 = _v3Instr(tags, cabos, sups, encam); } catch (err) { console.warn('[v3 instr]', err); }
+  try { v3 = _v3Instr(tags, cabos, sups, encam); } catch (err) { console.warn('[v3 instr]', err); v3 = _v3Erro('Instrumentação', err); }
 
   var corpo = v3 + _v3Title('DETALHAMENTO', 'POR INDICADOR') + '<div style="padding:12px 16px 18px;display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:0 14px">'
     + _dashCard('INSTRUMENTOS POR TIPO (prefixo da TAG)', _dashCount(tags, function (r) { return _instrTipoTag(r.tag); }), tags.length, null, true)
